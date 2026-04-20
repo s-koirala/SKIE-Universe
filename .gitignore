@@ -1,0 +1,38 @@
+# env
+.venv/
+.env
+.env.local
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+*.egg-info/
+
+# data (raw/interim are large; processed tracked via DVC if adopted)
+data/raw/**
+data/interim/**
+data/external/**
+!data/**/.gitkeep
+
+# notebooks stripped
+*-checkpoint.ipynb
+
+# artifacts
+artifacts/models/**
+!artifacts/models/.gitkeep
+logs/**
+!logs/**/.gitkeep
+
+# NinjaTrader build output
+ninjascript/**/bin/
+ninjascript/**/obj/
+
+# os
+.DS_Store
+Thumbs.db

@@ -1,0 +1,104 @@
+# Catalog of data sources. Each entry is a candidate; availability/licensing to be audited
+# by the data-sources agent before use. Nothing here is authoritative until marked `vetted: true`.
+
+market_data:
+  - name: Databento
+    scope: CME MBP-10 / MBO tick, historical + live
+    latency: sub-ms tick
+    cost_tier: pay-per-GB
+    vetted: false
+  - name: CME DataMine
+    scope: official CME tick, historical
+    cost_tier: per-dataset
+    vetted: false
+  - name: Polygon.io
+    scope: US equities & options consolidated tape
+    vetted: false
+  - name: NinjaTrader feed (Rithmic / CQG / Kinetick)
+    scope: live ES/NQ for paper + live trading
+    vetted: false
+
+options_and_gex:
+  - name: CBOE DataShop
+    scope: SPX option trades & quotes (OPRA subset), 0DTE
+    vetted: false
+  - name: SpotGamma / Menthor Q
+    scope: aggregated dealer GEX levels
+    vetted: false
+
+macro_surprise:
+  - name: Bloomberg ECO (terminal-only)
+    scope: consensus + actual for every macro release
+    vetted: false
+  - name: Trading Economics API
+    scope: public-tier consensus/actual
+    vetted: false
+
+text_and_llm:
+  - name: FOMC statements / minutes (federalreserve.gov)
+    cadence: 8 FOMC + 8 minutes releases/yr
+    parser: html + pdf
+  - name: ECB press conference transcripts
+  - name: BLS / BEA release text (NFP, CPI, PCE, GDP)
+  - name: FinBERT / Voyage-finance-2 / FinLang
+    role: embedding model choice (select by empirical IR on internal corpus)
+
+altdata:
+  - name: AIS (MarineTraffic / Spire / AISHub)
+    scope: vessel arrival events at Cushing/Ras Tanura/Rotterdam
+    horizon: minute
+    relevance: CL/BZ; indirect ES/NQ via oil beta
+  - name: Glassnode / Dune / Etherscan
+    scope: stablecoin mint/burn, CEX in/out flows
+    relevance: BTC futures basis; indirect ES via BTC-risk correlation
+  - name: HRRR / ERCOT real-time
+    scope: weather & nodal LMP
+    relevance: NG; indirect ES via commodity beta
+
+prediction_markets:
+  - name: Kalshi
+    scope: macro contracts (CPI, FOMC, NFP, S&P close)
+    api: REST + WS public
+  - name: Polymarket
+    scope: macro & geopolitical
+    api: on-chain (Polygon)
+
+on_chain_stablecoin:
+  - name: Tether treasury transactions
+  - name: Circle USDC mint/burn
+
+reference:
+  - name: FRED
+    scope: SOFR, IOER, repo rates, Treasury curve
+  - name: TreasuryDirect
+    scope: auction schedule, results, WI yield history
+  - name: ALFRED (FRED vintage archive)
+    scope: real-time vintage data for macro series (GDP, CPI, NFP, etc.)
+    url: https://alfred.stlouisfed.org/
+    license: public domain
+    retrieval_date: 2026-04-16
+    shared_subdir: fred
+    vetted: true
+    notes: >
+      Vintage series enable point-in-time macro feature construction
+      without look-ahead bias. API key required (free registration).
+  - name: Philadelphia Fed Survey of Professional Forecasters (SPF)
+    scope: quarterly consensus forecasts for GDP, CPI, unemployment, Treasury yields
+    url: https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/survey-of-professional-forecasters
+    license: public domain
+    retrieval_date: 2026-04-16
+    shared_subdir: spf
+    vetted: true
+    notes: >
+      Individual-level responses available. Useful for consensus dispersion
+      and disagreement signals (Patton & Timmermann 2010).
+  - name: FOMC statements and minutes (federalreserve.gov)
+    scope: all FOMC statements, minutes, press conference transcripts
+    url: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm
+    license: public domain (U.S. government work)
+    retrieval_date: 2026-04-16
+    shared_subdir: fomc_text
+    vetted: true
+    notes: >
+      HTML and PDF. Statements available same-day; minutes released
+      three weeks after meeting. Transcripts released with five-year lag.

@@ -1,0 +1,3 @@
+# Placeholder — populated by training pipelines. Each entry records model hash, training data
+# checksum, walk-forward OOS metrics, and promotion status (research / paper / live).
+models: []

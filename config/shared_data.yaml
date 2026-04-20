@@ -1,0 +1,9 @@
+# Shared cross-project data directory configuration.
+# Override via SKIE_SHARED_DATA env var for CI or other machines.
+shared_data_root: "~/datasets"
+subdirs:
+  fred: "fred"
+  fomc_text: "fomc_text"
+  spf: "spf"
+  es_tick: "es_tick"
+  nq_tick: "nq_tick"

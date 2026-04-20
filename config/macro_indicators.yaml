@@ -1,0 +1,131 @@
+# Macro indicator registry for SKIE-Universe.
+#
+# Each entry maps a FRED/ALFRED series ID to its release metadata.
+# spf_coverage: true if Philadelphia Fed Survey of Professional
+# Forecasters publishes individual-level forecasts for this indicator,
+# enabling cross-sectional consensus dispersion. When false, the
+# ingest pipeline uses rolling historical forecast error std as proxy
+# per Andersen, Bollerslev, Diebold & Vega (2003, AER 93:38-62).
+#
+# release_time_et: approximate Eastern Time of the release. Used for
+# constructing release_ts_utc; actual release times vary slightly.
+
+indicators:
+  # -- Employment --
+  - id: PAYEMS
+    name: Nonfarm Payrolls
+    fred_series: PAYEMS
+    frequency: monthly
+    release_time_et: "08:30"
+    spf_coverage: false
+    source: BLS
+    category: employment
+
+  - id: UNRATE
+    name: Unemployment Rate
+    fred_series: UNRATE
+    frequency: monthly
+    release_time_et: "08:30"
+    spf_coverage: true
+    spf_variable: UNEMP
+    source: BLS
+    category: employment
+
+  - id: ICSA
+    name: Initial Jobless Claims
+    fred_series: ICSA
+    frequency: weekly
+    release_time_et: "08:30"
+    spf_coverage: false
+    source: DOL
+    category: employment
+
+  # -- Inflation --
+  - id: CPIAUCSL
+    name: CPI All Urban Consumers
+    fred_series: CPIAUCSL
+    frequency: monthly
+    release_time_et: "08:30"
+    spf_coverage: true
+    spf_variable: CPI
+    source: BLS
+    category: inflation
+
+  - id: PPIACO
+    name: PPI All Commodities
+    fred_series: PPIACO
+    frequency: monthly
+    release_time_et: "08:30"
+    spf_coverage: false
+    source: BLS
+    category: inflation
+
+  - id: PCEPI
+    name: PCE Price Index (Deflator)
+    fred_series: PCEPI
+    frequency: monthly
+    release_time_et: "08:30"
+    spf_coverage: true
+    spf_variable: PCE
+    source: BEA
+    category: inflation
+
+  # -- Activity --
+  - id: RSAFS
+    name: Retail Sales (Advance)
+    fred_series: RSAFS
+    frequency: monthly
+    release_time_et: "08:30"
+    spf_coverage: false
+    source: Census
+    category: activity
+
+  - id: INDPRO
+    name: Industrial Production Index
+    fred_series: INDPRO
+    frequency: monthly
+    release_time_et: "09:15"
+    spf_coverage: true
+    spf_variable: INDPROD
+    source: FRB
+    category: activity
+
+  - id: GDPC1
+    name: Real GDP (Advance, 2nd, 3rd)
+    fred_series: GDPC1
+    frequency: quarterly
+    release_time_et: "08:30"
+    spf_coverage: true
+    spf_variable: RGDP
+    source: BEA
+    category: activity
+
+  # -- Housing --
+  - id: HOUST
+    name: Housing Starts
+    fred_series: HOUST
+    frequency: monthly
+    release_time_et: "08:30"
+    spf_coverage: true
+    spf_variable: HOUSING
+    source: Census
+    category: housing
+
+  - id: EXHOSLUSM495S
+    name: Existing Home Sales
+    fred_series: EXHOSLUSM495S
+    frequency: monthly
+    release_time_et: "10:00"
+    spf_coverage: false
+    source: NAR
+    category: housing
+
+  # -- Confidence --
+  - id: UMCSENT
+    name: Michigan Consumer Sentiment
+    fred_series: UMCSENT
+    frequency: monthly
+    release_time_et: "10:00"
+    spf_coverage: false
+    source: UMich
+    category: confidence

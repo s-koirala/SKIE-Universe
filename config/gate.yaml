@@ -1,0 +1,36 @@
+# Gate thresholds. Every value is either citation-backed or placeholder pending Phase-1 calibration.
+# Each entry must carry a `justify:` block — no bare magic numbers (CLAUDE.md).
+
+alpha: 0.05
+# justify: conventional two-sided significance level (cite: convention, not load-bearing).
+
+bh_threshold: 0.10
+# justify: Benjamini-Hochberg 1995 conventional FDR level (10.1111/j.2517-6161.1995.tb02031.x).
+# status: Phase-1 follow-up F-3-1 — empirically calibrate via simulation across realistic
+# universe sizes (n=10..200) and dependency structures.
+
+dsr_activation_size: 10
+# justify: placeholder. DSR/PSR diagnostics (Bailey-Lopez de Prado 2014, 10.3905/jpm.2014.40.5.094)
+# become informative when universe has accumulated enough candidates that raw Sharpe
+# overstates. Exact threshold pending simulation.
+# status: Phase-1 follow-up F-3-1 — calibrate via DSR-stability study at small N.
+
+bootstrap_reps: 10000
+# justify: inline MC-SE for p=0.05 is sqrt(0.05*0.95/B) ≈ 0.0022 at B=10k, which is ≤ alpha/20.
+# status: Phase-1 follow-up F-3-2 — derive B from target SE ≤ 0.1*alpha; may increase for tail-
+# p-values at universe sizes >100.
+
+block_len: null
+# Politis-White 2004 optimal block length (10.1081/ETC-120028836). Null = auto.
+
+nw_hac:
+  bandwidth_rule: andrews_1991_plug_in
+  # 10.2307/2938229 — data-dependent bandwidth preferred; Newey-West 1994 alternative.
+
+sharpe_ci:
+  primary: opdyke_2007
+  # 10.1057/palgrave.jam.2250084 — higher-moment correction for skew/kurt.
+  diagnostic: lo_2002
+  # 10.2469/faj.v58.n4.2453 — asymptotic; retained only as diagnostic given intraday
+  # bid-ask-bounce ρ₁ and heavy tails.
+  tiebreaker: studentized_circular_block_bootstrap

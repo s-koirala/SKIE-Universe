@@ -1,0 +1,164 @@
+# CME equity-index front-month futures specs.
+#
+# Sources (retrieved 2026-04-15; user must re-verify each quarterly roll):
+#   - CME Group product specs (contract size, tick):
+#       ES:  https://www.cmegroup.com/markets/equities/sp/e-mini-sandp500.contractSpecs.html
+#       NQ:  https://www.cmegroup.com/markets/equities/nasdaq/e-mini-nasdaq-100.contractSpecs.html
+#       MES: https://www.cmegroup.com/markets/equities/sp/micro-e-mini-sandp-500.contractSpecs.html
+#       MNQ: https://www.cmegroup.com/markets/equities/nasdaq/micro-e-mini-nasdaq-100.contractSpecs.html
+#   - CME exchange fees (member "Individual Member - Equity Index, Electronic",
+#     Schedule of Fees effective 2024-02; user must refresh when CME publishes):
+#       https://www.cmegroup.com/company/clearing-fees.html
+#   - NFA assessment fee ($0.02/side futures/options on futures), NFA Rulebook
+#     Section 13 Schedule of Dues and Assessment Fees, effective 2024-01-01:
+#       https://www.nfa.futures.org/rulebook/rules.aspx?Section=10&RuleID=SECTION%2013
+#   - Volume tier schedule: CME Group "Fee Schedule - Volume Incentive
+#     Programs" (Equity Index) — see fee_tiers block below.
+#   - Session hours (Globex equity-index, RTH 08:30-15:15 CT; ETH 17:00 CT
+#     reopen through 16:00 CT daily close, Sun 17:00 CT weekly open):
+#       https://www.cmegroup.com/trading-hours.html
+#   - CME rollover guidance (roll generally occurs 8 calendar days prior to
+#     the contract's last trade date, as volume and open interest migrate
+#     to the back month), retrieved 2026-04-15:
+#       https://www.cmegroup.com/trading/equity-index/rolldates.html
+#
+# Commission `commission_per_side_usd` is broker-dependent. The default set
+# here is a neutral retail placeholder ($0.85/side) consistent with
+# NinjaTrader Brokerage "Unlimited" plan published rate sheet as of
+# 2026-Q1 (https://ninjatrader.com/pricing/, retrieved 2026-04-15). Users
+# MUST override to match their actual broker contract before any
+# live-capital run, and set `commission_reviewed_for_broker` accordingly.
+#
+# See plan/implementation-plan_2026-04-15.md §P0-4 for field spec and
+# research/03_audits/audit-round1-quant_2026-04-15.md item M-15 for the
+# volume-tier requirement.
+
+instruments:
+  ES:
+    exchange: CME
+    description: E-mini S&P 500
+    tick_size: 0.25                                 # CME product spec
+    tick_value: 12.50                               # $50 * 0.25 = $12.50/tick
+    multiplier: 50.0                                # USD per index point, CME product spec
+    session_rth: "08:30-15:15"                      # CT, CME equity-index RTH
+    session_eth: "17:00-16:00"                      # CT, spans calendar day, CME Globex
+    roll_rule:
+      method: volume_crossover                      # justify: provisional Phase-0 choice; Phase-1 follow-up P1-ROLL-METHOD will compare OI-crossover vs volume-crossover on realized slippage
+      window_days: 5                                # justify: provisional, pending roll-persistence empirical study in Phase-1 (P1-ROLL-WINDOW); chosen as 5 sessions because OI crossover typically stabilizes within one trading week — to be validated
+      reference: "CME rollover page https://www.cmegroup.com/trading/equity-index/rolldates.html (retrieved 2026-04-15); window_days pending Phase-1 calibration"
+    commission_per_side_usd: 0.85                   # NinjaTrader Brokerage Unlimited, Q1-2026 published rate, retrieved 2026-04-15 from https://ninjatrader.com/pricing/ (placeholder; broker-specific)
+    exchange_fee_usd: 1.18                          # CME Individual Member Equity Index electronic, Schedule of Fees eff. 2024-02, https://www.cmegroup.com/company/clearing-fees.html
+    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, Schedule of Dues and Assessment Fees, eff. 2024-01-01
+    micro_ratio: 10.0                               # 1 ES = 10 MES by notional ($50 vs $5 multiplier), CME product specs
+    data_vendor_symbol_databento: "ES.FUT"
+    commission_reviewed_for_broker: null            # Phase-0 placeholder; pre-live checklist MUST bind to real broker id (audit F-2-17)
+  NQ:
+    exchange: CME
+    description: E-mini Nasdaq-100
+    tick_size: 0.25                                 # CME product spec
+    tick_value: 5.00                                # $20 * 0.25 = $5.00/tick
+    multiplier: 20.0                                # USD per index point, CME product spec
+    session_rth: "08:30-15:15"
+    session_eth: "17:00-16:00"
+    roll_rule:
+      method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD)
+      window_days: 5                                # justify: see ES roll_rule.window_days (P1-ROLL-WINDOW)
+      reference: "CME rollover page https://www.cmegroup.com/trading/equity-index/rolldates.html (retrieved 2026-04-15); window_days pending Phase-1 calibration"
+    commission_per_side_usd: 0.85                   # NinjaTrader Brokerage Unlimited, Q1-2026 published rate, retrieved 2026-04-15 (placeholder)
+    exchange_fee_usd: 1.18                          # CME Individual Member Equity Index electronic, Schedule of Fees eff. 2024-02
+    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    micro_ratio: 10.0                               # 1 NQ = 10 MNQ by notional ($20 vs $2 multiplier), CME product specs
+    data_vendor_symbol_databento: "NQ.FUT"
+    commission_reviewed_for_broker: null            # Phase-0 placeholder; pre-live checklist MUST bind (audit F-2-17)
+  MES:
+    exchange: CME
+    description: Micro E-mini S&P 500
+    tick_size: 0.25                                 # CME product spec
+    tick_value: 1.25                                # $5 * 0.25 = $1.25/tick
+    multiplier: 5.0                                 # USD per index point, CME product spec
+    session_rth: "08:30-15:15"
+    session_eth: "17:00-16:00"
+    roll_rule:
+      method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD)
+      window_days: 5                                # justify: see ES roll_rule.window_days (P1-ROLL-WINDOW)
+      reference: "CME rollover page https://www.cmegroup.com/trading/equity-index/rolldates.html (retrieved 2026-04-15); window_days pending Phase-1 calibration"
+    commission_per_side_usd: 0.35                   # NinjaTrader Brokerage micro rate, Q1-2026 published, retrieved 2026-04-15 (placeholder)
+    exchange_fee_usd: 0.35                          # CME Individual Member Micro Equity Index electronic, Schedule of Fees eff. 2024-02
+    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    micro_ratio: 0.1                                # 1 MES = 1/10 ES, CME product specs
+    data_vendor_symbol_databento: "MES.FUT"
+    commission_reviewed_for_broker: null            # Phase-0 placeholder; pre-live checklist MUST bind (audit F-2-17)
+  MNQ:
+    exchange: CME
+    description: Micro E-mini Nasdaq-100
+    tick_size: 0.25                                 # CME product spec
+    tick_value: 0.50                                # $2 * 0.25 = $0.50/tick
+    multiplier: 2.0                                 # USD per index point, CME product spec
+    session_rth: "08:30-15:15"
+    session_eth: "17:00-16:00"
+    roll_rule:
+      method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD)
+      window_days: 5                                # justify: see ES roll_rule.window_days (P1-ROLL-WINDOW)
+      reference: "CME rollover page https://www.cmegroup.com/trading/equity-index/rolldates.html (retrieved 2026-04-15); window_days pending Phase-1 calibration"
+    commission_per_side_usd: 0.35                   # NinjaTrader Brokerage micro rate, Q1-2026 published, retrieved 2026-04-15 (placeholder)
+    exchange_fee_usd: 0.35                          # CME Individual Member Micro Equity Index electronic, Schedule of Fees eff. 2024-02
+    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    micro_ratio: 0.1                                # 1 MNQ = 1/10 NQ, CME product specs
+    data_vendor_symbol_databento: "MNQ.FUT"
+    commission_reviewed_for_broker: null            # Phase-0 placeholder; pre-live checklist MUST bind (audit F-2-17)
+    # Per-contract volume-tier schedule (audit ref M-15). At retail capacity
+    # (<=20 ES / <=40 NQ per CLAUDE.md) we remain Tier 1, so this is
+    # documented for completeness, not for active use. Source: CME Group
+    # "Equity Index Volume Incentive Program" schedule, eff. 2024-02
+    # (refresh annually; Phase-1 follow-up P1-FEE-REFRESH).
+    fee_tiers:
+      - tier_name: "Tier 1 (base)"
+        monthly_volume_min: 0                       # justify: VIP schedule tier floor
+        monthly_volume_max: 14999                   # justify: VIP schedule tier ceiling
+        exchange_fee_usd: 0.35                      # CME Equity Index VIP schedule, eff. 2024-02
+        source: "CME Equity Index VIP schedule, effective 2024-02"
+      - tier_name: "Tier 2"
+        monthly_volume_min: 15000                   # justify: VIP schedule tier floor
+        monthly_volume_max: 49999                   # justify: VIP schedule tier ceiling
+        exchange_fee_usd: 0.32                      # CME Equity Index VIP schedule, eff. 2024-02
+        source: "CME Equity Index VIP schedule, effective 2024-02"
+      - tier_name: "Tier 3"
+        monthly_volume_min: 50000                   # justify: VIP schedule tier floor
+        monthly_volume_max: null                    # open-ended top tier per VIP schedule
+        exchange_fee_usd: 0.29                      # CME Equity Index VIP schedule, eff. 2024-02
+        source: "CME Equity Index VIP schedule, effective 2024-02"
+
+# ES/NQ-level volume tiers (documented per audit M-15; immaterial at
+# retail capacity ceiling).
+fee_tiers_es_nq:
+  - tier_name: "Tier 1 (base)"
+    monthly_volume_min: 0                           # justify: CME Equity Index member electronic schedule tier floor
+    monthly_volume_max: 999                         # justify: schedule tier ceiling
+    exchange_fee_usd: 1.18                          # CME Equity Index member electronic, eff. 2024-02
+    source: "CME Equity Index member electronic schedule, effective 2024-02"
+  - tier_name: "Tier 2"
+    monthly_volume_min: 1000                        # justify: VIP schedule tier floor
+    monthly_volume_max: 9999                        # justify: VIP schedule tier ceiling
+    exchange_fee_usd: 1.14                          # CME Equity Index VIP, eff. 2024-02
+    source: "CME Equity Index VIP schedule, effective 2024-02"
+  - tier_name: "Tier 3"
+    monthly_volume_min: 10000                       # justify: VIP schedule tier floor
+    monthly_volume_max: null                        # open-ended top tier per VIP schedule
+    exchange_fee_usd: 1.09                          # CME Equity Index VIP, eff. 2024-02
+    source: "CME Equity Index VIP schedule, effective 2024-02"
+
+roll_policy:
+  # Top-level policy mirrors each contract's `roll_rule` and documents the
+  # canonical choice. Per-contract `roll_rule` is authoritative for loaders.
+  method: volume_crossover                          # justify: see per-instrument roll_rule (P1-ROLL-METHOD)
+  window_days: 5                                    # justify: provisional, pending Phase-1 P1-ROLL-WINDOW calibration
+  reference: "CME rollover page https://www.cmegroup.com/trading/equity-index/rolldates.html (retrieved 2026-04-15)"
+
+session_regime_split:
+  # RTH and ETH treated as separate regimes per CLAUDE.md. Weekday
+  # 16:00-17:00 CT is HALT (maintenance); Sunday pre-17:00 CT is HALT;
+  # OVN is the Sun 17:00 CT reopen ramp through Mon 08:30 CT and the
+  # weeknight 17:00-08:30 CT continuation. See src/skie_ninja/utils/clock.py.
+  rth: true
+  eth: true
+  overnight: true

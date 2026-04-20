@@ -1,0 +1,79 @@
+# Hypothesis config skeleton. Consumed by scripts/run_walk_forward.py.
+# Every placeholder carries a `# justify:` tag pointing to the evidence location the
+# researcher must populate before status transitions from `queued` to `designed`.
+# Schema references: plan §4.1 (splitter), §5 (gate), §5.1 (power), §6 (cost_model_id);
+# audit items M-13 (CPCV parameters) and M-14 (triple-barrier preregistration).
+
+hypothesis_id: {HID}          # justify: matches directory name research/01_hypothesis_register/{HID}/
+title: {TITLE}                # justify: matches design.md title
+tier: {TIER}                  # justify: plan §10 tier classification (1 directional | 2 microstructure | 3 frontier)
+status: queued                # justify: lifecycle per plan/hypothesis_backlog.md
+
+citations:                    # justify: primary literature; DOI or URL; no folklore
+  - null
+
+universe:
+  instruments: []             # justify: config/instruments.yaml entries (ES|NQ|MES|MNQ)
+  session: null               # justify: RTH|ETH|both; project CLAUDE.md session policy
+  frequency: null             # justify: bar / event-time frequency; see plan §3
+  train_window: {start: null, end: null}   # justify: time-ordered, disjoint
+  validation_window: {start: null, end: null}
+  test_window: {start: null, end: null}
+
+features:                     # justify: exact FEATURE_REGISTRY name@semver; plan §3
+  - name: null
+    version: null
+
+label:                        # justify: pre-registered per audit M-14 (AFML §3.2)
+  method: triple_barrier
+  pt_sl: [null, null]         # justify: profit-take / stop-loss multipliers; set from vol-scaled pilot
+  vertical_barrier: null      # justify: max holding duration; feeds splitter.purge lower bound
+  volatility_estimator: null  # justify: yang_zhang | parkinson | realized_vol_{lookback}; AFML §3.4
+  min_return: null            # justify: filter threshold to avoid noise labels
+
+estimator:                    # justify: plan §4.1; frozen grid at pre-reg
+  model_class: null
+  hyperparameter_grid: {}
+  search_protocol: null       # justify: grid | random | bayesian with budget
+  loss: null
+  seed: null                  # justify: RNG seed, logged in ReproLog per plan §9.3
+
+splitter:                     # justify: plan §4.1 and audit M-13
+  kind: walkforward           # justify: walkforward | cpcv; walkforward is default per quant-project.md
+  train_window: null          # justify: calendar duration or n-bars
+  test_window: null           # justify: calendar duration or n-bars
+  step: null                  # justify: walk-forward step size
+  embargo: null               # justify: max(PACF lag, Politis-White 2004 optimal block); derived, not hand-set
+  purge: null                 # justify: >= max label horizon (vertical_barrier or meta-label extension)
+  cpcv:                       # justify: only if kind == cpcv; audit M-13 parameterization
+    n_groups: null            # justify: AFML §12; logged per hypothesis
+    n_test_groups: null       # justify: AFML §12; logged per hypothesis
+    embargo: null             # justify: same rule as walk-forward embargo
+
+cost_model_id: null           # justify: registered id under src/skie_ninja/backtest/costs/; plan §6
+benchmark_id: null            # justify: optional; relative performance benchmark for SPA family
+
+power:                        # justify: plan §5.1; gate refuses underpowered designs
+  s_min: null                 # justify: minimum-detectable annualized Sharpe; pilot-data backed
+  alpha: 0.05                 # justify: project default per ADR-0004; override with design.md §1 rationale
+  target_power: 0.80          # justify: project default per ADR-0004; override with design.md §1 rationale
+  ar1_rho: [null, null]       # justify: realistic intraday AR(1) range from pilot data (plan shows [0.05, 0.15] for ES)
+  excess_kurtosis: null       # justify: estimated from pilot data; Lo 2002 variance formula input
+  variance_formula: lo2002_hac_adjusted  # justify: Lo 2002 asymptotic variance, HAC-adjusted per Newey-West 1994
+  n_required: null            # justify: derived by src/skie_ninja/inference/power.py::required_n
+
+gate:                         # justify: plan §5 passed-logic clauses 1..5
+  alpha: 0.05                 # justify: plan §5 default; family-level type-I rate
+  bh_threshold: null          # justify: plan §5 clause 3; overrides config/gate.yaml only with citation
+  dsr_activation_size: null   # justify: plan §5 clause 4; Phase-1 calibration item F-3-1
+  bootstrap_reps: null        # justify: plan §5 bootstrap_reps; audit M-12 MC SE target
+
+stopping_rule:                # justify: plan §10 section 9; pre-registered, no p-hacking
+  max_folds: null             # justify: walk-forward fold count upper bound
+  wall_clock_budget_hours: null   # justify: calendar-time budget
+  futility_check: true        # justify: halt if realized_n < power.n_required
+
+reproducibility:              # justify: plan §9.3 repro-log schema
+  rng_seed: null              # justify: fixed at pre-reg; logged in ReproLog
+  dataset_checksums: {}       # justify: frozen at pre-reg time; see data_requirements.md
+  model_hash: null            # justify: populated at run completion

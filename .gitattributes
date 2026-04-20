@@ -1,0 +1,19 @@
+* text=auto eol=lf
+
+*.py       text eol=lf
+*.yaml     text eol=lf
+*.yml      text eol=lf
+*.md       text eol=lf
+*.cs       text eol=lf
+*.toml     text eol=lf
+*.json     text eol=lf
+*.txt      text eol=lf
+
+*.parquet  binary
+*.joblib   binary
+*.pt       binary
+*.onnx     binary
+*.pkl      binary
+*.npz      binary
+
+*.ipynb    filter=nbstripout

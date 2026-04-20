@@ -1,0 +1,67 @@
+# Pre-commit configuration for SKIE-Universe.
+#
+# Rev pin rationale:
+#   ruff v0.6.9 — pyproject-line-length-and-rule-set matches project config
+#   (line-length=100, target-version=py311, select E/F/I/N/B/UP/SIM/PL,
+#   ignore PLR0913 per pyproject.toml). Pinning a specific rev prevents
+#   silent rule-set drift across contributor machines, addressing R7
+#   (reproducibility rot) per audit-round1-quant_2026-04-15.md.
+#   nbstripout 0.7.1 — matches pyproject dev-group minimum.
+#   nbqa 1.8.7 — matches pyproject dev-group minimum; runs pinned ruff
+#   inside notebook cells with identical rule-set.
+#   pre-commit-hooks v4.6.0 — stable, only used for whitespace/EOL safety
+#   nets.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+        # Preserve outputs for reproducible notebooks: these notebooks
+        # intentionally persist the ReproLog output cell required by the
+        # check-repro-log hook below.
+        exclude: ^notebooks/reproducible/
+
+  - repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.8.7
+    hooks:
+      - id: nbqa-ruff
+        args: ["--fix"]
+        additional_dependencies: ["ruff==0.6.9"]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: local
+    hooks:
+      - id: check-instruments-yaml
+        name: Validate config/instruments.yaml against InstrumentSpec
+        entry: python -m skie_ninja.utils.instruments
+        language: system
+        files: ^config/instruments\.yaml$
+        pass_filenames: false
+
+      - id: check-repro-log
+        name: Ensure reproducible notebooks carry a ReproLog output cell
+        entry: python scripts/_hooks/check_repro_log.py
+        language: system
+        files: ^notebooks/reproducible/.*\.ipynb$
+
+      - id: check-ast-import-guard
+        name: Strategies must import GuardedRouter only (AST guard)
+        entry: python scripts/_hooks/check_import_guard.py
+        language: system
+        types: [python]
