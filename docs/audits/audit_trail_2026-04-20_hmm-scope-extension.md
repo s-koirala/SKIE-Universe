@@ -71,6 +71,33 @@ Grep-verified: all critical substitutions landed (`Ryou`, `63.3`, `forward filte
 
 Exit after Round 2. Residuals are all operational or pre-conditions (not content errors in the reviewed artifacts). Any of items 1, 3, 4 above materializing would trigger a follow-up ADR, not a re-open of this audit.
 
+---
+
+# Addendum: project rename to SKIE-Universe + initial git push (2026-04-20)
+
+Separate audit-remediate pass, 1 round, green on first sweep.
+
+**Changes.** Project display name `SKIE-Ninja-Intraday` → `SKIE-Universe`. Local dir path unchanged (`C:\Users\skoir\SKIE-Ninja-Intraday`). Python package `skie_ninja` unchanged. `pyproject.toml` `name` field updated; README.md H1; CLAUDE.md H1; 6 doc-prose occurrences; `.gitignore` extended with `.hypothesis/` and `*.egg-info/`. User-global glob `~/.claude/rules/quant-project.md` now matches both `**/SKIE-Ninja*/**` and `**/SKIE-Universe*/**`.
+
+**Git / GitHub.** `git init -b main`; user.name=`s-koirala`, user.email=`skoirala2625@gmail.com`. One baseline commit `2eb7dbe` (156 files, 12,625 insertions). Remote `https://github.com/s-koirala/SKIE-Universe.git`, private. `pre-commit install` completed post-push.
+
+**Reproducibility-verifier findings.**
+
+| ID | Severity | Check | Result |
+|---|---|---|---|
+| 1 | — | Single commit on main, clean tree, remote set | pass |
+| 2 | — | `gh repo view`: private, main, pushedAt 2026-04-20T15:41:47Z | pass |
+| 3 | — | 156 files tracked, zero `.venv/__pycache__/.pytest_cache/.ruff_cache/.hypothesis/egg-info/.env` leaks | pass |
+| 4 | — | Secret scan: only env-var references, no literal keys | pass |
+| 5 | — | `pyproject.toml` name = `skie-universe` | pass |
+| 6 | — | Test suite 196/196 passing in 13.84s after rename | pass |
+| 7 | — | `reproducibility.py:125` `_git_head` uses `git -C <root> rev-parse HEAD` — contract satisfiable | pass |
+| 8 | minor | Historical `research/03_audits/remediation-round1-literature_2026-04-15.md` retains pre-rename absolute Windows paths — preserved per policy; no action | acknowledged |
+| 9 | — | `rules/quant-project.md` glob includes `**/SKIE-Universe*/**` | pass |
+| 10 | — | `.git/hooks/pre-commit` installed, 674 bytes, executable | pass |
+
+**Residual risk (rename track).** None material. If/when the user clones `SKIE-Universe` on a different machine with a different local path, the historical-audit absolute paths noted in finding 8 become stale — documented, not edited.
+
 ## Empirical justification
 
 3-round cap from [arXiv 2511.00751](https://arxiv.org/abs/2511.00751) + DS-1000/SciCode baselines per the skill's citation. Rounds 1–2 resolved fabricated-DOI / misattribution / leakage-surface items. Round 3 added because the Round-1 L-C5 finding (sibling repo 404) turned out to be incorrect and required direct content-level reconciliation with the now-verified sibling repo.
