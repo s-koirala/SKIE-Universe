@@ -39,6 +39,14 @@ This project does not re-test those facts. It attacks the **directional AUC wall
 - Macro surprises: ALFRED API first-release vintages + Philadelphia Fed SPF consensus, forecast-error-std proxy per ABDV 2003 (13 indicators, 10+ years)
 - ES/NQ tick: Databento recommended (plan section 2.1), `EsTickSchema` stub in place, awaiting account
 
+## Local directory rename (2026-04-20)
+
+- Repo renamed to `SKIE-Universe` on GitHub (remote: `s-koirala/SKIE-Universe`).
+- Local directory currently `C:\Users\skoir\SKIE-Ninja-Intraday\`; user will `mv` to `C:\Users\skoir\SKIE-Universe\` out-of-session.
+- After rename, recreate venv: `uv venv --python 3.11 .venv && uv pip install -e ".[dev]"` (absolute paths are baked into the old `.venv/`).
+- Harness memory dir already mirrored to `c--Users-skoir-SKIE-Universe` so the new session retains prior memory.
+- Python package `skie_ninja` is unchanged; imports untouched.
+
 ## Layout
 
 | Path | Purpose |

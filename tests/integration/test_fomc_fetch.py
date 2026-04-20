@@ -42,7 +42,7 @@ class TestFomcFetchReal:
         client = httpx.Client(
             headers={
                 "User-Agent": (
-                    "SKIE-Ninja-Intraday/0.1 (integration-test; "
+                    "SKIE-Universe/0.1 (integration-test; "
                     "https://github.com/s-koirala; rate-limited)"
                 ),
             },

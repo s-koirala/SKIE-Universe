@@ -235,7 +235,7 @@ def scrape_fomc_calendar(
         client = httpx.Client(
             headers={
                 "User-Agent": (
-                    "SKIE-Ninja-Intraday/0.1 (research; "
+                    "SKIE-Universe/0.1 (research; "
                     "https://github.com/s-koirala; rate-limited 1req/s)"
                 ),
             },
