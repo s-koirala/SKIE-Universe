@@ -98,6 +98,35 @@ Separate audit-remediate pass, 1 round, green on first sweep.
 
 **Residual risk (rename track).** None material. If/when the user clones `SKIE-Universe` on a different machine with a different local path, the historical-audit absolute paths noted in finding 8 become stale — documented, not edited.
 
+---
+
+# Addendum 2: local-directory rename preparation (2026-04-20)
+
+Separate audit-remediate pass, 1 round, green on first sweep. Purpose: certify that the user's imminent out-of-session `mv C:\Users\skoir\SKIE-Ninja-Intraday → C:\Users\skoir\SKIE-Universe` will not break the repo.
+
+**Changes.**
+- Outbound HTTP identity: `User-Agent: SKIE-Ninja-Intraday/0.1` → `SKIE-Universe/0.1` in `src/skie_ninja/data/ingest/fomc_text.py`, `src/skie_ninja/data/ingest/_fomc_calendar.py`, `tests/integration/test_fomc_fetch.py`.
+- README gains a "Local directory rename (2026-04-20)" section documenting post-`mv` venv recreation.
+- Memory dir mirrored: `C:/Users/skoir/.claude/projects/c--Users-skoir-SKIE-Universe/memory/` byte-identical to old dir (old retained as backup).
+- Commit `6d90d3e` pushed to `s-koirala/SKIE-Universe` main. Pre-commit hooks passed.
+
+**Reproducibility-verifier findings (1 round).**
+
+| Severity | Location | Issue | Disposition |
+|---|---|---|---|
+| minor | [README.md](../../README.md) rename-note | Intentional pre-`mv` path reference; stale after rename | Post-`mv`: tense-shift to "formerly at..." or prune |
+| minor | [.pre-commit-config.yaml](../../.pre-commit-config.yaml) L52/59/64 | Bare `python` entry may hit Windows Store stub after venv destroyed | Non-blocking; activate new `.venv` before commits or switch to `py -3` |
+| minor | working tree | `uv.lock` untracked — reproducibility contract expects it committed | Out of scope for rename; flag for follow-up |
+
+**Post-`mv` user steps (documented in README):**
+1. `cd C:\Users\skoir\SKIE-Universe`
+2. `uv venv --python 3.11 .venv`
+3. `uv pip install -e ".[dev]"`
+4. `pre-commit install`
+5. `pytest tests/unit/ -q` → expect 196/196.
+
+**Certification.** ProjectPaths.discover walks upward for `pyproject.toml` (dynamic, not absolute). `_git_head` calls `git -C <discovered_root> rev-parse HEAD`. `~/datasets/` resolves via `Path.home()`. No hardcoded absolute Windows paths in any tracked source file. Memory mirror diff is empty. Post-`mv` breakage risk near zero.
+
 ## Empirical justification
 
 3-round cap from [arXiv 2511.00751](https://arxiv.org/abs/2511.00751) + DS-1000/SciCode baselines per the skill's citation. Rounds 1–2 resolved fabricated-DOI / misattribution / leakage-surface items. Round 3 added because the Round-1 L-C5 finding (sibling repo 404) turned out to be incorrect and required direct content-level reconciliation with the now-verified sibling repo.
