@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pandera.errors
 import polars as pl
@@ -18,8 +18,14 @@ from skie_ninja.data.validation.schema import FomcTextSchema, MacroSurpriseSchem
 def _valid_fomc_df() -> pl.DataFrame:
     return pl.DataFrame(
         {
-            "release_ts_utc": [datetime(2024, 1, 31, 19, 0), datetime(2024, 3, 20, 18, 0)],
-            "embargo_ts_utc": [datetime(2024, 1, 31, 14, 0), datetime(2024, 3, 20, 14, 0)],
+            "release_ts_utc": [
+                datetime(2024, 1, 31, 19, 0, tzinfo=UTC),
+                datetime(2024, 3, 20, 18, 0, tzinfo=UTC),
+            ],
+            "embargo_ts_utc": [
+                datetime(2024, 1, 31, 14, 0, tzinfo=UTC),
+                datetime(2024, 3, 20, 14, 0, tzinfo=UTC),
+            ],
             "doc_type": ["statement", "minutes"],
             "sha256": ["a" * 64, "b" * 64],
             "raw_path": ["/data/raw/fomc/2024-01-31.html", "/data/raw/fomc/2024-03-20.html"],
@@ -31,8 +37,8 @@ def _valid_fomc_df() -> pl.DataFrame:
 def _invalid_fomc_doc_type() -> pl.DataFrame:
     return pl.DataFrame(
         {
-            "release_ts_utc": [datetime(2024, 1, 31, 19, 0)],
-            "embargo_ts_utc": [datetime(2024, 1, 31, 14, 0)],
+            "release_ts_utc": [datetime(2024, 1, 31, 19, 0, tzinfo=UTC)],
+            "embargo_ts_utc": [datetime(2024, 1, 31, 14, 0, tzinfo=UTC)],
             "doc_type": ["speech"],  # invalid
             "sha256": ["a" * 64],
             "raw_path": ["/data/raw/fomc/2024-01-31.html"],
@@ -42,8 +48,8 @@ def _invalid_fomc_doc_type() -> pl.DataFrame:
 
 
 def _duplicate_fomc_df() -> pl.DataFrame:
-    ts = datetime(2024, 1, 31, 19, 0)
-    emb = datetime(2024, 1, 31, 14, 0)
+    ts = datetime(2024, 1, 31, 19, 0, tzinfo=UTC)
+    emb = datetime(2024, 1, 31, 14, 0, tzinfo=UTC)
     return pl.DataFrame(
         {
             "release_ts_utc": [ts, ts],
@@ -65,7 +71,10 @@ def _valid_macro_df() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "release_date": [date(2024, 1, 5), date(2024, 2, 2)],
-            "release_ts_utc": [datetime(2024, 1, 5, 13, 30), datetime(2024, 2, 2, 13, 30)],
+            "release_ts_utc": [
+                datetime(2024, 1, 5, 13, 30, tzinfo=UTC),
+                datetime(2024, 2, 2, 13, 30, tzinfo=UTC),
+            ],
             "event_id": ["NFP_2024_01", "NFP_2024_02"],
             "indicator": ["nonfarm_payrolls", "nonfarm_payrolls"],
             "actual": [216.0, 353.0],
@@ -82,7 +91,7 @@ def _invalid_macro_null_actual() -> pl.DataFrame:
     return pl.DataFrame(
         {
             "release_date": [date(2024, 1, 5)],
-            "release_ts_utc": [datetime(2024, 1, 5, 13, 30)],
+            "release_ts_utc": [datetime(2024, 1, 5, 13, 30, tzinfo=UTC)],
             "event_id": ["NFP_2024_01"],
             "indicator": ["nonfarm_payrolls"],
             "actual": [None],
@@ -94,7 +103,7 @@ def _invalid_macro_null_actual() -> pl.DataFrame:
         },
         schema={
             "release_date": pl.Date,
-            "release_ts_utc": pl.Datetime,
+            "release_ts_utc": pl.Datetime(time_zone="UTC"),
             "event_id": pl.Utf8,
             "indicator": pl.Utf8,
             "actual": pl.Float64,
@@ -109,7 +118,7 @@ def _invalid_macro_null_actual() -> pl.DataFrame:
 
 def _duplicate_macro_df() -> pl.DataFrame:
     d = date(2024, 1, 5)
-    ts = datetime(2024, 1, 5, 13, 30)
+    ts = datetime(2024, 1, 5, 13, 30, tzinfo=UTC)
     return pl.DataFrame(
         {
             "release_date": [d, d],
@@ -143,6 +152,16 @@ class TestFomcTextSchema:
         with pytest.raises(pandera.errors.SchemaError):
             FomcTextSchema.validate(_duplicate_fomc_df())
 
+    def test_naive_datetime_rejected(self) -> None:
+        # Regression: schema must require tz=UTC. A producer regression that
+        # emits naive timestamps should fail validation, not silently pass.
+        df = _valid_fomc_df().with_columns(
+            pl.col("release_ts_utc").dt.replace_time_zone(None),
+            pl.col("embargo_ts_utc").dt.replace_time_zone(None),
+        )
+        with pytest.raises(pandera.errors.SchemaError):
+            FomcTextSchema.validate(df)
+
 
 class TestMacroSurpriseSchema:
     def test_valid_passes(self) -> None:
@@ -155,6 +174,13 @@ class TestMacroSurpriseSchema:
     def test_duplicate_release_event_fails(self) -> None:
         with pytest.raises(pandera.errors.SchemaError):
             MacroSurpriseSchema.validate(_duplicate_macro_df())
+
+    def test_naive_datetime_rejected(self) -> None:
+        df = _valid_macro_df().with_columns(
+            pl.col("release_ts_utc").dt.replace_time_zone(None),
+        )
+        with pytest.raises(pandera.errors.SchemaError):
+            MacroSurpriseSchema.validate(df)
 
     def test_nullable_consensus_allowed(self) -> None:
         df = _valid_macro_df().with_columns(

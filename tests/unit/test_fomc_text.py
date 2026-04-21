@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import unicodedata
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import polars as pl
@@ -181,8 +181,8 @@ class TestValidateFallback:
     def test_valid_frame_passes(self, job: FomcTextIngestJob) -> None:
         df = pl.DataFrame(
             {
-                "release_ts_utc": [datetime(2024, 1, 31, 19, 0)],
-                "embargo_ts_utc": [datetime(2024, 1, 31, 19, 0)],
+                "release_ts_utc": [datetime(2024, 1, 31, 19, 0, tzinfo=UTC)],
+                "embargo_ts_utc": [datetime(2024, 1, 31, 19, 0, tzinfo=UTC)],
                 "doc_type": ["statement"],
                 "sha256": ["a" * 64],
                 "raw_path": ["/some/path"],
@@ -196,7 +196,7 @@ class TestValidateFallback:
         """Validate raises when the sibling schema rejects missing columns."""
         df = pl.DataFrame(
             {
-                "release_ts_utc": [datetime(2024, 1, 31, 19, 0)],
+                "release_ts_utc": [datetime(2024, 1, 31, 19, 0, tzinfo=UTC)],
                 "doc_type": ["statement"],
             }
         ).lazy()
@@ -207,8 +207,8 @@ class TestValidateFallback:
         """Validate raises on an empty but schema-conformant frame."""
         df = pl.DataFrame(
             {
-                "release_ts_utc": pl.Series([], dtype=pl.Datetime("us")),
-                "embargo_ts_utc": pl.Series([], dtype=pl.Datetime("us")),
+                "release_ts_utc": pl.Series([], dtype=pl.Datetime("us", "UTC")),
+                "embargo_ts_utc": pl.Series([], dtype=pl.Datetime("us", "UTC")),
                 "doc_type": pl.Series([], dtype=pl.Utf8),
                 "sha256": pl.Series([], dtype=pl.Utf8),
                 "raw_path": pl.Series([], dtype=pl.Utf8),
