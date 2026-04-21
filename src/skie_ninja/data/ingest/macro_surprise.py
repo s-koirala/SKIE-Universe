@@ -7,7 +7,7 @@ Professional Forecasters (SPF). Computes surprise z-scores:
     surprise_z = (actual - consensus_median) / std_consensus
 
 **Point-in-time guarantee**: only the first-release vintage from
-ALFRED is used (``output_type=1``), never revised values. This ensures
+ALFRED is used (``output_type=4``), never revised values. This ensures
 any downstream feature computed at time *t* uses only information
 available at *t*.
 
@@ -52,7 +52,8 @@ from skie_ninja.utils.runcontext import RunContext
 _log = logging.getLogger(__name__)
 
 # ALFRED API base. The /alfred/ endpoints return vintage-dated
-# observations (output_type=1 = first-release only).
+# observations (output_type=4 = initial release only; output_type=1
+# would return all vintages active in the real-time period window).
 _ALFRED_BASE = "https://api.stlouisfed.org/fred"
 
 # Philadelphia Fed SPF individual-level CSV base URL.
@@ -104,7 +105,11 @@ def fetch_alfred_series(
 
     Calls the ``fred/series/observations`` endpoint with
     ``realtime_start`` / ``realtime_end`` set to the requested range
-    and ``output_type=1`` (first-release observations only).
+    and ``output_type=4`` (observations, initial release only) per
+    the FRED enum documented at
+    https://fred.stlouisfed.org/docs/api/fred/series_observations.html
+    (output_type=1 = all vintages in window; output_type=4 = first
+    release only — which is what this pipeline needs).
 
     Raw JSON responses are saved to
     ``dest_dir/{series_id}/vintage_{YYYYMMDD}.json``.
@@ -118,7 +123,7 @@ def fetch_alfred_series(
         "file_type": "json",
         "realtime_start": start.isoformat(),
         "realtime_end": end.isoformat(),
-        "output_type": "1",  # first-release vintages only
+        "output_type": "4",  # initial release only per FRED series_observations enum
     }
 
     series_dir = dest_dir / series_id
@@ -523,7 +528,12 @@ class MacroSurpriseIngestJob:
                     {
                         "release_date": vintage_date,
                         "release_ts_utc": release_ts,
-                        "event_id": f"{ind['id']}_{vintage_date.isoformat()}",
+                        # Key event by (indicator, obs_date) — one observation
+                        # is one release. Using vintage_date would collide any
+                        # time two obs_dates share a first-release date (e.g.
+                        # weekly ICSA where multiple weekly obs can first-
+                        # release on the same business day).
+                        "event_id": f"{ind['id']}_{obs_date.isoformat()}",
                         "indicator": ind["id"],
                         "actual": row["value"],
                         "obs_date": obs_date,
@@ -639,6 +649,16 @@ class MacroSurpriseIngestJob:
                 pl.coalesce("_fe_std", "std_consensus").alias("std_consensus"),
             ).drop("_fe_std")
 
+        # Guard against fan-out from upstream joins: SPF/FE-std join sources
+        # can contain multiple rows per (indicator, obs_date) when consensus
+        # aggregation emits more than one forecast vintage for an observation.
+        # The event grain is (indicator, obs_date) — equivalently event_id —
+        # so enforce uniqueness on event_id at the output boundary with a
+        # deterministic tiebreak (keep first, maintain order).
+        result = result.unique(
+            subset=["event_id"], keep="first", maintain_order=True
+        )
+
         # -- Compute surprise z-score --
         result = result.with_columns(
             pl.struct("actual", "consensus_median", "std_consensus")
@@ -665,9 +685,15 @@ class MacroSurpriseIngestJob:
             "vintage_date",
         )
 
-        # Cast release_ts_utc to timezone-aware datetime
+        # Cast release_ts_utc to timezone-aware datetime; also pin nullable
+        # float columns to Float64 in case upstream joins produced all-null
+        # columns with inferred Null dtype (polars collapses all-null Series
+        # to dtype=Null, which trips the pandera Float64 schema check).
         result = result.with_columns(
             pl.col("release_ts_utc").cast(pl.Datetime("us", "UTC")),
+            pl.col("consensus_median").cast(pl.Float64),
+            pl.col("std_consensus").cast(pl.Float64),
+            pl.col("surprise_z").cast(pl.Float64),
         )
 
         return result.lazy()
@@ -703,9 +729,15 @@ class MacroSurpriseIngestJob:
             staging_path = staging_partition / filename
             final_path = partition_dir / filename
 
-            # Write single-row parquet to staging
+            # Write single-row parquet to staging. Single-row frames with
+            # all-null nullable columns collapse to dtype=Null on construction;
+            # cast to the schema-declared Float64 to survive the parquet
+            # round-trip and the per-row schema revalidation below.
             row_df = pl.DataFrame([row]).with_columns(
                 pl.col("release_ts_utc").cast(pl.Datetime("us", "UTC")),
+                pl.col("consensus_median").cast(pl.Float64),
+                pl.col("std_consensus").cast(pl.Float64),
+                pl.col("surprise_z").cast(pl.Float64),
             )
             row_df.write_parquet(staging_path)
 
