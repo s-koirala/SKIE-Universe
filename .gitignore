@@ -14,10 +14,15 @@ __pycache__/
 .hypothesis/
 *.egg-info/
 
-# data (raw/interim are large; processed tracked via DVC if adopted)
+# data (raw/interim/processed parquets are binary + regenerable;
+# _provenance/** is tracked as the audit-record surface. DVC is the
+# longer-term plan for processed artifacts if adopted.)
 data/raw/**
 data/interim/**
 data/external/**
+data/processed/**
+!data/processed/_provenance
+!data/processed/_provenance/**
 !data/**/.gitkeep
 
 # notebooks stripped
@@ -36,3 +41,6 @@ ninjascript/**/obj/
 # os
 .DS_Store
 Thumbs.db
+
+# claude-code local harness state (session locks, per-machine config)
+.claude/

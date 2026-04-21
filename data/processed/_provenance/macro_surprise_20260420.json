@@ -1,0 +1,51 @@
+{
+  "dataset": "macro_surprise",
+  "version": "0.1.0",
+  "snapshot_ts_utc": "2026-04-21T00:04:17.178942+00:00",
+  "sources": {
+    "alfred": {
+      "base_url": "https://api.stlouisfed.org/fred",
+      "series_ids": [
+        "PAYEMS",
+        "UNRATE",
+        "ICSA",
+        "CPIAUCSL",
+        "PPIACO",
+        "PCEPI",
+        "RSAFS",
+        "INDPRO",
+        "GDPC1",
+        "HOUST",
+        "EXHOSLUSM495S",
+        "UMCSENT"
+      ]
+    },
+    "spf": {
+      "base_url": "https://www.philadelphiafed.org/surveys-and-data/real-time-data-research/data-files/files",
+      "files": [
+        "Individual_UNEMP.csv",
+        "Individual_CPI.csv",
+        "Individual_PCECTPI.csv",
+        "Individual_INDPROD.csv",
+        "Individual_RGDP.csv",
+        "Individual_HOUSING.csv"
+      ]
+    }
+  },
+  "source_checksums": {
+    "C:\\Users\\skoir\\datasets\\fred\\PAYEMS\\vintage_20260420.json": "9e5f6bac9273bb86d5441c25d23e610ed82b2e048bf8c918c82ae815f1a57d8d",
+    "C:\\Users\\skoir\\datasets\\fred\\UNRATE\\vintage_20260420.json": "e137695f4b797287c6acd9a2f067d385af6536a5f70cf1aa58463ad2e736cec8",
+    "C:\\Users\\skoir\\datasets\\fred\\ICSA\\vintage_20260420.json": "2945a70ab579b978841226d66d71e956389605da8798f1bf245249003e121e51",
+    "C:\\Users\\skoir\\datasets\\fred\\CPIAUCSL\\vintage_20260420.json": "902e00bd18e9f0fe5d1a6365500093c949361da0a5a589325906b174e98676ca",
+    "C:\\Users\\skoir\\datasets\\fred\\PPIACO\\vintage_20260420.json": "2e3bf72e086cadd0554bdd7e0b58a46a81d1d4769c8bee5601c6a38faa280b83",
+    "C:\\Users\\skoir\\datasets\\fred\\PCEPI\\vintage_20260420.json": "344584f9f0fd8fb2b603916fa84e1774c87bb1b6bec5e16f6fb5632a3e269829",
+    "C:\\Users\\skoir\\datasets\\fred\\RSAFS\\vintage_20260420.json": "f6303191efc8f6c17405985d6aa9879674649e0dba9f4fae1e022f4dc83713f6",
+    "C:\\Users\\skoir\\datasets\\fred\\INDPRO\\vintage_20260420.json": "1185f45b1a74843d20c7d7f3fb471737d82414b3f683ab80f041fd0658113267",
+    "C:\\Users\\skoir\\datasets\\fred\\GDPC1\\vintage_20260420.json": "2cc7619a687744eb55f3e2b14aadd329c36b8c79a16dcf02abad03e8b16b77cb",
+    "C:\\Users\\skoir\\datasets\\fred\\HOUST\\vintage_20260420.json": "020e20c234436c13a6166f5c49439c6c677544b0c068e64c182870465a1e4db6",
+    "C:\\Users\\skoir\\datasets\\fred\\UMCSENT\\vintage_20260420.json": "67305b52e8db983399fecae14b9d1fecd249f4e470adb9838c0eb343744eb623"
+  },
+  "output_path": "C:\\Users\\skoir\\Documents\\SKIE-Universe\\data\\processed\\macro_surprise",
+  "run_id": "19b4eb064bd748799cc2a605cfbb682e",
+  "git_head": "8f5237107a2937baad0ed56c16f89881f50ad1cd"
+}

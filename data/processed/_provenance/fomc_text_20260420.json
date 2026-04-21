@@ -1,0 +1,689 @@
+{
+  "dataset": "fomc_text",
+  "output_path": "C:/Users/skoir/Documents/SKIE-Universe/data/processed/fomc_text",
+  "repro_log": {
+    "config_resolved_sha256": null,
+    "dataset_checksums": {},
+    "env_id": "cc5959faeaea7816cf85367f3e1f3476469e43472f225d10b3ce3cd165afba96",
+    "git_head": "8f5237107a2937baad0ed56c16f89881f50ad1cd",
+    "host": {
+      "cpu": "AMD64",
+      "os": "Windows 10",
+      "python": "3.11.15"
+    },
+    "hypothesis_id": "ingest_fomc_text",
+    "model_hash": null,
+    "phase": "ingest",
+    "pip_freeze_path": "logs/reproducibility/env/237467fa3b319c2c458a14c156ce939f0ec70b63e1e36d8b7612e2b8f502c08e.txt",
+    "pip_freeze_sha256": "237467fa3b319c2c458a14c156ce939f0ec70b63e1e36d8b7612e2b8f502c08e",
+    "rng_seed": 42,
+    "run_id": "011ff5d993db4fc9967e5d7d7e81988d",
+    "timestamp_utc": "2026-04-20T23:28:01.266106+00:00"
+  },
+  "run_id": "011ff5d993db4fc9967e5d7d7e81988d",
+  "source_files": [
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20150128.html",
+      "sha256": "9b24aefd097005593103149ba451c3c2b8da657a0686c3cc010a299c584e14e7"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20150128.html",
+      "sha256": "7cbb541935565cca6e278efd077fa77f14e5fedbe3721e04ab4b81b74c04458d"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20150318.html",
+      "sha256": "a69b6b5a3e933c5961fc4cf43e9e60abb7d87e622114a55c9fa57a5870333801"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20150318.html",
+      "sha256": "0d0275ea18e9600408168b879845c62921adba7f21408745d62a54694a125dc7"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20150318.html",
+      "sha256": "cc3f33e941c4dd5c1696c696e871198ac0e8930aec373f136d2a625da310faa6"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20150429.html",
+      "sha256": "2f252af264c1243048e54e71d5b8887cc283ae9742469b11c27d5091672b356c"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20150429.html",
+      "sha256": "0901186e92963719fa2739ed996521bbf37c5ef1b7458713a8fa0ae312600afc"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20150617.html",
+      "sha256": "98adb275ab3fdc585effb315bcbb8476a83bc9077d4c20267e71898b0dbf7ea5"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20150617.html",
+      "sha256": "397c170c9af8bf793f0a2a956f3da63fe5aadaa20b1db892acefe1f1896f02f4"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20150617.html",
+      "sha256": "6ff56502e51b56d9d4c3ad64f09cf8eb9b6fda534b4b1a8cf09d837784001094"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20150729.html",
+      "sha256": "57e9d5d2edd3aaacad348b89367ab16ac30c24475e583c2bd52ee531004098ac"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20150729.html",
+      "sha256": "078876c93f1ff03da1ec009870372e2bdff235acdbf7a7b3a7571b4c7b933f8e"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20150917.html",
+      "sha256": "e6b69f8e46d368267684f9f5c3e762ca35f7b319db7b526cd0de53c0b89e8c7d"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20150917.html",
+      "sha256": "23884bc2f16d7f8967f1c11c4eacf10cc8c1a23614b26c280f56f2310b827e8a"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20150917.html",
+      "sha256": "cb66966a9d6938d38a4db4217c956fc13c65c83d54869f2d86b48fb55fb2fbdd"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20151028.html",
+      "sha256": "a58c37d1c17a8896e64c9ba65ecdc58e05cde9d8e6356d1800254f8c7d08aab2"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20151028.html",
+      "sha256": "dae8c3754dada4c89de7465f1f3048334be11d097510a6411c3131ada8a3382f"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20151216.html",
+      "sha256": "85a81f2e4a49d39f732c4b6c1228f553ffdd24b4d6d1fe4a07563beb576add95"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20151216.html",
+      "sha256": "e704740fc62399cb37d63bebca45516168b98a0d0367f1c21a5e75445ae3daa4"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20151216.html",
+      "sha256": "c168bbdb79b5de6f843b9557324a28ddc7e749e63f64f32b01c82970fe024927"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20160127.html",
+      "sha256": "cb5c177591fef614d29b7cc88bbcce0d099fe2d4d5c5f8fd611ad5a813b93861"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20160127.html",
+      "sha256": "ecb0cf6c9973cda1ba93d4620339cee10995ca317f55641c4edf526ab754f244"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20160316.html",
+      "sha256": "ea013cffd2e1387ee4f3df6cb16cf1e5949631688524398227fdf3ba3b73e36a"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20160316.html",
+      "sha256": "2e1ecfba42fe3272230e2f6bd54006cee2fdc6a95e2f3ca6bc4f9f5f37033859"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20160316.html",
+      "sha256": "365514504edc8e4a3cdd00fff13a773a2a174e4aa2b6b5f82ade9d61bc9e3c87"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20160427.html",
+      "sha256": "ba0530e329f81962e27d754a204951c5039a90dd6b9331550f282f1b229af37f"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20160427.html",
+      "sha256": "f7c1d09c639627b0e03f15133546a2a2ae3c19dcb46f92bf090f41e24125b340"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20160615.html",
+      "sha256": "c8cb20363bbaf0cfd905d9541217867868ae6bbc3de2f5286bb5670bfbf357e9"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20160615.html",
+      "sha256": "1cfa9d14c7eb216b1338e839ab5e08228a96df38cdc9f44d18fcf9a3fd617a50"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20160615.html",
+      "sha256": "8cf861f92df6059aa0912365220efb202a90d29580fda79b989ef877c68eabaf"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20160727.html",
+      "sha256": "e8640fab17338d3c7860ea442d818f18d05a3059bbd1204bd8894f692a8f7973"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20160727.html",
+      "sha256": "4a11bb531e3aa3acd3c15a1c5af617c11f2b1f3f72e41f13e59c53f749d2f431"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20160921.html",
+      "sha256": "29a21e6eac2edc9d553eca634bbc4dac4034f8e07e33c400c961fc55a8dd9452"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20160921.html",
+      "sha256": "5b82b28e3f2ecb5d86ad3009f5b47cfeae437cd2ad61d6c39dd18ea39cad3cb1"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20160921.html",
+      "sha256": "363586dd5b8b296f7ac0c0f2e514f96cc187f6aa8d9ce792e5540a41d5e8a3ef"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20161102.html",
+      "sha256": "f0cf0fb5effeb2975d6aea11e6569eb4cf6898020ea16d7dbfe6ff3c1c13d568"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20161102.html",
+      "sha256": "34ef41814072f6dc0b4151ce02f7267615aef0083bdc9afc0d3c36e7daab8a05"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20161214.html",
+      "sha256": "c048172f7ddcf54d793cbb577c2a251941560ab44b10e9b43816da95d1eaeae8"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20161214.html",
+      "sha256": "48c7872394e2705ed542d8448893778a01cbc73fcbade0fcb3f13abe93f3be2f"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20161214.html",
+      "sha256": "90d318e306aa450de72300d6e2bfedc8f8c24d8494f391474283a58dd443fe89"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20170201.html",
+      "sha256": "02d6f4f2ca5c9432a15e6d85ff30a5dfdd16a1a34b017acb5785b30580bcf233"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20170201.html",
+      "sha256": "1907f9bddaa4ec78c381dc5db4938fee883fdb7f2a79f96da1f324bd0bc2eff8"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20170315.html",
+      "sha256": "bdbb641601f86ff652c94429d10874a2b4962aeb8d00191fad4dd6688198a241"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20170315.html",
+      "sha256": "10980b0e53746fa81c20ff3cffb60ce9a9dacf1a2e2bb7d21b664603843976ab"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20170315.html",
+      "sha256": "57c3d95318f2eae891956f1ede7720de9b1d29b19f7278c9424493152db7f1d9"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20170503.html",
+      "sha256": "ba267dba548f6d2a91d4fd30c22681d28ef913e98d35e1e0f28275209b43e854"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20170503.html",
+      "sha256": "295c4ab3c40faa6480f7748c541d401b69a0d2d3b4cd85b2c1399ef3ca01f1d5"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20170614.html",
+      "sha256": "322b85878fa863ab790631d2224dddfe53ad1ec7b257c44f2016d66276b0d13f"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20170614.html",
+      "sha256": "cf349fee4806336c68e01f3fa0fad1a5c2e09e9324ec902a8218f09616a1b763"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20170614.html",
+      "sha256": "94cd758cdb459773a9d584dd6285a81159ec96b2bbc17ede0d99382de911b6ca"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20170726.html",
+      "sha256": "0ac143d43398398038ee97d45c680ed3c24f189bc7dcdecece60353e6d53072f"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20170726.html",
+      "sha256": "f63564fba877649efba12e54d6e4665139249919bfbecc71aa65a8eaa7659406"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20170920.html",
+      "sha256": "dc655fe0c3303c1ce8fd8f45d6defd84be122f3b3a8f7df7664b773d5e90930c"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20170920.html",
+      "sha256": "c01459166703cc41403d411d816bb72454a046b626b7a22d0d9a8c256cf38820"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20170920.html",
+      "sha256": "d5eecc7a896464c8709903140ba41bbe15280f0b7f6c663ac681dc10699053de"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20171101.html",
+      "sha256": "e3a87ff5f033a25aadb7c622be325eeafb95eb648ef9164e8f96aae224b3c230"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20171101.html",
+      "sha256": "f962ed34a84776034d7bed327316802c7f567c5f293fbd4f1fbdf71009a57098"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20171213.html",
+      "sha256": "54b782ed556c1b264fd0fa18e738c654853eae82e996effa193b77e4a9366fe9"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20171213.html",
+      "sha256": "16c2d852a1b805e3ff871b7d51c999ebff498cda3af09724df28afa331d3b478"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20171213.html",
+      "sha256": "a13d2bd332a990dc33200fca326d94db674a0e7c6380dac5523007fff3f927c9"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20180131.html",
+      "sha256": "60155de538d4ede325ee1541c1675916ed9defc4aba33595344ee7e7816d688c"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20180131.html",
+      "sha256": "1eae799289d53ddedf819c4cc50abfb9929ce12553abe34d5e22f44ad3a08599"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20180321.html",
+      "sha256": "baf2e1e87a59964a4fabf47ed7c149f8fca90dbb63a1def2f2abfc3fb95650b3"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20180321.html",
+      "sha256": "b78a0a5917a0148c2711644f0a2c8901d1d8a0bcfcf4d5cfb73a06b111ee855e"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20180321.html",
+      "sha256": "b5933b72c997690621ec71b9c225c5d7f4d168f510ff12084524c881ace3c022"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20180502.html",
+      "sha256": "21a76c16133b749898657b862a737a881e8985999e102397349a0b076b178369"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20180502.html",
+      "sha256": "f7e8423853c6c81d92e6292ffddd2f262b942ba4e6d42da9912399545d265ab5"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20180613.html",
+      "sha256": "c46520040147eaa22fc850040b7d3c9f3902112cf12106e85fad81828058d2e7"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20180613.html",
+      "sha256": "8a36226ce5f168bdcd6b0cb687cd48b08201707e94bf87613acabb7db85d28ed"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20180613.html",
+      "sha256": "6ab9278ddc782657fb4cad95455a7882287c060a1632a114413eac397516b8f0"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20180801.html",
+      "sha256": "c53365e0d914ba684e076979acc62efa414685bfa031e0d009c4e52600803b45"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20180801.html",
+      "sha256": "0b458d3b19ebd559bd4aa16cebd7a5664efc2d9f6b7eacffa5e8f6326d0728b8"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20180926.html",
+      "sha256": "ad176e73ca1f30a09c0639edf3f2b3ae05b56cdd6f1d0f99e042ddde927fa5b5"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20180926.html",
+      "sha256": "f33dfd746c03cc108632c4dc2f895cef9b818c47a976f1d189600a8fc043e60b"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20180926.html",
+      "sha256": "1509ce1932f3e48a3c7b6d9f6ad10ecc7b8d2c7a19d03c56202549188d5c5efa"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20181108.html",
+      "sha256": "f26795fd4e1802feb0467c5c8b5bcfc96e601d53408ec75769cf495b3049f0ec"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20181108.html",
+      "sha256": "a7870d59b511fbb40f4fc5d7a974dea464dae7b222280f5fe6a0e53a98b5c1fc"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20181219.html",
+      "sha256": "37ec20bc6f2e0aeaa4d2f915b1d5acf59392644807f6dba9a192adc796ca89e7"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20181219.html",
+      "sha256": "9e1acbd6e4e8b6f82bb60a51f5c2430657f96f4c50abc0cf8ec858c2f8299264"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20181219.html",
+      "sha256": "1fbb2fe0e95d7bd8b4b94a4104b3c237dacac92dc1c83fc358fe3b138855ffa0"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20190130.html",
+      "sha256": "d62241db673919c8e934de97c949d6ef0e86e3659db0b82ee67baa24e733a98e"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20190130.html",
+      "sha256": "c93612e1a8de618f5958b55a51c4ebc09b856afb1f7a9b3a2534068daae2ff3d"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20190130.html",
+      "sha256": "0aa024c26f7b381fd7d6ec6c43740d1f6c6736ed4e35105b68fdcf54443e1393"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20190320.html",
+      "sha256": "f1b7e449060ebe0f86cc62f049bf9e2ec613aeb8b35fd494b6be5526e4cc07b4"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20190320.html",
+      "sha256": "fbc0b2bd06b0f8822dabc9c0f2ec1c02c1e839d7b70cad18de764a10a552fa2c"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20190320.html",
+      "sha256": "fddb0f2c4cd30a762c02c4af0d0eb1dc3c1646b2a1b44c93366b4c6d457f7f32"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20190501.html",
+      "sha256": "c8201dcf930494ffb430122b2241346ae84de2934d6cd58777f04981a9ff7121"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20190501.html",
+      "sha256": "89e63d027fea6b5ee771c446199322fb3044494d9136c8a96635de4196c6d97e"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20190501.html",
+      "sha256": "e72edc14174bc876a898adb9e647f37bda4a6ee8109b4c2c953d1a4d8b5fbddd"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20190619.html",
+      "sha256": "58704e70de69df520d75438d9591e167fb4b873baa769972a37f596cc548e347"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20190619.html",
+      "sha256": "3bdf74d2f143982175de10ea2710ec8e5adf6e7c77929bb68a3e87f7e0288216"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20190619.html",
+      "sha256": "e9beec9835c8db48ac33d9a3164e5fd5f2b4199555160e1e70ae7ef20991043e"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20190731.html",
+      "sha256": "cb5609f34c0bd769d36593862d05512d253c24ee215394c501a60bec33555d6d"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20190731.html",
+      "sha256": "eb660f2cfaa2b90bad5d5cd7c86d229f0ecf46959536816f01392384cff54740"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20190731.html",
+      "sha256": "267f5343d9a973f4e345bba5d3e72a1e3f32a691d8adcdca877513d57432c207"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20190918.html",
+      "sha256": "fffa598aed368a79626b3362f1c0c4d49e1819fdeceef4bcd1cecbdb8ae380e1"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20190918.html",
+      "sha256": "082746120041b9189ff5ae49623564cfc49f09f4092352570956d32d047cba44"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20190918.html",
+      "sha256": "89fd3e96d2976e412e6d2e1b7d1aa506ba10225a64eef7227fcb2956c0f21564"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20191011.html",
+      "sha256": "64cd29eb16e98f92b49f0368e5d7673e3a9c633d1d410e9431575c323f6c3612"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20191030.html",
+      "sha256": "ff1953c4884f59dd1ec78be9816dce38b5b74bf15d05bae3fc885f4fefde06e6"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20191030.html",
+      "sha256": "2597d9ec01af4b2e564d6054b056bbff45888606aeaafe9245122a5c15de03c1"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20191030.html",
+      "sha256": "66005259c47ade3ee15dc1dad8e6d8625aadb1a6a5e40de87b16d4b5da711971"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20191211.html",
+      "sha256": "3ea8418211e1aea95d8fd1124dedef5a9abccba4ba4dbcc072b7643720dea99b"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20191211.html",
+      "sha256": "a918ef8c603fdfd1c690241d1ed665bdd92f062dc3b1aa26d07423acc196f097"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20191211.html",
+      "sha256": "8af91b470cf739b2849b84751197277b587b8e53845e043da9209817ab5ab08a"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200129.html",
+      "sha256": "ead3806d435d7b6b8caa68102ee3f03082412a6c97fdbb5c8b82f8f0b204fc68"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20200129.html",
+      "sha256": "c0b2c5b1d8c6082e8f213b237bafe7b69d5783a9511b6dcc36ad80522a0284d0"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20200129.html",
+      "sha256": "601746e9ff3989f800b77ee17660b1ab72487579133ef7787c22fd2f072fc8ba"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200303.html",
+      "sha256": "cb9dbe4a28047d619801d643f7749fd6986c32c0cbdab968aa83b8ea7f74bcbc"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20200303.html",
+      "sha256": "cecff9d3d1413adf04d73c2ce9e9ad48ad00818bac196bb7a29ba9253609b1ff"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200315.html",
+      "sha256": "c12c7aca62b33cc831a391543666ebe3281b9af24ddccfd0b7f3f3eb89632cf1"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20200315.html",
+      "sha256": "4d508996e72d5981ffb0dee2cf0a31ce520772215f73bea5b27259b649ff4d14"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20200315.html",
+      "sha256": "edb7d5134e9800f84511fee8ff02b911b31779bc397aedf3d3de854e19e469b2"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200323.html",
+      "sha256": "8e49088c866bd4c741829257dd17f5e1504f588f97c1e691df078a180feb6cf3"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200331.html",
+      "sha256": "ef0a805eea8c2647431bc7770726abb705aba590a013a648d61f4a2c7077ba3b"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200429.html",
+      "sha256": "282b5866af3730d014e551e38d7a1f8027e63be15c80b2bdf42e9b40c21b2dfe"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20200429.html",
+      "sha256": "458cfc1c63095a8b63cb255efc76a726a5dc22500be2fd50ec2353a6b8efa43c"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20200429.html",
+      "sha256": "f88b8eab175484c10c307a0c2d1e4795f314b2edd56fe3082f49f06a0fdecc01"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200610.html",
+      "sha256": "fbe0eccc026773105721b37fd05c2ffef95b9cea3ce06d54457408613892f088"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20200610.html",
+      "sha256": "15d328be5b79584610dd2b1bde3d6d1217f8f6677547b490c84cb2ca70fc97d8"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20200610.html",
+      "sha256": "0e307c9114b19ed05752fa3c9a341992080b7ff7869931b8c0eaaf05feb8e2d5"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200729.html",
+      "sha256": "b57ab764b27f86d59d1119bd06b0021864887473513abdab81745f986903499d"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20200729.html",
+      "sha256": "4d161f749373dff93ad0ad994d858d4ff3fab5453526586e6ed5c367163457ef"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20200729.html",
+      "sha256": "3f4da161945fd2376e8b56b9411fbf7b9530d55784d2fcea6a4df836d6056529"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200827.html",
+      "sha256": "e0f4fb8e9b3ad296874516a7d3b5c583e8a7043b5eddcff20af5ca7b9f98a151"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20200916.html",
+      "sha256": "8e19696e821c1d76de9809e725824de1cfaae11314e27059022c76c4f2b07340"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20200916.html",
+      "sha256": "319d78f5f7d776b519d7de757a98534d73d6d6271bc3894e26efc029f4cac052"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20200916.html",
+      "sha256": "3a2a5fe1cc71ae43ad07e0d35c3a4284b6e37fb086583ec2f32fe72595d915d0"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20201105.html",
+      "sha256": "d8e9bb7c8753340ab9fa662c0270b495ea233d18b83f878fa069003e75b305d9"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20201105.html",
+      "sha256": "27bc76e3cddcdd7aeddf5dda0f0bc6684bddca3ca5eee3cfb5ce0f18f7a39733"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20201105.html",
+      "sha256": "5518fd63359ea1eb8982ba82d8f64d2b4d0a933d40c924803219a5959240b9df"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20201216.html",
+      "sha256": "6480c85b48d16821ca0569110e55536db0c162dc9112ae7f9c90e046f11f42f6"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20201216.html",
+      "sha256": "41cf1cc3895d9e13fdee52488fdc5daf2e5ea0362f13a162f98515fef57891b3"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20201216.html",
+      "sha256": "5653bfc33a5040740a9e67e45107aff32af584803bdd1180813dee41be03f13a"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20250129.html",
+      "sha256": "025e0ed42b11681d6721ba93e168f78b8be2b31d67cca2527fd7752888f388a7"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20250129.html",
+      "sha256": "150318d60e7347d86a79fb02875fd5d8a9a9af5e425bbdd77bced2a38ac2fa8a"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20250129.html",
+      "sha256": "54c82b853274bc269a4abeda6ebc08e067d49ef7e2850bddc2bf1b64bfe7b30a"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20250319.html",
+      "sha256": "bd7afd53b3b375d1d3b390f3d3af3feac2465c4b552a3bb904ad44d17217419d"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20250319.html",
+      "sha256": "5132867934481da8872b00129aa423cf356fb925fbaf66faa2e121b995401aa7"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20250319.html",
+      "sha256": "bf086ac86b5e31617d08ccfe5bccbb4100b308305220b30d40847529f4353825"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20250507.html",
+      "sha256": "286052fccc93ea953f40aebbeb51141ca04adee261fa67710310c6aabe41ee5a"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20250507.html",
+      "sha256": "1876f216c212bbd34b9c10c19201dc8bedc24f21f5283dc372e62c6d20f6166c"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20250507.html",
+      "sha256": "7f87560256b49a98bc92872ba81236f6ed194710cb1ce9de3f076d046c42015c"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20250618.html",
+      "sha256": "ac74f3baed52699aaad955670fb238cbb435a284f765201a878b3e84c775a866"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20250618.html",
+      "sha256": "7231dff52efd2ec1aa4016306891c3ef84006c55d24bb3d3925eb76ac86c4cdb"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20250618.html",
+      "sha256": "964e54fc056807ebe2402831ced11d5dd77e8ca73b6adaebd4838f23d65307ee"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20250730.html",
+      "sha256": "08b546d06969846e5f96e96d0d77d41558b3c7d0e814b5c438529d8d2f68f37a"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20250730.html",
+      "sha256": "cbcee7d89644d42d41a0d191ef83a11cb69ce9613294bd02ba3ebc80feeb3438"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20250730.html",
+      "sha256": "c7a054fb44dbabc2a9c69c7b4d5e516532531f0491130f2a6d73c175ba92af89"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20250822.html",
+      "sha256": "428f88c65f0f6eee81e50380f9155c48e24a2f8b7a78fd8c606f86bb0afa302c"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20250917.html",
+      "sha256": "d19977887832cb1c22bba7473d5b802215b1d6a3a277cfed6bc3d2168eb09716"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20250917.html",
+      "sha256": "993330946c48738299a3d132a441f38cbe8409d4b792abe50d9c7ba693a8b4bb"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20250917.html",
+      "sha256": "444419250c2c6503d1214fba8ee4d6dd94d0094847d537648ea8fe6cc06468ff"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20251029.html",
+      "sha256": "af0c3f415f9ed605f5e4323db9289d311af04a30c3818903f84fd050804c0d85"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20251029.html",
+      "sha256": "a8292855f614181efce845701631606f88ebb470792a03ee7bffded359c3d49d"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20251029.html",
+      "sha256": "550a081371fbdfcb88201afe9aa2d719d54b4e586ae7d673c8003bedc4681c18"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20251210.html",
+      "sha256": "ec73dd9faf9e77621fe2a99debd1584c78614f8f9a9ce5f8f12f73c88cab44a1"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20251210.html",
+      "sha256": "71c6af52f44832a651b63a7aa4253b87faf18a3f4337253cb43910d26747b18f"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20251210.html",
+      "sha256": "6a029efd4c0ee56b554286fcc0fbab12b9f7d21147225c997708632027a85bba"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20260128.html",
+      "sha256": "ca6012f41fbdf7bf4bf7ae3496f497c88cf1150f874463b22ee3cae5ff118cd0"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20260128.html",
+      "sha256": "ff47a98948d9a34821079cd5cab2d6c4e8e5bbb7c23d2ec8452840900bb1524f"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/statement/20260318.html",
+      "sha256": "9e06c36c3f122209b4cb039fabc570120419743b54e9427e3fcab3a73111d636"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/minutes/20260318.html",
+      "sha256": "12a4d5a4bfea92be0cd94269770c9c1a877363fe73ec987b9e0ea540d431a650"
+    },
+    {
+      "path": "C:/Users/skoir/datasets/fomc_text/press_conference/20260318.html",
+      "sha256": "cecd592d0dca438b390aafea585f1737e4811d4849a6e12b3a1afe5c525cb049"
+    }
+  ],
+  "source_urls": [
+    "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+    "https://www.federalreserve.gov/monetarypolicy/fomchistorical*.htm"
+  ],
+  "timestamp_utc": "2026-04-20T23:28:08.817052+00:00",
+  "vendor": "federalreserve.gov",
+  "version": "0.1.0"
+}
