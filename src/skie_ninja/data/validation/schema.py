@@ -69,8 +69,8 @@ class MacroSurpriseRow(BaseModel):
 class FomcTextSchema(pa.DataFrameModel):
     """Schema for ``data/processed/fomc_text/``."""
 
-    release_ts_utc: pl.Datetime = pa.Field(nullable=False)
-    embargo_ts_utc: pl.Datetime = pa.Field(nullable=False)
+    release_ts_utc: pl.Datetime(time_zone="UTC") = pa.Field(nullable=False)
+    embargo_ts_utc: pl.Datetime(time_zone="UTC") = pa.Field(nullable=False)
     doc_type: pl.Utf8 = pa.Field(
         nullable=False,
         isin=[e.value for e in FomcDocType],
@@ -118,7 +118,7 @@ class MacroSurpriseSchema(pa.DataFrameModel):
     """Schema for ``data/processed/macro_surprise/``."""
 
     release_date: pl.Date = pa.Field(nullable=False)
-    release_ts_utc: pl.Datetime = pa.Field(nullable=False)
+    release_ts_utc: pl.Datetime(time_zone="UTC") = pa.Field(nullable=False)
     event_id: pl.Utf8 = pa.Field(nullable=False)
     indicator: pl.Utf8 = pa.Field(nullable=False)
     actual: pl.Float64 = pa.Field(nullable=False)
