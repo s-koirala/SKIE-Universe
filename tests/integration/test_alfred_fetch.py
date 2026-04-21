@@ -56,6 +56,7 @@ class TestAlfredFetchPayems:
         records = []
         for row in rows:
             vintage = date.fromisoformat(row["realtime_start"])
+            obs_d = date.fromisoformat(row["obs_date"])
             records.append(
                 {
                     "release_date": vintage,
@@ -67,7 +68,7 @@ class TestAlfredFetchPayems:
                         30,
                         tzinfo=UTC,
                     ),
-                    "event_id": f"PAYEMS_{vintage.isoformat()}",
+                    "event_id": f"PAYEMS_{obs_d.isoformat()}",
                     "indicator": "PAYEMS",
                     "actual": row["value"],
                     "consensus_median": None,
