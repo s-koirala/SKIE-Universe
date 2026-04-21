@@ -16,7 +16,7 @@ This project does not re-test those facts. It attacks the **directional AUC wall
 
 **Phase 0 (Foundation)** — complete. 196 unit tests passing. All P0-1 through P0-12 items delivered and audit-remediated (3-round cap). Two items deferred to user: NT8 F5-compile (P0-9) and ADR-0002 bridge latency measurement (P0-10) — both require NinjaTrader 8 Desktop installation.
 
-**Phase 1 (Data substrate)** — in progress. FOMC text + macro surprise ingest pipelines delivered and audit-remediated. ES/NQ tick ingest awaiting Databento account setup.
+**Phase 1 (Data substrate)** — FOMC text + macro_surprise ingest pipelines operational as of 2026-04-20. Final end-to-end run (post audit-remediate) landed 164 FOMC parquets (2015-01-01 → 2026-04-20, statements + minutes + press conferences across 64 meetings) and 1,686 macro_surprise parquets (11 of 12 ALFRED initial-release indicators active + SPF consensus, 2016-01-01 → 2026-04-20). Audit-remediate cycle resolved: schema tz-awareness, wrong FRED `output_type` parameter (1 → 4 per FRED enum), event_id grain (now keyed to `obs_date`, not `vintage_date`), Null-dtype parquet round-trip. Trail: [docs/audits/audit_trail_2026-04-20_phase1-ingest-remediation.md](docs/audits/audit_trail_2026-04-20_phase1-ingest-remediation.md). ES/NQ tick ingest still awaiting Databento account + ADR-0002. `EXHOSLUSM495S` returned HTTP 400 across both `output_type=1` and `output_type=4`; pending FRED catalog reconciliation (series likely renamed/removed).
 
 **Phase 2 (HMM regime + 0DTE track)** — scope extension accepted 2026-04-20 via [ADR-0005](docs/decisions/ADR-0005-hmm-regime-toolkit.md) (HMM toolkit: Baum-Welch + causal Viterbi) and [ADR-0006](docs/decisions/ADR-0006-scope-extension-hmm-0dte.md) (HMM track + sibling 0DTE repo). Three pre-registered hypotheses (H050/H051/H052) live under [research/01_hypothesis_register/](research/01_hypothesis_register/). Sibling repo [`s-koirala/SKIE-NINJA-0DTE`](https://github.com/s-koirala/SKIE-NINJA-0DTE) (SKIE-ORB-CALL, QQQ first-hour long-call scalp) verified live. Audit trail: [docs/audits/audit_trail_2026-04-20_hmm-scope-extension.md](docs/audits/audit_trail_2026-04-20_hmm-scope-extension.md) (3 rounds).
 
@@ -35,8 +35,8 @@ This project does not re-test those facts. It attacks the **directional AUC wall
 - P0-12 `runcontext.py` — done, atomic writes, crash-path flush
 
 ### Phase-1 data pipelines
-- FOMC text: federalreserve.gov scraper with two-phase commit, DST-aware timestamps, BeautifulSoup parser (statements 1994+, minutes 1993+, press conferences 2011+)
-- Macro surprises: ALFRED API first-release vintages + Philadelphia Fed SPF consensus, forecast-error-std proxy per ABDV 2003 (13 indicators, 10+ years)
+- FOMC text: federalreserve.gov scraper with two-phase commit, DST-aware timestamps, BeautifulSoup parser (statements 1994+, minutes 1993+, press conferences 2011+). **Live on this machine as of 2026-04-20**: 164 parquets under [data/processed/fomc_text/](data/processed/fomc_text/), raw HTML cached at `C:\Users\skoir\datasets\fomc_text\`.
+- Macro surprises: ALFRED API initial-release observations (`output_type=4`) + Philadelphia Fed SPF consensus, forecast-error-std proxy per ABDV 2003 (11 active FRED series, 1 pending catalog reconciliation). **Live on this machine as of 2026-04-20**: 1,686 parquets under [data/processed/macro_surprise/](data/processed/macro_surprise/), raw JSON + SPF CSV cached at `C:\Users\skoir\datasets\{fred,spf}\`. Event grain: `(indicator, obs_date)`; `release_date` = ALFRED `realtime_start`.
 - ES/NQ tick: Databento recommended (plan section 2.1), `EsTickSchema` stub in place, awaiting account
 
 ## Local directory rename (2026-04-20)
