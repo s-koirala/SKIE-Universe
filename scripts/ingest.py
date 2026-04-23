@@ -25,7 +25,11 @@ import polars as pl  # noqa: E402
 
 from skie_ninja.data.ingest import INGEST_REGISTRY  # noqa: E402
 from skie_ninja.data.validation.distribution import check_distribution_stability  # noqa: E402
-from skie_ninja.data.validation.schema import FomcTextSchema, MacroSurpriseSchema  # noqa: E402
+from skie_ninja.data.validation.schema import (  # noqa: E402
+    FomcTextSchema,
+    MacroSurpriseSchema,
+    VendorLegacy1minSchema,
+)
 from skie_ninja.utils.hashing import file_sha256  # noqa: E402
 from skie_ninja.utils.logging_setup import setup_logging  # noqa: E402
 from skie_ninja.utils.paths import ProjectPaths  # noqa: E402
@@ -34,7 +38,7 @@ from skie_ninja.utils.runcontext import RunContext  # noqa: E402
 _log = logging.getLogger(__name__)
 
 # Dataset choices. es_tick is a stub for future use.
-_DATASET_CHOICES = ("fomc_text", "macro_surprise", "es_tick")
+_DATASET_CHOICES = ("fomc_text", "macro_surprise", "es_tick", "vendor_legacy_1min")
 
 
 def _parse_date(value: str) -> date:
@@ -98,6 +102,7 @@ def _load_registry() -> None:
     _module_map = {
         "fomc_text": "skie_ninja.data.ingest.fomc_text",
         "macro_surprise": "skie_ninja.data.ingest.macro_surprise",
+        "vendor_legacy_1min": "skie_ninja.data.ingest.vendor_legacy_1min",
     }
     import importlib
 
@@ -111,6 +116,7 @@ def _load_registry() -> None:
 _SCHEMA_MAP: dict[str, type] = {
     "fomc_text": FomcTextSchema,
     "macro_surprise": MacroSurpriseSchema,
+    "vendor_legacy_1min": VendorLegacy1minSchema,
 }
 
 
