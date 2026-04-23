@@ -114,6 +114,48 @@ class EsTickSchema(pa.DataFrameModel):
         strict = True
 
 
+class VendorLegacy1minSchema(pa.DataFrameModel):
+    """Schema for ``data/processed/vendor_legacy_1min/`` (Databento-sourced
+    ES/NQ 1-minute bars, imported from the sibling SKIE_Ninja research repo).
+
+    Matches the Databento ``ohlcv-1m`` schema as emitted by
+    ``databento_downloader.py`` in the sibling repo plus a normalized
+    symbol column. Constraints:
+    - ``ts_event`` is UTC-tz-aware (Databento emits UTC)
+    - OHLC strictly positive
+    - ``low <= min(open, close)`` and ``high >= max(open, close)``
+      (enforced by data-level check, not type-level)
+    - ``volume >= 0``
+    - unique ``(symbol, ts_event)`` so there is exactly one bar per
+      (instrument, minute)
+    """
+
+    ts_event: pl.Datetime(time_zone="UTC") = pa.Field(nullable=False)
+    rtype: pl.Int64 = pa.Field(nullable=False)
+    publisher_id: pl.Int64 = pa.Field(nullable=False)
+    instrument_id: pl.Int64 = pa.Field(nullable=False)
+    open: pl.Float64 = pa.Field(nullable=False, gt=0)
+    high: pl.Float64 = pa.Field(nullable=False, gt=0)
+    low: pl.Float64 = pa.Field(nullable=False, gt=0)
+    close: pl.Float64 = pa.Field(nullable=False, gt=0)
+    volume: pl.Int64 = pa.Field(nullable=False, ge=0)
+    # Contract-specific symbol from Databento (e.g., ESH0, NQM3).
+    contract_symbol: pl.Utf8 = pa.Field(nullable=False)
+    # Normalized root symbol — first 2 chars of contract_symbol.
+    symbol: pl.Utf8 = pa.Field(nullable=False, isin=["ES", "NQ", "MES", "MNQ"])
+
+    class Config:
+        """Uniqueness at the contract level: one bar per (contract, minute).
+
+        ``(symbol, ts_event)`` intentionally *not* unique — during roll
+        windows the same UTC minute can legitimately appear under two
+        adjacent contract codes for the same root symbol.
+        """
+
+        unique = ["contract_symbol", "ts_event"]
+        strict = True
+
+
 class MacroSurpriseSchema(pa.DataFrameModel):
     """Schema for ``data/processed/macro_surprise/``."""
 
