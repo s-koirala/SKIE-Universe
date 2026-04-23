@@ -3,10 +3,40 @@
 
 market_data:
   - name: Databento
-    scope: CME MBP-10 / MBO tick, historical + live
+    scope: CME MBP-10 / MBO tick, historical + live (GLBX.MDP3)
     latency: sub-ms tick
     cost_tier: pay-per-GB
     vetted: false
+    notes: >
+      Not directly provisioned in SKIE-Universe yet. Sibling repo
+      (SKIE_Ninja research project) holds an active Databento account
+      with ES 1-min history 2020-present; a derived 5-min features
+      parquet was imported 2026-04-20 under the vendor_skie_ninja_legacy
+      namespace (shared_data.yaml). Direct SKIE-Universe Databento
+      subscription remains pending per plan §2.1.
+  - name: vendor_skie_ninja_legacy (Databento-derived, via sibling repo)
+    scope: ES 5-min engineered features 2020-01-01..2025-12-03 (269,594 rows, 47 non-leaky technical features + UTC ts_event)
+    raw_upstream: Databento GLBX.MDP3 ES 1-min
+    transform: SKIE_Ninja enhanced_feature_pipeline.py (returns/vol/momentum/volume lags; positive-lag only, sibling-repo QC-validated; SKIE-Universe verification pending — see Round-2 audit)
+    tier: prototype
+    evidence_bar_eligible: false
+    license_status: pending-verification
+    license_action_required: >
+      Databento Data License Agreement must be re-read for clauses on (a) cross-project
+      reuse by a single subscriber, (b) pseudonymous publication (SKIE) of derivative
+      statistics. Record subscriber ID + reviewed clause in provenance sidecar before
+      advancing data to evidence-bar. Source: https://databento.com/terms.
+    upstream_retrieval_date: pending-documentation-from-sibling-repo (SKIE_Ninja CANONICAL_REFERENCE.md)
+    import_date: 2026-04-20
+    shared_subdir: vendor_skie_ninja_legacy
+    vetted: true
+    usability: >
+      PROTOTYPE only. Acceptable inputs: H050/H051 code plumbing, walk-forward CV
+      harness dev, feature-engineering sanity checks. NOT acceptable for: evidence-bar
+      backtests, paper-trade submission. Rationale: features authored in sibling repo,
+      not verified in SKIE-Universe per CLAUDE.md §Verification "reproduce referenced
+      methods; no paraphrasing without verification."
+    provenance_sidecar: vendor_skie_ninja_legacy/es_5min_features_2020_2025.provenance.json
   - name: CME DataMine
     scope: official CME tick, historical
     cost_tier: per-dataset
