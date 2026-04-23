@@ -132,6 +132,16 @@ class ProjectPaths:
     def shared_nq_tick(self) -> Path:
         return self.shared_data / "nq_tick"
 
+    @property
+    def shared_vendor_skie_ninja_legacy(self) -> Path:
+        """Vendor-namespaced cache for parquet/CSV imports from the
+        sibling SKIE_Ninja research repo (Databento-sourced ES 5-min
+        features, 2020–2025). Kept as its own namespace so provenance +
+        license + retrieval_date remain attached to the bytes and this
+        repo does not couple to the sibling's filesystem layout.
+        """
+        return self.shared_data / "vendor_skie_ninja_legacy"
+
     def ensure(self, path: Path) -> Path:
         path.mkdir(parents=True, exist_ok=True)
         return path

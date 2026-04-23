@@ -32,9 +32,14 @@ def test_all_advertised_properties_resolve_under_root() -> None:
 
     # Shared paths resolve outside root; verify they are Path instances.
     shared = [p.shared_fred, p.shared_fomc_text, p.shared_spf,
-              p.shared_es_tick, p.shared_nq_tick]
+              p.shared_es_tick, p.shared_nq_tick,
+              p.shared_vendor_skie_ninja_legacy]
     for path in shared:
         assert isinstance(path, Path)
+    # Vendor-namespaced subdir lives under the shared root, same as the
+    # other shared_* properties.
+    assert p.shared_vendor_skie_ninja_legacy.parent == p.shared_data
+    assert p.shared_vendor_skie_ninja_legacy.name == "vendor_skie_ninja_legacy"
 
 
 def test_no_hardcoded_absolute_paths_in_source() -> None:

@@ -2,8 +2,15 @@
 # Override via SKIE_SHARED_DATA env var for CI or other machines.
 shared_data_root: "~/datasets"
 subdirs:
+  # Macro text + vintage surprise (Phase 1, live 2026-04-20)
   fred: "fred"
   fomc_text: "fomc_text"
   spf: "spf"
+  # Market data — placeholders for Databento tick acquisition (Phase 1 cont.)
   es_tick: "es_tick"
   nq_tick: "nq_tick"
+  # Cross-project vendor imports. Each vendor gets its own namespace so
+  # provenance, license terms, and retrieval date stay attached to the
+  # bytes. See docs/methodology/data_sources-inventory_*.md for the
+  # vendor-chain policy.
+  vendor_skie_ninja_legacy: "vendor_skie_ninja_legacy"
