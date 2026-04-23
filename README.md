@@ -37,7 +37,9 @@ This project does not re-test those facts. It attacks the **directional AUC wall
 ### Phase-1 data pipelines
 - FOMC text: federalreserve.gov scraper with two-phase commit, DST-aware timestamps, BeautifulSoup parser (statements 1994+, minutes 1993+, press conferences 2011+). **Live on this machine as of 2026-04-20**: 164 parquets under [data/processed/fomc_text/](data/processed/fomc_text/), raw HTML cached at `C:\Users\skoir\datasets\fomc_text\`.
 - Macro surprises: ALFRED API initial-release observations (`output_type=4`) + Philadelphia Fed SPF consensus, forecast-error-std proxy per ABDV 2003 (11 active FRED series, 1 pending catalog reconciliation). **Live on this machine as of 2026-04-20**: 1,686 parquets under [data/processed/macro_surprise/](data/processed/macro_surprise/), raw JSON + SPF CSV cached at `C:\Users\skoir\datasets\{fred,spf}\`. Event grain: `(indicator, obs_date)`; `release_date` = ALFRED `realtime_start`.
-- ES/NQ tick: Databento recommended (plan section 2.1), `EsTickSchema` stub in place, awaiting account
+- ES 5-min engineered features: **live on this machine as of 2026-04-20** at `C:\Users\skoir\datasets\vendor_skie_ninja_legacy\es_5min_features_2020_2025.parquet` (Databento GLBX.MDP3 → sibling SKIE_Ninja feature pipeline, 269,594 rows 2020-01-01 → 2025-12-03, 47 non-leaky technical features; prototype-tier usability only per [audit_trail_2026-04-20_vendor-skie-ninja-legacy-import.md](docs/audits/audit_trail_2026-04-20_vendor-skie-ninja-legacy-import.md)).
+- ES/NQ tick: Databento recommended (plan section 2.1), `EsTickSchema` stub in place. Direct SKIE-Universe subscription still awaiting account; sibling-repo inheritance covers ES 5-min prototype needs for H050.
+- NQ 5-min: not yet provisioned — sibling-repo sweep found NT8 `db\minute\` ES contracts but no NQ parquet; blocked on Databento NQ fetch or NT8 NinjaScript export for NQ.
 
 ## Local directory rename (2026-04-20)
 

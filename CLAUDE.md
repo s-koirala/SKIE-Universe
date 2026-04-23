@@ -38,9 +38,10 @@ Passes paper-trade for at least 60 session-days with realized Sharpe within CI o
 ## Implemented infrastructure (as of 2026-04-20)
 
 ### Phase 1 ingest — live on this machine (2026-04-20)
-- Central shared-data root: `C:\Users\skoir\datasets\{fred,fomc_text,spf,es_tick,nq_tick}` (env `SKIE_SHARED_DATA` set).
+- Central shared-data root: `C:\Users\skoir\datasets\{fred,fomc_text,spf,es_tick,nq_tick,vendor_skie_ninja_legacy}` (env `SKIE_SHARED_DATA` set).
 - FOMC text: 164 processed parquets, 2015-01-01 → 2026-04-20 across 64 meetings.
 - Macro surprise: 1,686 processed parquets across 11 ALFRED initial-release series (`output_type=4`) + SPF consensus (`EXHOSLUSM495S` pending FRED catalog reconciliation — HTTP 400 on fetch). Event grain: `(indicator, obs_date)`.
+- ES 5-min features (prototype-tier): 269,594-row Databento-derived parquet (2020-01-01 → 2025-12-03) imported from sibling SKIE_Ninja research repo under `vendor_skie_ninja_legacy` namespace. Evidence-bar runs must re-derive features from raw Databento 1-min per [docs/audits/audit_trail_2026-04-20_vendor-skie-ninja-legacy-import.md](docs/audits/audit_trail_2026-04-20_vendor-skie-ninja-legacy-import.md).
 - Audit-remediate loop (3-round cap) resolved schema tz-awareness, wrong FRED `output_type` parameter, event_id grain conflation, and Null-dtype parquet round-trip: [docs/audits/audit_trail_2026-04-20_phase1-ingest-remediation.md](docs/audits/audit_trail_2026-04-20_phase1-ingest-remediation.md).
 
 ## Phase 0 / 1 infrastructure (as of 2026-04-16)
