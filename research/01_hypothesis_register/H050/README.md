@@ -4,6 +4,6 @@ HMM regime-conditioned ES/NQ intraday directional signal. Tier 2b.
 
 Status: `designed` (pre-registered 2026-04-20).
 
-**Data readiness (2026-04-20):** ES 5-min *prototype-tier* input available via [`vendor_skie_ninja_legacy`](../../../config/data_sources.yaml) (Databento-derived, sibling-repo pipeline, 2020-01-01 → 2025-12-03). NQ 5-min **not yet provisioned** — blocks the NQ arm of the directional signal. Prototype-tier forbids evidence-bar advancement until features are re-derived in-project from raw 1-min Databento per [audit_trail_2026-04-20_vendor-skie-ninja-legacy-import.md](../../../docs/audits/audit_trail_2026-04-20_vendor-skie-ninja-legacy-import.md).
+**Data readiness (updated 2026-04-23):** ES + NQ 1-minute raw OHLCV (Databento) live at [data/processed/vendor_legacy_1min/](../../../data/processed/vendor_legacy_1min/) via `vendor_legacy_1min` ingest. ES 2020-2025 + NQ 2020-2024 present; NQ 2025 pending sibling pull. **Raw tier is NOT evidence-bar eligible** — the series concatenates successive front-month contracts without roll adjustment, violating the rules/quant-project.md §Time-series integrity requirement (futures-analog of corporate-action adjustment). H050 must either (a) operate on contract-local windows that never cross a roll boundary, or (b) materialize a downstream roll-adjusted derivative dataset before paper-trade evidence-bar claims. Feature engineering in-project per CLAUDE.md §Verification.
 
 See [design.md](design.md) for the pre-registration. No execution until status transitions to `running` by explicit commit.

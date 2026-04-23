@@ -37,6 +37,33 @@ market_data:
       not verified in SKIE-Universe per CLAUDE.md §Verification "reproduce referenced
       methods; no paraphrasing without verification."
     provenance_sidecar: vendor_skie_ninja_legacy/es_5min_features_2020_2025.provenance.json
+  - name: vendor_legacy_1min (Databento raw OHLCV-1m, via sibling repo)
+    scope: >
+      ES 2020-2025 + NQ 2020-2024, Databento GLBX.MDP3 ohlcv-1m, 3,733,906 rows.
+      Partitioned as data/processed/vendor_legacy_1min/symbol={ES,NQ}/year={YYYY}.
+      Schema: ts_event (UTC), rtype, publisher_id, instrument_id, open, high, low,
+      close, volume, contract_symbol (ESH0, NQM3, ...), symbol (root ES/NQ).
+      Unique key (contract_symbol, ts_event).
+    raw_upstream: Databento GLBX.MDP3 via sibling SKIE_Ninja databento_downloader.py
+    tier: raw
+    evidence_bar_eligible: false
+    roll_adjustment: none (front-month concatenation only; downstream roll-adjusted derivative is the evidence-bar input)
+    license_status: verified (2026-04-23 user confirmation; single-subscriber cross-project reuse permitted)
+    upstream_retrieval_date: 2025-12-04 (sibling repo mtime of source CSVs)
+    import_date: 2026-04-23
+    shared_subdir: vendor_skie_ninja_legacy/raw_1min
+    vetted: true
+    usability: >
+      Prototype-tier-plus: evidence-bar eligible ONLY after a downstream
+      roll-adjustment step materializes a derivative dataset keyed on root
+      symbol + adjusted-return series. H050/H051 code plumbing and
+      walk-forward harness dev may consume the raw tier directly;
+      Sharpe/Sortino claims for paper-trade submission may not. Feature
+      engineering MUST be in-project (not imported from sibling) per
+      CLAUDE.md §Verification.
+    ingest_module: src/skie_ninja/data/ingest/vendor_legacy_1min.py
+    provenance: data/processed/_provenance/vendor_legacy_1min_{YYYYMMDD}.json
+    known_gap: NQ 2025 not yet pulled in sibling; extend _CANONICAL_SOURCES when available.
   - name: CME DataMine
     scope: official CME tick, historical
     cost_tier: per-dataset
