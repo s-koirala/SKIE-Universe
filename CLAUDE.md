@@ -35,6 +35,11 @@ Passes paper-trade for at least 60 session-days with realized Sharpe within CI o
 - Artifacts named `{type}_{description}_{YYYY-MM-DD}.md`.
 - Every backtest writes to [logs/reproducibility/](logs/reproducibility/) automatically.
 
+## Implemented infrastructure (as of 2026-04-23)
+
+### Reassessment 2026-04-23
+Critical-path + timeline review at [docs/research_notes/memo_phase1-reassessment_2026-04-23.md](docs/research_notes/memo_phase1-reassessment_2026-04-23.md). Raw-tier ES+NQ 1-min substrate now live; [src/skie_ninja/{features,models,inference,backtest,execution}/](src/skie_ninja/) hold only empty folder skeletons — ~3 weeks focused engineering to first walk-forward H050 result; 60-session-day paper-trade is the unmovable calendar floor after that.
+
 ## Implemented infrastructure (as of 2026-04-20)
 
 ### Phase 1 ingest — live on this machine (2026-04-20)

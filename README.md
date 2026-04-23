@@ -12,7 +12,11 @@ Empirically established in prior SKIE Ninja work:
 
 This project does not re-test those facts. It attacks the **directional AUC wall** by stacking directional conditioning variables on top of the already-working size/vol/breakout stack, and by exhaustively evaluating every promising signal in the literature plus the research-frontier whitespace.
 
-## Current status (2026-04-20)
+## Current status (2026-04-23)
+
+**Reassessment + timeline to first strategy result:** [docs/research_notes/memo_phase1-reassessment_2026-04-23.md](docs/research_notes/memo_phase1-reassessment_2026-04-23.md). TL;DR: data substrate for H050 directional track is live at raw tier; strategy-development code can start today; first walk-forward result lands ~3 weeks out with focused work; paper-trade verdict lands ~16 weeks from today assuming evidence-bar clears.
+
+## Historical status (2026-04-20)
 
 **Phase 0 (Foundation)** — complete. 196 unit tests passing. All P0-1 through P0-12 items delivered and audit-remediated (3-round cap). Two items deferred to user: NT8 F5-compile (P0-9) and ADR-0002 bridge latency measurement (P0-10) — both require NinjaTrader 8 Desktop installation.
 
