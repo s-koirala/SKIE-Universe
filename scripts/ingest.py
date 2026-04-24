@@ -13,7 +13,7 @@ import argparse
 import json
 import logging
 import sys
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 # Script-bootstrap sys.path shim so the script works before
@@ -28,6 +28,7 @@ from skie_ninja.data.validation.distribution import check_distribution_stability
 from skie_ninja.data.validation.schema import (  # noqa: E402
     FomcTextSchema,
     MacroSurpriseSchema,
+    VendorLegacy1minRollAdjustedSchema,
     VendorLegacy1minSchema,
 )
 from skie_ninja.utils.hashing import file_sha256  # noqa: E402
@@ -38,7 +39,13 @@ from skie_ninja.utils.runcontext import RunContext  # noqa: E402
 _log = logging.getLogger(__name__)
 
 # Dataset choices. es_tick is a stub for future use.
-_DATASET_CHOICES = ("fomc_text", "macro_surprise", "es_tick", "vendor_legacy_1min")
+_DATASET_CHOICES = (
+    "fomc_text",
+    "macro_surprise",
+    "es_tick",
+    "vendor_legacy_1min",
+    "vendor_legacy_1min_roll_adjusted",
+)
 
 
 def _parse_date(value: str) -> date:
@@ -103,6 +110,7 @@ def _load_registry() -> None:
         "fomc_text": "skie_ninja.data.ingest.fomc_text",
         "macro_surprise": "skie_ninja.data.ingest.macro_surprise",
         "vendor_legacy_1min": "skie_ninja.data.ingest.vendor_legacy_1min",
+        "vendor_legacy_1min_roll_adjusted": "skie_ninja.data.ingest.vendor_legacy_1min_roll_adjusted",
     }
     import importlib
 
@@ -117,6 +125,7 @@ _SCHEMA_MAP: dict[str, type] = {
     "fomc_text": FomcTextSchema,
     "macro_surprise": MacroSurpriseSchema,
     "vendor_legacy_1min": VendorLegacy1minSchema,
+    "vendor_legacy_1min_roll_adjusted": VendorLegacy1minRollAdjustedSchema,
 }
 
 
@@ -131,7 +140,7 @@ def _source_unchanged(
         if rp.is_file():
             raw_checksums[rp.as_posix()] = file_sha256(rp)
 
-    today_str = date.today().strftime("%Y%m%d")
+    today_str = datetime.now(tz=UTC).strftime("%Y%m%d")  # UTC to match provenance filename
     prov_path = paths.data_processed / "_provenance" / f"{dataset}_{today_str}.json"
     if not prov_path.is_file():
         return False

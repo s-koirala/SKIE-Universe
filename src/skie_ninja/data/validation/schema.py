@@ -156,6 +156,77 @@ class VendorLegacy1minSchema(pa.DataFrameModel):
         strict = True
 
 
+class VendorLegacy1minRollAdjustedSchema(pa.DataFrameModel):
+    """Schema for ``data/processed/vendor_legacy_1min_roll_adjusted/``.
+
+    Continuous-contract derivative of ``vendor_legacy_1min``:
+    successive front-month contracts stitched together with
+    multiplicative ratio adjustment per de Prado 2018 *Advances in
+    Financial Machine Learning* ch.2 **§2.4.3** ("Single Future Roll" —
+    NOT §2.4.1 "The ETF Trick", which is a P&L-accumulation method
+    for baskets/spreads), rolled on volume-crossover with persistence
+    per [config/instruments.yaml](../../../../config/instruments.yaml)
+    ``roll_rule``. Log-returns on the adjusted series are preserved
+    across roll boundaries (that's the point of ratio adjustment).
+
+    **Evidence-bar tier discrimination**: this table is evidence-bar
+    eligible for *return-based* features only. Level columns
+    (``open``, ``high``, ``low``, ``close``) are retrospectively
+    rescaled by the full-sample roll history and are NOT
+    point-in-time safe for walk-forward use without per-fold
+    re-materialization. See the module-level docstring "Point-in-time
+    caveat" section. The provenance JSON discriminates via
+    ``evidence_bar_eligible_returns`` (True) vs
+    ``evidence_bar_eligible_levels`` (False).
+
+    Columns:
+
+    - ``ts_event`` — UTC-tz-aware minute timestamp; monotonic per symbol.
+    - ``open``, ``high``, ``low``, ``close`` — **ratio-adjusted** OHLC
+      (multiplicative back-adjustment; latest contract has
+      ``adjustment_factor == 1.0``). OHLC consistency preserved.
+    - ``volume`` — NOT adjusted (a multiplicative price adjustment
+      does not transform contract volume).
+    - ``symbol`` — root (ES/NQ/MES/MNQ).
+    - ``front_contract_symbol`` — the specific contract code (e.g.,
+      ESH4) that was front-month at ``ts_event``. Exactly one
+      front-month per (symbol, ts_event).
+    - ``adjustment_factor`` — the cumulative multiplier applied to the
+      raw prices of this row to produce the adjusted prices. ==1.0 for
+      the most-recent contract; ==prod(ρ_k) across all rolls newer than
+      this row's contract otherwise.
+    - ``unadjusted_close`` — the raw close price for this bar (audit
+      trail: ``adjusted_close == unadjusted_close * adjustment_factor``).
+    - ``roll_flag`` — True on rows whose session is the first session
+      where this row's contract became front-month (diagnostic — a roll
+      boundary marker for downstream purge/embargo logic).
+    """
+
+    ts_event: pl.Datetime(time_zone="UTC") = pa.Field(nullable=False)
+    open: pl.Float64 = pa.Field(nullable=False, gt=0)
+    high: pl.Float64 = pa.Field(nullable=False, gt=0)
+    low: pl.Float64 = pa.Field(nullable=False, gt=0)
+    close: pl.Float64 = pa.Field(nullable=False, gt=0)
+    volume: pl.Int64 = pa.Field(nullable=False, ge=0)
+    symbol: pl.Utf8 = pa.Field(nullable=False, isin=["ES", "NQ", "MES", "MNQ"])
+    front_contract_symbol: pl.Utf8 = pa.Field(nullable=False)
+    adjustment_factor: pl.Float64 = pa.Field(nullable=False, gt=0)
+    unadjusted_close: pl.Float64 = pa.Field(nullable=False, gt=0)
+    roll_flag: pl.Boolean = pa.Field(nullable=False)
+
+    class Config:
+        """One front-month bar per (symbol, ts_event).
+
+        Unlike ``VendorLegacy1minSchema`` (which allows concurrent
+        contracts to coexist during roll windows), the roll-adjusted
+        series is a single continuous front-month series per root
+        symbol — so ``(symbol, ts_event)`` IS unique here.
+        """
+
+        unique = ["symbol", "ts_event"]
+        strict = True
+
+
 class MacroSurpriseSchema(pa.DataFrameModel):
     """Schema for ``data/processed/macro_surprise/``."""
 

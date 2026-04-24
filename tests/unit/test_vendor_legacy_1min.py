@@ -317,9 +317,11 @@ class TestWriteAndProvenance:
             ctx, [src_a, src_b], out_dir
         )
         payload = __import__("json").loads(prov.read_text(encoding="utf-8"))
+        # Keys are absolute POSIX paths to match
+        # scripts/ingest.py::_source_unchanged (Cycle-1 audit F-1-6 fix).
         assert set(payload["source_checksums"].keys()) == {
-            "a.csv",
-            "b.csv",
+            src_a.as_posix(),
+            src_b.as_posix(),
         }
         # Raw tier is NOT evidence-bar eligible: the underlying series
         # concatenates front-month contracts without roll adjustment.

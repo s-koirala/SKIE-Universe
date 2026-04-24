@@ -348,7 +348,7 @@ class VendorLegacy1minIngestJob:
         # suppress(AttributeError) would miss and silently drop.
         if hasattr(ctx, "add_dataset_checksum"):
             for sp in source_paths:
-                ctx.add_dataset_checksum(sp.name, file_sha256(sp))
+                ctx.add_dataset_checksum(sp.as_posix(), file_sha256(sp))
 
         timestamp = datetime.now(tz=UTC).isoformat()
         payload = {
@@ -370,8 +370,14 @@ class VendorLegacy1minIngestJob:
             "roll_adjustment": "none (front-month concatenation only)",
             "timestamp_utc": timestamp,
             "source_root": self._source_root.as_posix(),
+            # Key by absolute POSIX path to match the CLI's
+            # _source_unchanged idempotency key in scripts/ingest.py
+            # (F-1-6 of the 2026-04-23 Cycle-1 audit; fixes the
+            # always-False dict-comparison that made the --force-less
+            # short-circuit dead code). Forward-compatible: next run
+            # emits matching keys and subsequent runs short-circuit.
             "source_checksums": {
-                sp.name: file_sha256(sp) for sp in source_paths
+                sp.as_posix(): file_sha256(sp) for sp in source_paths
             },
             "output_path": output_path.as_posix(),
             "run_id": ctx.log.run_id if ctx.log else None,
