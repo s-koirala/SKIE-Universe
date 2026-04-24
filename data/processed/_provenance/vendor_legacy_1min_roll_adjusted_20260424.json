@@ -1,0 +1,542 @@
+{
+  "anchor_rule": "AFML \u00a72.4.3 canonical: \u03c1 = new_open(t_first_new) / old_close(t_last_old); no synchronous-overlap or post-roll fallback.",
+  "dataset": "vendor_legacy_1min_roll_adjusted",
+  "evidence_bar_eligible": true,
+  "evidence_bar_eligible_levels": false,
+  "evidence_bar_eligible_returns": true,
+  "known_verification_gaps": {
+    "anchor_sensitivity": "No empirical comparison of close-to-open vs synchronous-overlap vs exchange-settlement anchor. Phase-1 follow-up P1-ROLL-ANCHOR.",
+    "volume_vs_oi_crossover": "No peer-reviewed empirical comparison of volume- vs OI-crossover realized-slippage for CME equity-index futures is known as of 2026-04-23. Practitioner convention used. Phase-1 follow-up P1-ROLL-METHOD."
+  },
+  "level_use_pit_safe": false,
+  "level_use_pit_safe_note": "Adjusted level columns (open/high/low/close) are retrospectively rescaled by the full-sample roll history. Walk-forward consumers using level-based features must re-materialize this derivative within each training fold, or restrict to return-based transforms. Return-based features ARE PIT-safe on this derivative. Tracked as P1-LEVEL-USE-POLICY.",
+  "method": "ratio_adjustment_volume_crossover_persistence",
+  "method_reference": "de Prado 2018 AFML ch.2 \u00a72.4.3 (Single Future Roll); supplementary Chan 2013 ch.3, Carver 2023 app. Futures data; OHLC scalar extension + unadjusted volume follow Norgate/CSI operational convention (not AFML).",
+  "output_path": "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min_roll_adjusted",
+  "persistence_window_source": "config/instruments.yaml roll_rule.window_days",
+  "repro_log": {
+    "config_resolved_sha256": null,
+    "dataset_checksums": {
+      "vendor_legacy_1min_roll_adjusted": "b7f70575f3269e0b795f0c7a76cddb399510d15c51c5b59d4395cbb1a4422c40"
+    },
+    "env_id": "cc5959faeaea7816cf85367f3e1f3476469e43472f225d10b3ce3cd165afba96",
+    "git_head": "28c8f3b8c0b2b60275a2cecd43bb8a9e746fca56",
+    "host": {
+      "cpu": "AMD64",
+      "os": "Windows 10",
+      "python": "3.11.15"
+    },
+    "hypothesis_id": "ingest_vendor_legacy_1min_roll_adjusted",
+    "model_hash": null,
+    "phase": "ingest",
+    "pip_freeze_path": "logs/reproducibility/env/bba24a512d9beac186c919f043298490b08e5415c32ac721ae51b1e90630163c.txt",
+    "pip_freeze_sha256": "bba24a512d9beac186c919f043298490b08e5415c32ac721ae51b1e90630163c",
+    "rng_seed": 42,
+    "run_id": "2d88c9aeb6ef469180782db93b5b5d61",
+    "timestamp_utc": "2026-04-24T16:39:39.930660+00:00"
+  },
+  "roll_adjustment": "multiplicative ratio (cumulative back-adjust)",
+  "run_id": "2d88c9aeb6ef469180782db93b5b5d61",
+  "run_summary": {
+    "ES": {
+      "bars_dropped_non_front": 14404,
+      "contract_factors": {
+        "ESH0": 1.156926537487801,
+        "ESH1": 1.1308984205263064,
+        "ESH2": 1.103854104157898,
+        "ESH3": 1.1462755075966278,
+        "ESH4": 1.099310323097585,
+        "ESH5": 1.0482478485783482,
+        "ESM0": 1.145790973043896,
+        "ESM1": 1.131612011150061,
+        "ESM2": 1.0991332820211674,
+        "ESM3": 1.1454802360366427,
+        "ESM4": 1.0867109288991328,
+        "ESM5": 1.0249893446961784,
+        "ESU0": 1.1406359722814263,
+        "ESU1": 1.1431185613020893,
+        "ESU2": 1.1397479067609797,
+        "ESU3": 1.1343852200333764,
+        "ESU4": 1.0730456136621536,
+        "ESU5": 1.009487594593577,
+        "ESZ0": 1.137192986574032,
+        "ESZ1": 1.1367338508390528,
+        "ESZ2": 1.1540531443202235,
+        "ESZ3": 1.122313320269993,
+        "ESZ4": 1.062445336369477,
+        "ESZ5": 1.0
+      },
+      "rejected_oscillations": [],
+      "rolls": [
+        {
+          "new_contract": "ESM0",
+          "new_open": 2467.5,
+          "old_close": 2443.75,
+          "old_contract": "ESH0",
+          "ratio": 1.0097186700767264,
+          "roll_date": "2020-03-18",
+          "t_new_open_utc": "2020-03-17T22:00:00+00:00",
+          "t_old_close_utc": "2020-03-16T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESU0",
+          "new_open": 3111.75,
+          "old_close": 3097.75,
+          "old_contract": "ESM0",
+          "ratio": 1.0045194092486482,
+          "roll_date": "2020-06-17",
+          "t_new_open_utc": "2020-06-16T22:00:00+00:00",
+          "t_old_close_utc": "2020-06-15T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESZ0",
+          "new_open": 3395.75,
+          "old_close": 3385.5,
+          "old_contract": "ESU0",
+          "ratio": 1.0030276177817161,
+          "roll_date": "2020-09-16",
+          "t_new_open_utc": "2020-09-15T22:00:00+00:00",
+          "t_old_close_utc": "2020-09-14T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESH1",
+          "new_open": 3748.75,
+          "old_close": 3728.0,
+          "old_contract": "ESZ0",
+          "ratio": 1.0055659871244635,
+          "roll_date": "2021-01-04",
+          "t_new_open_utc": "2021-01-03T23:00:00+00:00",
+          "t_old_close_utc": "2020-12-18T14:29:00+00:00"
+        },
+        {
+          "new_contract": "ESM1",
+          "new_open": 3962.0,
+          "old_close": 3964.5,
+          "old_contract": "ESH1",
+          "ratio": 0.999369403455669,
+          "roll_date": "2021-03-18",
+          "t_new_open_utc": "2021-03-17T22:00:00+00:00",
+          "t_old_close_utc": "2021-03-16T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESU1",
+          "new_open": 4204.25,
+          "old_close": 4247.0,
+          "old_contract": "ESM1",
+          "ratio": 0.9899340711090181,
+          "roll_date": "2021-06-17",
+          "t_new_open_utc": "2021-06-16T22:00:00+00:00",
+          "t_old_close_utc": "2021-06-15T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESZ1",
+          "new_open": 4476.0,
+          "old_close": 4451.0,
+          "old_contract": "ESU1",
+          "ratio": 1.0056167153448663,
+          "roll_date": "2021-09-16",
+          "t_new_open_utc": "2021-09-15T22:00:00+00:00",
+          "t_old_close_utc": "2021-09-14T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESH2",
+          "new_open": 4771.0,
+          "old_close": 4633.0,
+          "old_contract": "ESZ1",
+          "ratio": 1.0297863155622706,
+          "roll_date": "2022-01-03",
+          "t_new_open_utc": "2022-01-02T23:00:00+00:00",
+          "t_old_close_utc": "2021-12-17T14:29:00+00:00"
+        },
+        {
+          "new_contract": "ESM2",
+          "new_open": 4384.25,
+          "old_close": 4365.5,
+          "old_contract": "ESH2",
+          "ratio": 1.0042950406597182,
+          "roll_date": "2022-03-18",
+          "t_new_open_utc": "2022-03-17T22:00:00+00:00",
+          "t_old_close_utc": "2022-03-16T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESU2",
+          "new_open": 3680.5,
+          "old_close": 3816.5,
+          "old_contract": "ESM2",
+          "ratio": 0.9643652561247216,
+          "roll_date": "2022-06-17",
+          "t_new_open_utc": "2022-06-16T22:00:00+00:00",
+          "t_old_close_utc": "2022-06-15T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESZ2",
+          "new_open": 3904.0,
+          "old_close": 3953.0,
+          "old_contract": "ESU2",
+          "ratio": 0.9876043511257273,
+          "roll_date": "2022-09-16",
+          "t_new_open_utc": "2022-09-15T22:00:00+00:00",
+          "t_old_close_utc": "2022-09-14T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESH3",
+          "new_open": 3895.0,
+          "old_close": 3868.75,
+          "old_contract": "ESZ2",
+          "ratio": 1.0067851373182553,
+          "roll_date": "2023-01-03",
+          "t_new_open_utc": "2023-01-02T23:00:00+00:00",
+          "t_old_close_utc": "2022-12-16T14:29:00+00:00"
+        },
+        {
+          "new_contract": "ESM3",
+          "new_open": 3963.75,
+          "old_close": 3961.0,
+          "old_contract": "ESH3",
+          "ratio": 1.0006942691239586,
+          "roll_date": "2023-03-20",
+          "t_new_open_utc": "2023-03-19T22:00:00+00:00",
+          "t_old_close_utc": "2023-03-16T23:57:00+00:00"
+        },
+        {
+          "new_contract": "ESU3",
+          "new_open": 4465.25,
+          "old_close": 4422.0,
+          "old_contract": "ESM3",
+          "ratio": 1.0097806422433289,
+          "roll_date": "2023-06-16",
+          "t_new_open_utc": "2023-06-16T00:00:00+00:00",
+          "t_old_close_utc": "2023-06-15T20:59:00+00:00"
+        },
+        {
+          "new_contract": "ESZ3",
+          "new_open": 4557.5,
+          "old_close": 4509.0,
+          "old_contract": "ESU3",
+          "ratio": 1.0107562652472832,
+          "roll_date": "2023-09-15",
+          "t_new_open_utc": "2023-09-15T00:00:00+00:00",
+          "t_old_close_utc": "2023-09-14T20:59:00+00:00"
+        },
+        {
+          "new_contract": "ESH4",
+          "new_open": 4818.0,
+          "old_close": 4719.25,
+          "old_contract": "ESZ3",
+          "ratio": 1.020924935106214,
+          "roll_date": "2024-01-02",
+          "t_new_open_utc": "2024-01-01T23:00:00+00:00",
+          "t_old_close_utc": "2023-12-14T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESM4",
+          "new_open": 5213.25,
+          "old_close": 5153.5,
+          "old_contract": "ESH4",
+          "ratio": 1.0115940622877655,
+          "roll_date": "2024-03-15",
+          "t_new_open_utc": "2024-03-15T00:00:00+00:00",
+          "t_old_close_utc": "2024-03-14T20:59:00+00:00"
+        },
+        {
+          "new_contract": "ESU4",
+          "new_open": 5546.75,
+          "old_close": 5477.0,
+          "old_contract": "ESM4",
+          "ratio": 1.0127350739455907,
+          "roll_date": "2024-06-21",
+          "t_new_open_utc": "2024-06-21T00:00:00+00:00",
+          "t_old_close_utc": "2024-06-20T20:59:00+00:00"
+        },
+        {
+          "new_contract": "ESZ4",
+          "new_open": 5770.0,
+          "old_close": 5713.0,
+          "old_contract": "ESU4",
+          "ratio": 1.009977244880098,
+          "roll_date": "2024-09-20",
+          "t_new_open_utc": "2024-09-20T00:00:00+00:00",
+          "t_old_close_utc": "2024-09-19T20:59:00+00:00"
+        },
+        {
+          "new_contract": "ESH5",
+          "new_open": 5949.25,
+          "old_close": 5869.75,
+          "old_contract": "ESZ4",
+          "ratio": 1.0135440180586908,
+          "roll_date": "2025-01-02",
+          "t_new_open_utc": "2025-01-01T23:00:00+00:00",
+          "t_old_close_utc": "2024-12-19T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESM5",
+          "new_open": 5678.75,
+          "old_close": 5552.75,
+          "old_contract": "ESH5",
+          "ratio": 1.0226914591868894,
+          "roll_date": "2025-03-17",
+          "t_new_open_utc": "2025-03-16T22:00:00+00:00",
+          "t_old_close_utc": "2025-03-13T23:59:00+00:00"
+        },
+        {
+          "new_contract": "ESU5",
+          "new_open": 6017.0,
+          "old_close": 5926.0,
+          "old_contract": "ESM5",
+          "ratio": 1.0153560580492744,
+          "roll_date": "2025-06-20",
+          "t_new_open_utc": "2025-06-20T00:00:00+00:00",
+          "t_old_close_utc": "2025-06-19T16:59:00+00:00"
+        },
+        {
+          "new_contract": "ESZ5",
+          "new_open": 6703.25,
+          "old_close": 6640.25,
+          "old_contract": "ESU5",
+          "ratio": 1.009487594593577,
+          "roll_date": "2025-09-19",
+          "t_new_open_utc": "2025-09-19T00:00:00+00:00",
+          "t_old_close_utc": "2025-09-18T20:59:00+00:00"
+        }
+      ],
+      "window_days": 5
+    },
+    "NQ": {
+      "bars_dropped_non_front": 16143,
+      "contract_factors": {
+        "NQH0": 1.112250513084679,
+        "NQH1": 1.054754417250156,
+        "NQH2": 1.0138393949967213,
+        "NQH3": 1.0909266943940958,
+        "NQH4": 1.0307701282163955,
+        "NQM0": 1.084608022547389,
+        "NQM1": 1.0524748615595798,
+        "NQM2": 1.0084120085472572,
+        "NQM3": 1.0825448699099804,
+        "NQM4": 1.0260792358576492,
+        "NQU0": 1.0764610648339372,
+        "NQU1": 1.0598922387311047,
+        "NQU2": 1.0519635656121398,
+        "NQU3": 1.0734194692128483,
+        "NQU4": 1.0115975315808736,
+        "NQZ0": 1.0621712386856208,
+        "NQZ1": 1.053383124416616,
+        "NQZ2": 1.071041765239503,
+        "NQZ3": 1.059948449419343,
+        "NQZ4": 1.0
+      },
+      "rejected_oscillations": [],
+      "rolls": [
+        {
+          "new_contract": "NQM0",
+          "new_open": 7343.25,
+          "old_close": 7160.75,
+          "old_contract": "NQH0",
+          "ratio": 1.0254861571762734,
+          "roll_date": "2020-03-18",
+          "t_new_open_utc": "2020-03-17T22:00:00+00:00",
+          "t_old_close_utc": "2020-03-16T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQU0",
+          "new_open": 9951.5,
+          "old_close": 9876.75,
+          "old_contract": "NQM0",
+          "ratio": 1.0075682790391576,
+          "roll_date": "2020-06-17",
+          "t_new_open_utc": "2020-06-16T22:00:00+00:00",
+          "t_old_close_utc": "2020-06-15T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQZ0",
+          "new_open": 11450.25,
+          "old_close": 11298.25,
+          "old_contract": "NQU0",
+          "ratio": 1.013453410926471,
+          "roll_date": "2020-09-16",
+          "t_new_open_utc": "2020-09-15T22:00:00+00:00",
+          "t_old_close_utc": "2020-09-14T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQH1",
+          "new_open": 12889.0,
+          "old_close": 12799.0,
+          "old_contract": "NQZ0",
+          "ratio": 1.007031799359325,
+          "roll_date": "2021-01-04",
+          "t_new_open_utc": "2021-01-03T23:00:00+00:00",
+          "t_old_close_utc": "2020-12-18T14:29:00+00:00"
+        },
+        {
+          "new_contract": "NQM1",
+          "new_open": 13187.0,
+          "old_close": 13158.5,
+          "old_contract": "NQH1",
+          "ratio": 1.002165900368583,
+          "roll_date": "2021-03-18",
+          "t_new_open_utc": "2021-03-17T22:00:00+00:00",
+          "t_old_close_utc": "2021-03-16T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQU1",
+          "new_open": 13941.0,
+          "old_close": 14039.25,
+          "old_contract": "NQM1",
+          "ratio": 0.9930017629146856,
+          "roll_date": "2021-06-17",
+          "t_new_open_utc": "2021-06-16T22:00:00+00:00",
+          "t_old_close_utc": "2021-06-15T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQZ1",
+          "new_open": 15509.75,
+          "old_close": 15414.5,
+          "old_contract": "NQU1",
+          "ratio": 1.0061792468130657,
+          "roll_date": "2021-09-16",
+          "t_new_open_utc": "2021-09-15T22:00:00+00:00",
+          "t_old_close_utc": "2021-09-14T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQH2",
+          "new_open": 16356.0,
+          "old_close": 15742.0,
+          "old_contract": "NQZ1",
+          "ratio": 1.0390039385084486,
+          "roll_date": "2022-01-03",
+          "t_new_open_utc": "2022-01-02T23:00:00+00:00",
+          "t_old_close_utc": "2021-12-17T14:29:00+00:00"
+        },
+        {
+          "new_contract": "NQM2",
+          "new_open": 14056.75,
+          "old_close": 13981.5,
+          "old_contract": "NQH2",
+          "ratio": 1.0053821120766728,
+          "roll_date": "2022-03-18",
+          "t_new_open_utc": "2022-03-17T22:00:00+00:00",
+          "t_old_close_utc": "2022-03-16T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQU2",
+          "new_open": 11206.75,
+          "old_close": 11690.75,
+          "old_contract": "NQM2",
+          "ratio": 0.9585997476637512,
+          "roll_date": "2022-06-17",
+          "t_new_open_utc": "2022-06-16T22:00:00+00:00",
+          "t_old_close_utc": "2022-06-15T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQZ2",
+          "new_open": 11951.5,
+          "old_close": 12168.25,
+          "old_contract": "NQU2",
+          "ratio": 0.9821872496045035,
+          "roll_date": "2022-09-16",
+          "t_new_open_utc": "2022-09-15T22:00:00+00:00",
+          "t_old_close_utc": "2022-09-14T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQH3",
+          "new_open": 11122.5,
+          "old_close": 11329.0,
+          "old_contract": "NQZ2",
+          "ratio": 0.9817724424044487,
+          "roll_date": "2023-01-03",
+          "t_new_open_utc": "2023-01-02T23:00:00+00:00",
+          "t_old_close_utc": "2022-12-16T14:29:00+00:00"
+        },
+        {
+          "new_contract": "NQM3",
+          "new_open": 12690.0,
+          "old_close": 12592.5,
+          "old_contract": "NQH3",
+          "ratio": 1.0077427039904705,
+          "roll_date": "2023-03-20",
+          "t_new_open_utc": "2023-03-19T22:00:00+00:00",
+          "t_old_close_utc": "2023-03-16T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQU3",
+          "new_open": 15303.25,
+          "old_close": 15174.25,
+          "old_contract": "NQM3",
+          "ratio": 1.0085012438835528,
+          "roll_date": "2023-06-19",
+          "t_new_open_utc": "2023-06-18T22:00:00+00:00",
+          "t_old_close_utc": "2023-06-15T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQZ3",
+          "new_open": 15677.75,
+          "old_close": 15481.0,
+          "old_contract": "NQU3",
+          "ratio": 1.0127091273173567,
+          "roll_date": "2023-09-15",
+          "t_new_open_utc": "2023-09-15T00:00:00+00:00",
+          "t_old_close_utc": "2023-09-14T20:59:00+00:00"
+        },
+        {
+          "new_contract": "NQH4",
+          "new_open": 17019.0,
+          "old_close": 16550.5,
+          "old_contract": "NQZ3",
+          "ratio": 1.0283073018942026,
+          "roll_date": "2024-01-02",
+          "t_new_open_utc": "2024-01-01T23:00:00+00:00",
+          "t_old_close_utc": "2023-12-14T23:58:00+00:00"
+        },
+        {
+          "new_contract": "NQM4",
+          "new_open": 18073.5,
+          "old_close": 17991.25,
+          "old_contract": "NQH4",
+          "ratio": 1.0045716667824638,
+          "roll_date": "2024-03-18",
+          "t_new_open_utc": "2024-03-17T22:00:00+00:00",
+          "t_old_close_utc": "2024-03-14T23:59:00+00:00"
+        },
+        {
+          "new_contract": "NQU4",
+          "new_open": 20069.25,
+          "old_close": 19786.0,
+          "old_contract": "NQM4",
+          "ratio": 1.0143156777519458,
+          "roll_date": "2024-06-21",
+          "t_new_open_utc": "2024-06-21T00:00:00+00:00",
+          "t_old_close_utc": "2024-06-20T20:59:00+00:00"
+        },
+        {
+          "new_contract": "NQZ4",
+          "new_open": 20040.0,
+          "old_close": 19810.25,
+          "old_contract": "NQU4",
+          "ratio": 1.0115975315808736,
+          "roll_date": "2024-09-23",
+          "t_new_open_utc": "2024-09-22T22:00:00+00:00",
+          "t_old_close_utc": "2024-09-19T23:56:00+00:00"
+        }
+      ],
+      "window_days": 5
+    }
+  },
+  "source_checksums": {
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=ES/year=2020/part-0000.parquet": "f7ca1f0f79780c3c3ef605be2e25a7687c9254be386292abfec38f5b90ff3135",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=ES/year=2021/part-0000.parquet": "7e12361f8b32c4765829266e0c29018de3b38f7f1304d945006e5874a6ea8484",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=ES/year=2022/part-0000.parquet": "882931ba9bb77dd049115e7f4d3275562423b1b38c60d4eea6cf8452932509a4",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=ES/year=2023/part-0000.parquet": "868890f13064b56fd1d1f5107984d7fb12923707be2129c2eaf592dbbcff00ed",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=ES/year=2024/part-0000.parquet": "6984059a5a5a61e4aa6b3a56ff4bacd476e437b238fa3c281d4cd64cdabc2025",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=ES/year=2025/part-0000.parquet": "2c17021f8ecdf8e64120e0216fc59e3e802756c54e09f4b49607ccf2adfca0bd",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=NQ/year=2020/part-0000.parquet": "8e12491812668ea5529d47f88293545a45a0d8d87db996ace5d7ae0dbbb95bad",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=NQ/year=2021/part-0000.parquet": "701d2b8c13c0e746d3cac8cad6fbd05e178b672ca5c2218fbfb8939051dfab6c",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=NQ/year=2022/part-0000.parquet": "cf8a37eb533459ea2d6b7ce0239c8c0af162e9e16d2658bc0b5141a7d827a946",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=NQ/year=2023/part-0000.parquet": "173981a63165da0b46e1f7cb02e6ae028c815f6f4fd5d5d40d71b53948d8de7a",
+    "C:/Users/skoir/Documents/SKIE-Universe/.claude/worktrees/thirsty-hawking-472887/data/processed/vendor_legacy_1min/symbol=NQ/year=2024/part-0000.parquet": "ebc7e3057af4184ae0e36baaf812a27e54a18cc4ed3b3a53369f4145cc9164a2"
+  },
+  "source_dataset": "vendor_legacy_1min",
+  "source_dataset_frame_sha256": "b7f70575f3269e0b795f0c7a76cddb399510d15c51c5b59d4395cbb1a4422c40",
+  "tier": "evidence_bar",
+  "timestamp_utc": "2026-04-24T16:39:53.121570+00:00",
+  "version": "0.2.0"
+}

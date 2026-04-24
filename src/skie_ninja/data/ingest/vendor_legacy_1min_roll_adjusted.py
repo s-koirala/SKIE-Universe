@@ -462,21 +462,33 @@ class VendorLegacy1minRollAdjustedIngestJob:
                 f"{factor_variance.to_dicts()}"
             )
 
-        # Cross-row invariant (c): roll_flag True <=> first ts_event per
-        # (symbol, front_contract_symbol).
-        per_contract_first = (
-            collected.group_by(["symbol", "front_contract_symbol"], maintain_order=True)
-            .agg(pl.col("ts_event").min().alias("_first_ts"))
+        # Cross-row invariant (c): roll_flag True <=> first SESSION per
+        # (symbol, front_contract_symbol).  roll_flag marks every bar whose
+        # session_date equals the minimum session_date for that contract
+        # (all intraday bars on the roll-in session).  The prior version
+        # compared against min(ts_event) (first bar only), which was
+        # inconsistent with the docstring ("rows whose session is the first
+        # session") and with the production computation in _adjust_symbol
+        # (`_session_date == _first_session`).  Fixed 2026-04-24.
+        with_session = collected.with_columns(
+            _session_date_expr().alias("_session_date")
         )
-        marker = collected.join(
-            per_contract_first, on=["symbol", "front_contract_symbol"], how="inner"
+        per_contract_first_session = (
+            with_session.group_by(
+                ["symbol", "front_contract_symbol"], maintain_order=True
+            ).agg(pl.col("_session_date").min().alias("_first_session"))
+        )
+        marker = with_session.join(
+            per_contract_first_session,
+            on=["symbol", "front_contract_symbol"],
+            how="inner",
         ).with_columns(
-            (pl.col("ts_event") == pl.col("_first_ts")).alias("_expected_flag")
+            (pl.col("_session_date") == pl.col("_first_session")).alias("_expected_flag")
         )
         mismatch = marker.filter(pl.col("roll_flag") != pl.col("_expected_flag"))
         if mismatch.height > 0:
             raise ValueError(
-                f"roll_flag is inconsistent with first-row-per-contract on "
+                f"roll_flag is inconsistent with first-session-per-contract on "
                 f"{mismatch.height} rows; first: {mismatch.head(1).to_dicts()}"
             )
 

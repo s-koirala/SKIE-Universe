@@ -1,0 +1,38 @@
+hypothesis_id: H050
+test_statistic: "SR_filtered_gated - SR_filtered_unconditional"
+universe: [ES, NQ]  # front-month roll-adjusted
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  train: {start: "2015-01-01", end: "2022-12-31"}   # design envelope
+  val:   {start: "2023-01-01", end: "2023-12-31"}
+  test:  {start: "2024-01-01", end: "2025-12-31"}
+features: [rv_parkinson@1.0, rv_realized@1.0, realized_skew@1.0, ofi_tickrule@1.0]
+labels:
+  method: triple_barrier
+  pt_sl_grid: [1.0, 1.5, 2.0]
+  vertical_barrier_grid: [30m, 60m, 120m]
+  volatility_estimator: yang_zhang
+  volatility_lookback_grid: [20, 60, 120]
+classifier:
+  family: lightgbm
+  grid:
+    num_leaves: [15, 31, 63]
+    learning_rate: [0.01, 0.05]
+    min_data_in_leaf: [20, 50]
+  search: {method: random, n_draws: 200, seed: 2026}
+hmm:
+  covariance_type: [diag, full]
+  selection: bic_plus_cv_ll
+  inference: filter_states  # ADR-0005 anti-look-ahead
+splitter:
+  method: purged_walk_forward
+  embargo: auto  # max(PACF_lag, politis_white_block) per plan §4.1
+  purge: auto    # max(vertical_barrier) across folds
+gates:
+  opdyke2007_ci: {alpha: 0.05, tails: two, must_exclude: 0}
+  hansen_spa: {alpha: 0.05, variant: consistent, n_bootstrap: 1000, omega_method: hac}  # ADR-0008: M=1 single-strategy → HAC decouples MC error
+  bh_q: {threshold: 0.10}
+  power: {target: 0.80}
+cost_model: nt8_es_nq_rth_v1   # design.md §7; fallback constant-tick prior
+cost_sensitivity_mult: 1.0      # 1.0 = 1-tick prior; 2.0 for worst-case sensitivity
+random_seed: 2026
