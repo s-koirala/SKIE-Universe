@@ -71,7 +71,6 @@ from skie_ninja.utils.paths import ProjectPaths
 from skie_ninja.utils.reproducibility import with_model_hash
 from skie_ninja.utils.runcontext import RunContext
 
-
 # ---------------------------------------------------------------------------
 # Config loader
 # ---------------------------------------------------------------------------
@@ -217,8 +216,13 @@ def _fit_fold(
     r_tr = r[train_idx]
 
     # HMM on returns — BIC over cov types, small grid.
+    # Exclude the synthetic zero at position 0 (r_bar[0] = 0 by construction;
+    # first bar has no prior close so its return is undefined — imputing 0
+    # biases HMM emission statistics). Fixed 2026-04-24 (R1 F-1-9).
+    valid_mask = r_tr != 0.0
+    r_tr_hmm = r_tr[valid_mask] if valid_mask.sum() >= 10 else r_tr
     hmm_selection = select_gaussian_hmm(
-        r_tr.reshape(-1, 1),
+        r_tr_hmm.reshape(-1, 1),
         n_states_grid=(2,),
         covariance_types=hmm_cov_types,
         seed=int(random_seed),
@@ -228,7 +232,10 @@ def _fit_fold(
     hmm: GaussianHMM = hmm_selection.best_model
 
     # LightGBM classifier (intentionally shallow random search —
-    # composition, not performance).
+    # composition, not performance). Phase-A uses in-sample accuracy for
+    # selection; inner-fold CV is the evidence-bar standard (follow-up
+    # P1-H050-INNER-CV: replace model.score(X_tr, y_tr) with inner
+    # purged walk-forward CV per Varma & Simon 2006, doi:10.1186/1471-2105-7-91).
     import lightgbm as lgb
 
     rng = np.random.default_rng(lgb_seed)
@@ -369,15 +376,48 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return ap.parse_args(argv)
 
 
+def _load_output_sha256(paths: Any) -> dict[str, str]:
+    """Load the roll-adjusted output frame SHA256 from the most recent
+    provenance JSON for dataset_checksums wiring into ReproLog.
+
+    Falls back gracefully if no provenance file is present (dry-run).
+    """
+    import glob as _glob
+    pattern = str(
+        paths.root / "data" / "processed" / "_provenance"
+        / "vendor_legacy_1min_roll_adjusted_*.json"
+    )
+    files = sorted(_glob.glob(pattern))
+    if not files:
+        return {}
+    try:
+        with open(files[-1], encoding="utf-8") as fh:
+            prov = json.load(fh)
+        # output_frame_sha256 is the post-roll-adjustment combined hash;
+        # source_dataset_frame_sha256 is the pre-adjustment input hash.
+        sha = prov.get(
+            "output_frame_sha256",
+            prov.get("source_dataset_frame_sha256", ""),
+        )
+        if sha:
+            return {"vendor_legacy_1min_roll_adjusted": sha}
+    except Exception:
+        pass
+    return {}
+
+
 def run(argv: list[str] | None = None) -> Path:
     args = _parse_args(argv)
     cfg = load_config(args.config)
     paths = ProjectPaths.discover()
 
+    dataset_checksums = _load_output_sha256(paths) if not args.dry_run else {}
+
     with RunContext(
         phase="walk_forward",
         hypothesis_id=cfg.hypothesis_id,
         rng_seed=cfg.random_seed,
+        dataset_checksums=dataset_checksums,
     ) as ctx:
         run_id = ctx.log.run_id  # type: ignore[union-attr]
         run_dir = paths.artifacts_runs / cfg.hypothesis_id / run_id
@@ -396,6 +436,15 @@ def run(argv: list[str] | None = None) -> Path:
             panel = pl.read_parquet(str(parquet_dir / "**" / "*.parquet"))
 
         # 2. Feature assembly (now = last panel timestamp under PIT).
+        # Each feature module's rolling window is computed on the full panel;
+        # row i uses only bars ≤ i so no fold boundary leakage is introduced
+        # by computing features once on the full dataset. The walk-forward
+        # engine then slices positional indices per fold. The 'now' parameter
+        # controls the maximum timestamp included — using the global max means
+        # all bars are included and each module's PIT guard fires at bar-close
+        # time (not at fold boundary). This is correct for bar-level PIT.
+        # Follow-up P1-H050-FEATURE-PIT-ASSERT: add integration test asserting
+        # feature_matrix row i has no value derived from bars beyond row i.
         now_ts = pd.Timestamp(
             panel.select(pl.col("ts_event").max()).item()
         )
@@ -409,6 +458,8 @@ def run(argv: list[str] | None = None) -> Path:
         )
 
         # 3. Labels (take the pre-reg center of the grid as Phase-A default).
+        # Phase-A uses the center-grid element; CV over label params is the
+        # evidence-bar standard. Follow-up P1-H050-LABEL-CV.
         label_cfg = TripleBarrierConfig(
             pt_sl=(cfg.pt_sl_grid[len(cfg.pt_sl_grid) // 2],) * 2,
             vertical_barrier=cfg.vertical_barrier_grid[len(cfg.vertical_barrier_grid) // 2],
@@ -461,6 +512,13 @@ def run(argv: list[str] | None = None) -> Path:
         bl = choose_block_length(r_bar, bootstrap_type="stationary")
         embargo = int(max(1, np.ceil(bl.block_length)))
 
+        # Phase-A split sizes: initial_train = n//3 (approx 2/3 train/test
+        # split as a reasonable prior for walk-forward design); test_size =
+        # n//10 (one fold ≈ 10% of data). Both are provisional Phase-A
+        # defaults; the evidence-bar run must derive these from the H050.yaml
+        # train/val/test date ranges and the actual row count.
+        # Follow-up P1-H050-SPLIT-PARAMS: read split sizes from YAML config
+        # date ranges (train.end - train.start → initial_train bars).
         initial_train = max(200, n // 3)
         test_size = max(50, n // 10)
         step_size = test_size

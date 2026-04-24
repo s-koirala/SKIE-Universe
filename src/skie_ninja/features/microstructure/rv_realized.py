@@ -36,7 +36,6 @@ import pyarrow as pa
 from skie_ninja.features.base import DatasetRef, register_feature
 from skie_ninja.features.windowing import _pit_cutoff
 
-
 _NAME = "rv_realized"
 _VERSION = "1.0"
 # Design-doc default; CV in-fold supersedes. See rv_parkinson for rationale.

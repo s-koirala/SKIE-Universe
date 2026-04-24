@@ -7,9 +7,6 @@ import shutil
 import sys
 from pathlib import Path
 
-import pytest
-
-
 # Make `scripts/` importable so we can call run(...) directly without
 # shelling out (faster, and captures coverage).
 _SCRIPTS = Path(__file__).resolve().parents[2] / "scripts"

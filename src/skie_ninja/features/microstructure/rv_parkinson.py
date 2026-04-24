@@ -38,7 +38,6 @@ import pyarrow as pa
 from skie_ninja.features.base import DatasetRef, register_feature
 from skie_ninja.features.windowing import _pit_cutoff
 
-
 _NAME = "rv_parkinson"
 _VERSION = "1.0"
 # Default rolling window in bars. 60 bars at 1-min = 1 hour — the

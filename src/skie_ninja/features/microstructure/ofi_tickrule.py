@@ -82,7 +82,6 @@ import pyarrow as pa
 from skie_ninja.features.base import DatasetRef, register_feature
 from skie_ninja.features.windowing import _pit_cutoff
 
-
 _NAME = "ofi_tickrule"
 _VERSION = "1.0"
 _DEFAULT_WINDOW_BARS = 60
@@ -125,11 +124,11 @@ class OfiTickRule:
     def compute(
         self, panel: pl.LazyFrame, now: pd.Timestamp, ctx: Any
     ) -> pl.LazyFrame:
-        """Rolling sum of signed volume over the window.
+        """Rolling signed-volume imbalance ratio (dimensionless, ∈ [-1, +1]).
 
-        Sign is ``sign(close_t - close_{t-1})`` with zero-delta
-        sign-carry (forward-fill the non-zero sign per Lee-Ready
-        1991 §III.A).
+        Sign is ``sign(close_t - close_{t-1})`` with zero-delta sign-carry
+        (forward-fill per Lee-Ready 1991 §III.A). Output is normalized by
+        the rolling total volume to yield a scale-independent imbalance ratio.
         """
         out_col = f"{_NAME}@{_VERSION}"
         # Compute raw sign of close-to-close change, with 0 where the
@@ -163,13 +162,31 @@ class OfiTickRule:
                 (pl.col("_sign") * pl.col("volume").cast(pl.Float64))
                 .alias("_signed_vol")
             )
+            # Normalize signed-volume sum by total-volume sum over the same
+            # window to yield a dimensionless [-1, +1] imbalance ratio.
+            # Normalization prevents scale-dependence across symbols (ES vs NQ
+            # differ in contract size/volume) and over time (non-stationary
+            # volume). Consistent with BVC spirit: Easley, López de Prado &
+            # O'Hara 2012, doi:10.1093/rfs/hhs053 §2; Cont, Kukanov & Stoikov
+            # 2014, doi:10.1093/jjfinec/nbt003. Fixed 2026-04-24 (R1 F-1-5).
             .with_columns(
-                pl.col("_signed_vol")
+                pl.col("volume")
+                .cast(pl.Float64)
                 .rolling_sum(
                     window_size=self.window_bars, min_samples=self.window_bars
                 )
                 .over("symbol")
-                .alias(out_col)
+                .alias("_total_vol")
+            )
+            .with_columns(
+                (
+                    pl.col("_signed_vol")
+                    .rolling_sum(
+                        window_size=self.window_bars, min_samples=self.window_bars
+                    )
+                    .over("symbol")
+                    / pl.col("_total_vol")
+                ).alias(out_col)
             )
         )
         return lf.select(["ts_event", "symbol", out_col])

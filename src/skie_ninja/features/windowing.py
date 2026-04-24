@@ -11,8 +11,11 @@ after the feature is sampled.
 
 Individual feature modules document their own convention:
 
-  - ``rv_parkinson``: uses only high/low of bars strictly before ``t``
-    (shift=1). High/Low at ``t`` are not known until the bar closes.
+  - ``rv_parkinson``: uses the current bar's high/low (bar must have
+    closed; H/L are final at bar close). Rolling mean ends at ``t``
+    inclusive (``include_current=True``). No shift is applied.
+    Fixed 2026-04-24 (R1 F-1-10: prior docstring incorrectly claimed
+    shift=1; rv_parkinson.py module docstring is authoritative).
   - ``rv_realized``, ``realized_skew``: use log-returns
     ``log(close_t / close_{t-1})`` so the "current-bar" return is
     known once the bar closes. We include the current bar

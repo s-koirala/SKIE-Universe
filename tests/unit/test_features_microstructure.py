@@ -13,7 +13,6 @@ from skie_ninja.features.microstructure.realized_skew import RealizedSkew
 from skie_ninja.features.microstructure.rv_parkinson import RvParkinson
 from skie_ninja.features.microstructure.rv_realized import RvRealized
 
-
 # ---------------------------------------------------------------------------
 # Shared synthetic OHLCV panel
 # ---------------------------------------------------------------------------
@@ -165,10 +164,9 @@ class TestOfiTickRule(FeatureTestBase):
         out = mod.compute(panel.lazy(), now, ctx=None).collect()
         col = out.get_column("ofi_tickrule@1.0").to_numpy()
         valid = col[~np.isnan(col)]
-        # The first window (bars 0..9) contains one zero-sign bar at
-        # index 0 (no prior close → sign=0 per the Lee-Ready 1991 §III.A
-        # fallback), so the first value is 9·100 = 900. Every window
-        # after that sums to 10·100 = 1000 because every bar has a
-        # well-defined +1 sign.
-        assert valid[0] == pytest.approx(900.0)
-        np.testing.assert_allclose(valid[1:], 10 * 100.0)
+        # After normalization (signed_vol_sum / total_vol_sum):
+        # The first window (bars 0..9): bar 0 has sign=0 → 9 bars signed
+        # out of 10 → OFI = 9·100 / 10·100 = 0.9.
+        # Every subsequent window has all 10 bars signed → OFI = 1.0.
+        assert valid[0] == pytest.approx(0.9)
+        np.testing.assert_allclose(valid[1:], 1.0)

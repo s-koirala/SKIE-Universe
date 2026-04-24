@@ -538,5 +538,7 @@
   "source_dataset_frame_sha256": "b7f70575f3269e0b795f0c7a76cddb399510d15c51c5b59d4395cbb1a4422c40",
   "tier": "evidence_bar",
   "timestamp_utc": "2026-04-24T16:39:53.121570+00:00",
-  "version": "0.2.0"
+  "version": "0.2.0",
+  "output_frame_sha256": "d2c4aa4e70c6badcb294d9bec64ee3fc5093ba9085082495f5031743943b9a2d",
+  "output_frame_sha256_note": "SHA256 of roll-adjusted output parquet, computed via frame_sha256(sort_cols=[symbol,ts_event]) 2026-04-24. Distinct from source_dataset_frame_sha256 (pre-roll-adjusted input hash)."
 }

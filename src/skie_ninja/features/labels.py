@@ -37,7 +37,6 @@ import numpy as np
 import pandas as pd
 import polars as pl
 
-
 # ---------------------------------------------------------------------------
 # Yang-Zhang volatility
 # ---------------------------------------------------------------------------
@@ -63,15 +62,14 @@ def yang_zhang_volatility(
       - σ_c² = Var(log(C_t / O_t)) — open-to-close (intraday) variance.
       - σ_rs² = Rogers-Satchell drift-independent variance,
         E[ (log(H/C) log(H/O)) + (log(L/C) log(L/O)) ].
-      - ``k = α / (1 + (N+1)/(N-1))`` with α = 1.34 (Yang-Zhang's
-        MSE-optimal constant for daily data; see paper eq. 8). ``N``
-        is the lookback length.
+      - ``k = α / (1 + α + (N+1)/(N-1))`` with α = 0.34 (Yang-Zhang's
+        MSE-optimal constant; see paper eq. 8). Equivalent form:
+        ``k = 0.34 / (1.34 + (N+1)/(N-1))``. ``N`` is the lookback.
 
-    The ``α = 1.34`` constant is from Yang & Zhang 2000 eq. 8 (not an
-    arbitrary choice — it minimises the MSE of the combined
-    estimator under the Brownian-motion-with-jumps model in the
-    paper). Documented here so a reader can verify against the
-    source.
+    The ``α = 0.34`` constant is from Yang & Zhang 2000 eq. 8 (not an
+    arbitrary choice — it minimises the MSE of the combined estimator
+    under the diffusion model in the paper). Confirmed by TTR R package,
+    portfoliooptimizer.io, and HistoricalVolatility #2.
 
     Returns an array of length ``len(close)`` with NaN on the warm-up
     region (first ``lookback`` rows) and on any window containing
@@ -98,9 +96,15 @@ def yang_zhang_volatility(
     #   σ_rs² per bar = log(H/C)·log(H/O) + log(L/C)·log(L/O)
     rs_per_bar = log_hc * log_ho + log_lc * log_lo
 
-    # Yang-Zhang weighting constant (eq. 8).
-    alpha_yz = 1.34  # Yang-Zhang 2000 eq. 8 — literature-fixed MSE-optimal.
-    k = alpha_yz / (1.0 + (lookback + 1.0) / (lookback - 1.0))
+    # Yang-Zhang weighting constant (eq. 8): k = α / (1 + α + (n+1)/(n-1))
+    # where α = 0.34 is the MSE-optimal constant from Yang & Zhang 2000.
+    # Equivalent canonical form: k = 0.34 / (1.34 + (n+1)/(n-1)).
+    # Multiple independent sources confirm α=0.34 (TTR R package; portfoliooptimizer.io;
+    # HistoricalVolatility issue #2); the denominator 1+α = 1.34 accounts for the
+    # relative variance of σ²_RS vs σ²_c under the diffusion model.
+    # Fixed 2026-04-24 (Round-1 audit L-5: prior code used wrong α=1.34).
+    alpha_yz = 0.34
+    k = alpha_yz / (1.0 + alpha_yz + (lookback + 1.0) / (lookback - 1.0))
 
     # Rolling variances via pandas (simple, numerically stable).
     s_oc = pd.Series(log_oc_prev)

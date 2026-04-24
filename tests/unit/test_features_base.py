@@ -10,8 +10,8 @@ import pyarrow as pa
 import pytest
 
 from skie_ninja.features.base import (
-    DatasetRef,
     FEATURE_REGISTRY,
+    DatasetRef,
     FeatureModule,
     register_feature,
 )

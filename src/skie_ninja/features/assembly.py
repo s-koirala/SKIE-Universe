@@ -181,6 +181,12 @@ def apply_purge_and_partition(
     """Split a row-indexed feature matrix by train/test indices, with
     purge enforcement.
 
+    NOTE: Not called by run_walk_forward.py in Phase-A; the WalkForwardEngine
+    handles fold slicing directly via positional indices. This function provides
+    the purge post-condition canary for future integration.
+    Follow-up P1-H050-PURGE-CANARY: wire into orchestrator per-fold and verify
+    the AssertionError fires on boundary violations.
+
     Expects ``feature_matrix`` to carry an integer column
     ``index_column`` recording the row's positional index into the
     parent panel (the assembly layer adds this before calling).

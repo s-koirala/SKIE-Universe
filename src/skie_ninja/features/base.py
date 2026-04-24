@@ -53,7 +53,6 @@ import pyarrow as pa
 
 from skie_ninja.utils.hashing import frame_sha256
 
-
 # ---------------------------------------------------------------------------
 # Dataset reference (input declaration)
 # ---------------------------------------------------------------------------

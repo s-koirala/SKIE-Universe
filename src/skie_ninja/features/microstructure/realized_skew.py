@@ -48,7 +48,6 @@ import pyarrow as pa
 from skie_ninja.features.base import DatasetRef, register_feature
 from skie_ninja.features.windowing import _pit_cutoff
 
-
 _NAME = "realized_skew"
 _VERSION = "1.0"
 _DEFAULT_WINDOW_BARS = 60

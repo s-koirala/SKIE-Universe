@@ -10,6 +10,8 @@ Cycle-6 scope: only :mod:`.microstructure` is populated. Empty
 sub-packages exist as placeholders (``.gitkeep``) for future cycles.
 """
 
+# Import the microstructure subpackage to trigger feature registration.
+from skie_ninja.features import microstructure as _microstructure  # noqa: F401
 from skie_ninja.features.base import (
     FEATURE_REGISTRY,
     DatasetRef,
@@ -17,8 +19,6 @@ from skie_ninja.features.base import (
     FeatureTestBase,
     register_feature,
 )
-# Import the microstructure subpackage to trigger feature registration.
-from skie_ninja.features import microstructure as _microstructure  # noqa: F401
 
 __all__ = [
     "DatasetRef",

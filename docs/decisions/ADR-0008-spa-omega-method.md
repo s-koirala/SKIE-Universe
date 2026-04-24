@@ -25,8 +25,9 @@ supersedes: P1-SPA-HAC-DEFAULT-ADR (follow-up filed in Cycle 5 audit trail)
 
 ### Coupling concern
 
-As documented in the Cycle 5 audit trail (L-1-8 discussion) and noted by
-Hansen (2005, JBES 23(4), §2.2), using the same bootstrap draws for both
+As documented in the Cycle 5 audit trail (L-1-8 discussion) and consistent
+with the bootstrap implementation discussion in Hansen (2005, JBES 23(4), §3),
+using the same bootstrap draws for both
 `ω̂_k²` and the null-distribution max causes a mild **downward bias** in
 p-values at finite `B`.  The bias is:
 
@@ -50,13 +51,14 @@ For **H050 Cycle 6**, `M = 1` → use `omega_method="hac"`.
 
 ## Rationale
 
-### 1. Hansen 2005 §2.2 — coupling bias
+### 1. Hansen 2005 §3 — coupling bias
 
-Hansen (2005) JBES 23(4):365-380, §2.2 states the bootstrap variance estimator
-is used because it accounts for the dependence structure across strategies via
-the shared resampling indices.  For `M = 1` this advantage does not exist — a
-single strategy has no cross-strategy dependence to preserve — so the only
-effect is the coupling bias, which is eliminated by HAC.
+Hansen (2005) JBES 23(4):365-380, §3 (Bootstrap Implementation) discusses the
+bootstrap variance estimator and its relationship to the shared resampling
+indices across strategies.  For `M = 1` no cross-strategy dependence exists —
+a single strategy has no cross-sectional dependence to preserve via shared
+indices — so the coupling bias (O(1/√B) at finite B) is the only effect,
+and it is eliminated by HAC.
 
 ### 2. NW-HAC variance is consistent under H₀
 
