@@ -610,8 +610,22 @@ class VendorLegacy1minRollAdjustedIngestJob:
         else:
             source_frame_sha = ""
 
+        # Compute output-frame SHA (post-roll-adjustment parquet).
+        # This is distinct from source_frame_sha (pre-adjustment input).
+        # emit_provenance is called after the output parquet is written,
+        # so output_path/*.parquet exists and is readable here.
+        try:
+            output_frame = (
+                pl.scan_parquet(str(output_path / "**" / "*.parquet"))
+                .sort(["symbol", "ts_event"])
+                .collect()
+            )
+            output_frame_sha = frame_sha256(output_frame, sort_cols=["symbol", "ts_event"])
+        except Exception:
+            output_frame_sha = ""
+
         if hasattr(ctx, "add_dataset_checksum"):
-            ctx.add_dataset_checksum(self.name, source_frame_sha)
+            ctx.add_dataset_checksum(self.name, output_frame_sha or source_frame_sha)
 
         # Serialize the per-symbol run summary captured during adjust().
         summary_serializable: dict[str, dict[str, Any]] = {}
@@ -695,6 +709,13 @@ class VendorLegacy1minRollAdjustedIngestJob:
             "run_id": ctx.log.run_id if ctx.log else None,
             "repro_log": ctx.log.to_dict() if ctx.log else None,
             "run_summary": summary_serializable,
+            "output_frame_sha256": output_frame_sha,
+            "output_frame_sha256_note": (
+                "SHA256 of roll-adjusted output parquet, computed via "
+                "frame_sha256(sort_cols=[symbol,ts_event]) at provenance "
+                "write time. Distinct from source_dataset_frame_sha256 "
+                "(pre-roll-adjusted input hash)."
+            ),
         }
 
         date_str = datetime.now(tz=UTC).strftime("%Y%m%d")

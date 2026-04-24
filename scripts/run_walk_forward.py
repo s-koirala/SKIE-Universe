@@ -56,6 +56,15 @@ _LOG = logging.getLogger(__name__)
 # the estimator's asymptotic approximation is defensible.
 _MIN_OOS_FOR_CI: int = 30
 
+# Minimum non-zero returns in a training fold required to safely apply the
+# r_bar[0]=0 exclusion mask before passing to the HMM. 2 is the minimum
+# meaningful sequence length for a Markov chain; if fewer than 2 non-zero
+# returns remain after masking the construction-zero at position 0, the fold
+# is degenerate regardless and the mask is skipped. This is a structural guard,
+# not a tunable hyperparameter — the mask removes exactly one zero per symbol
+# per fold, so the failure case requires near-constant returns across the fold.
+_MIN_VALID_RETURNS_FOR_MASK: int = 2
+
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -231,7 +240,7 @@ def _fit_fold(
     # first bar has no prior close so its return is undefined — imputing 0
     # biases HMM emission statistics). Fixed 2026-04-24 (R1 F-1-9).
     valid_mask = r_tr != 0.0
-    r_tr_hmm = r_tr[valid_mask] if valid_mask.sum() >= 10 else r_tr
+    r_tr_hmm = r_tr[valid_mask] if valid_mask.sum() >= _MIN_VALID_RETURNS_FOR_MASK else r_tr
     hmm_selection = select_gaussian_hmm(
         r_tr_hmm.reshape(-1, 1),
         n_states_grid=(2,),
@@ -314,6 +323,14 @@ def _predict_fold(
             clf.predict(X_te).astype(float)
         )
     hmm: GaussianHMM = fitted["hmm"]
+    # Phase-A design note (F-3-1): filter_states restarts the forward
+    # recursion from the trained initial distribution (log_pi) at each
+    # fold boundary; the terminal filtered posterior from the training fold
+    # is not threaded through. For fast-mixing regimes the warm-up bias
+    # dissipates within O(1/p_switch) bars — acceptable in Phase-A
+    # composition. Evidence-bar runs MUST implement warm-start
+    # initialization (follow-up P1-HMM-FOLD-WARM-START, blocking before
+    # evidence-bar execution).
     filtered = hmm.filter_states(r_te.reshape(-1, 1))
     high_state = fitted["regime_high_mean"]
     regime_indicator = (filtered[:, high_state] > 0.5).astype(np.float64)
@@ -523,13 +540,16 @@ def run(argv: list[str] | None = None) -> Path:
         bl = choose_block_length(r_bar, bootstrap_type="stationary")
         embargo = int(max(1, np.ceil(bl.block_length)))
 
-        # Phase-A split sizes: initial_train = n//3 (approx 2/3 train/test
-        # split as a reasonable prior for walk-forward design); test_size =
-        # n//10 (one fold ≈ 10% of data). Both are provisional Phase-A
-        # defaults; the evidence-bar run must derive these from the H050.yaml
-        # train/val/test date ranges and the actual row count.
-        # Follow-up P1-H050-SPLIT-PARAMS: read split sizes from YAML config
-        # date ranges (train.end - train.start → initial_train bars).
+        # Phase-A split sizes: initial_train = n//3, test_size = n//10.
+        # BLOCKING BEFORE EVIDENCE-BAR (F-3-3 / P1-H050-SPLIT-PARAMS):
+        # H050.yaml §data defines explicit date boundaries (train.end=2022-12-31,
+        # test.start=2024-01-01). Using row-count fractions instead of
+        # pre-registered date windows violates the pre-registration: fold
+        # boundaries change whenever the dataset is updated. Evidence-bar
+        # execution MUST parse raw['data']['train/val/test'] Timestamps from
+        # H050.yaml, filter sym_frame to those windows, and pass the resulting
+        # row counts as initial_train and test_size. P1-H050-SPLIT-PARAMS is
+        # promoted to a blocking prerequisite for the evidence-bar run.
         initial_train = max(200, n // 3)
         test_size = max(50, n // 10)
         step_size = test_size
