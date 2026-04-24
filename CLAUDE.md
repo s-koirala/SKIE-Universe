@@ -38,7 +38,17 @@ Passes paper-trade for at least 60 session-days with realized Sharpe within CI o
 ## Implemented infrastructure (as of 2026-04-23)
 
 ### Reassessment 2026-04-23
-Critical-path + timeline review at [docs/research_notes/memo_phase1-reassessment_2026-04-23.md](docs/research_notes/memo_phase1-reassessment_2026-04-23.md). Raw-tier ES+NQ 1-min substrate now live; [src/skie_ninja/{features,models,inference,backtest,execution}/](src/skie_ninja/) hold only empty folder skeletons — ~3 weeks focused engineering to first walk-forward H050 result; 60-session-day paper-trade is the unmovable calendar floor after that.
+Critical-path + timeline review at [docs/research_notes/memo_phase1-reassessment_2026-04-23.md](docs/research_notes/memo_phase1-reassessment_2026-04-23.md). Raw-tier ES+NQ 1-min substrate live; 60-session-day paper-trade is the unmovable calendar floor after MVP-1.
+
+### Tier-2b buildout (started 2026-04-23)
+Six-cycle audit-remediate critical path to MVP-1 documented in [plan/tier2b_buildout_2026-04-23.md](plan/tier2b_buildout_2026-04-23.md).
+
+- **Cycle 1 ✓ done (2026-04-23)** — Roll-adjusted continuous-contract derivative. Module: [src/skie_ninja/data/ingest/vendor_legacy_1min_roll_adjusted.py](src/skie_ninja/data/ingest/vendor_legacy_1min_roll_adjusted.py) v0.2.0. Audit trail: [docs/audits/audit_trail_2026-04-23_cycle1-roll-adjusted-1min.md](docs/audits/audit_trail_2026-04-23_cycle1-roll-adjusted-1min.md). Follow-ups: `P1-LEVEL-USE-POLICY` (load-bearing) + 5 others.
+- **Cycle 2 ✓ done (2026-04-23)** — NW-HAC + Sharpe-CI primitives at [src/skie_ninja/inference/stats/](src/skie_ninja/inference/stats/): Newey-West 1987 Bartlett estimator + Andrews 1991/NW 1994 bandwidths; Lo 2002 iid/η(q)/HAC-approx + Opdyke 2007 Mertens-HAC (primary). 273/273 unit tests green. Audit trail: [docs/audits/audit_trail_2026-04-23_cycle2-hac-sharpe-ci.md](docs/audits/audit_trail_2026-04-23_cycle2-hac-sharpe-ci.md). Follow-up `P1-OPDYKE-FULL-GMM` tracks full moment-vector GMM implementation.
+- Cycle 3 — HMM toolkit per [ADR-0005](docs/decisions/ADR-0005-hmm-regime-toolkit.md) (pending).
+- Cycle 4 — Walk-forward engine + purged/embargo CV + leak canaries (pending).
+- Cycle 5 — Hansen SPA + Politis-White stationary bootstrap (pending).
+- Cycle 6 — H050 feature factory + first walk-forward run (pending).
 
 ## Implemented infrastructure (as of 2026-04-20)
 
@@ -95,11 +105,12 @@ All modules under [src/skie_ninja/utils/](src/skie_ninja/utils/):
 
 ### Phase 2 — HMM regime + 0DTE track (added 2026-04-20)
 
-Three pre-registered hypotheses under [research/01_hypothesis_register/](research/01_hypothesis_register/):
+Four pre-registered hypotheses under [research/01_hypothesis_register/](research/01_hypothesis_register/):
 
 - **H050** — HMM regime-conditioned ES/NQ intraday directional signal (Tier 2b)
 - **H051** — HMM-gated Kalman pairs trade on ES/NQ (or MES/MNQ) basis (Tier 2b)
-- **H052** — HMM regime-gated QQQ first-hour long-call 0DTE scalp, SKIE-ORB-CALL overlay (Tier 2b)
+- **H052a** — HMM regime-gated first-hour ORB on CME futures ES/NQ/MNQ/MES (Tier 2b; added 2026-04-23 as futures-variant sibling of H052b — HMM-gate is sole new content atop a prior-art-null underlying)
+- **H052b** — HMM regime-gated QQQ first-hour long-call 0DTE scalp, SKIE-ORB-CALL overlay (Tier 2b; renamed from H052 on 2026-04-23)
 
 HMM hyperparameters (n_states, covariance, init, restarts) are BIC/CV-selected inside walk-forward per ADR-0005; emission and transition metadata written to sidecar `logs/reproducibility/{run_id}_hmm_selection.json`, hashed into `ReproLog.model_hash` (no frozen-dataclass change). Audit trail: [docs/audits/audit_trail_2026-04-20_hmm-scope-extension.md](docs/audits/audit_trail_2026-04-20_hmm-scope-extension.md).
 
