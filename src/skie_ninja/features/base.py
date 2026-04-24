@@ -309,12 +309,21 @@ class FeatureTestBase:
                 # stability failure — let :meth:`test_output_schema`
                 # catch it; don't double-report here.
                 continue
-            n_null = out.get_column(col).null_count()
-            if n_null > 0 and not nullable_fields[col]:
+            series = out.get_column(col)
+            n_null = series.null_count()
+            # polars null and float NaN are distinct; null_count() returns 0
+            # for float NaN. Check both to catch 0/0 divisions (R2 F-2-2).
+            n_nan = (
+                int(series.is_nan().sum())
+                if series.dtype in (pl.Float32, pl.Float64)
+                else 0
+            )
+            n_bad = n_null + n_nan
+            if n_bad > 0 and not nullable_fields[col]:
                 raise AssertionError(
                     f"{module.name}@{module.version}: column {col!r} "
-                    f"has {n_null} null(s) but is declared non-nullable "
-                    "in output_schema (guarantee §3.3)."
+                    f"has {n_null} null(s) and {n_nan} NaN(s) but is "
+                    "declared non-nullable in output_schema (guarantee §3.3)."
                 )
 
     # ------------------------------------------------------------------

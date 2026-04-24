@@ -68,8 +68,11 @@ def yang_zhang_volatility(
 
     The ``α = 0.34`` constant is from Yang & Zhang 2000 eq. 8 (not an
     arbitrary choice — it minimises the MSE of the combined estimator
-    under the diffusion model in the paper). Confirmed by TTR R package,
-    portfoliooptimizer.io, and HistoricalVolatility #2.
+    under the diffusion model in the paper). Cross-checked against the
+    TTR R package (joshuaulrich/TTR R/volatility.R; alpha_TTR=1.34,
+    k=(1.34-1)/(1.34+(N+1)/(N-1)) — numerically identical).
+    Note: the Yang & Zhang 2000 paper is paywalled (JSTOR DOI
+    10.1086/209650); eq. 8 must be verified against a licensed copy.
 
     Returns an array of length ``len(close)`` with NaN on the warm-up
     region (first ``lookback`` rows) and on any window containing
@@ -99,8 +102,9 @@ def yang_zhang_volatility(
     # Yang-Zhang weighting constant (eq. 8): k = α / (1 + α + (n+1)/(n-1))
     # where α = 0.34 is the MSE-optimal constant from Yang & Zhang 2000.
     # Equivalent canonical form: k = 0.34 / (1.34 + (n+1)/(n-1)).
-    # Multiple independent sources confirm α=0.34 (TTR R package; portfoliooptimizer.io;
-    # HistoricalVolatility issue #2); the denominator 1+α = 1.34 accounts for the
+    # TTR R package (joshuaulrich/TTR R/volatility.R) uses alpha_TTR=1.34 with
+    # k=(alpha_TTR-1)/(alpha_TTR+(N+1)/(N-1)) = 0.34/(1.34+(N+1)/(N-1)) — numerically
+    # identical to the form here. The denominator 1+α = 1.34 accounts for the
     # relative variance of σ²_RS vs σ²_c under the diffusion model.
     # Fixed 2026-04-24 (Round-1 audit L-5: prior code used wrong α=1.34).
     alpha_yz = 0.34
@@ -290,9 +294,10 @@ class TripleBarrierLabeler:
             hit = "vertical"
             for j in range(i + 1, end):
                 if highs[j] >= up and lows[j] <= dn:
-                    # Both hit in same bar — indeterminate; per AFML
-                    # §3.2 (Snippet 3.2 tie-break), treat as vertical
-                    # (conservative, zero label).
+                    # Both barriers hit in same bar — indeterminate.
+                    # AFML §3.2 does not prescribe a canonical tie-break;
+                    # treating as vertical (label=0) is a conservative design
+                    # choice to avoid spurious label assignment.
                     label = 0
                     hit = "vertical"
                     horizon_end_ix[i] = j

@@ -179,14 +179,21 @@ class OfiTickRule:
                 .alias("_total_vol")
             )
             .with_columns(
-                (
-                    pl.col("_signed_vol")
-                    .rolling_sum(
-                        window_size=self.window_bars, min_samples=self.window_bars
-                    )
-                    .over("symbol")
-                    / pl.col("_total_vol")
-                ).alias(out_col)
+                pl.col("_signed_vol")
+                .rolling_sum(
+                    window_size=self.window_bars, min_samples=self.window_bars
+                )
+                .over("symbol")
+                .alias("_sv_sum")
+            )
+            # Guard zero-volume windows: 0/0 → float NaN (not polars null)
+            # which survives drop_nulls(). Convert to polars null so the
+            # standard pipeline null-handling path applies (R2 F-2-1).
+            .with_columns(
+                pl.when(pl.col("_total_vol") > 0)
+                .then(pl.col("_sv_sum") / pl.col("_total_vol"))
+                .otherwise(None)
+                .alias(out_col)
             )
         )
         return lf.select(["ts_event", "symbol", out_col])

@@ -40,10 +40,21 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import logging
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+_LOG = logging.getLogger(__name__)
+
+# Minimum OOS return observations required to compute Sharpe CI and SPA.
+# 30 is a conservative lower bound: Lo 2002 iid Sharpe CLT requires n → ∞;
+# Opdyke 2007 HAC-corrected CI retains O(1/√n) error; below 30 the CI is
+# too wide to be informative (residual bias O(1/√30) ≈ 18%). Not an
+# arbitrary threshold — reflects the effective-sample-size floor at which
+# the estimator's asymptotic approximation is defensible.
+_MIN_OOS_FOR_CI: int = 30
 
 import numpy as np
 import pandas as pd
@@ -632,7 +643,21 @@ def run(argv: list[str] | None = None) -> Path:
 
         # 9. Gates (only if we have enough returns).
         metrics: dict[str, Any]
-        if gated_arr.size >= 4 and gated_arr.std() > 0 and uncond_arr.std() > 0:
+        _gate_ok = (
+            gated_arr.size >= _MIN_OOS_FOR_CI
+            and gated_arr.std() > 0
+            and uncond_arr.std() > 0
+        )
+        if not _gate_ok:
+            _LOG.warning(
+                "Gate skipped: n_returns=%d (need %d), gated_std=%.6f, "
+                "uncond_std=%.6f — Sharpe CI and SPA not computed.",
+                gated_arr.size,
+                _MIN_OOS_FOR_CI,
+                float(gated_arr.std()),
+                float(uncond_arr.std()),
+            )
+        if _gate_ok:
             metrics = _sharpe_differential_stats(
                 gated=gated_arr,
                 unconditional=uncond_arr,

@@ -45,7 +45,7 @@ is to detect a genuine signal rather than suppress false positives.
 | Universe size | `omega_method` | Rationale |
 |---|---|---|
 | `M = 1` (single strategy) | **`hac`** | No cross-strategy dependence to preserve via shared bootstrap indices; HAC decouples MC error cleanly; bias elimination matters for tight α |
-| `M ≥ 2` (multi-strategy) | **`bootstrap`** | Hansen (2005) §2 explicitly recommends shared bootstrap indices across strategies to preserve cross-sectional dependence; HAC treats each series independently and loses this; the coupling bias is diluted across M terms |
+| `M ≥ 2` (multi-strategy) | **`bootstrap`** | Hansen (2005) §3 describes bootstrap implementation using shared resampling indices across strategies to preserve cross-sectional dependence; HAC treats each series independently and loses this; the coupling bias is diluted across M terms |
 
 For **H050 Cycle 6**, `M = 1` → use `omega_method="hac"`.
 
