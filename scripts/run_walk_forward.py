@@ -424,11 +424,11 @@ def _predict_fold(
     )
     # P1-HMM-WARM-COLD-DIAGNOSTIC: passive observer. The cold posterior
     # is computed only for the diagnostic record and is not used in the
-    # returned predictions. Hellinger distance (Le Cam 1986 §15;
-    # Tsybakov 2009 §2.4) is the primary divergence metric;
+    # returned predictions. Hellinger distance (Tsybakov 2009 §2.4; Le
+    # Cam 1986 general reference) is the primary divergence metric;
     # total-variation distance is logged as a secondary metric so the
-    # Le Cam inequality H^2/2 <= TV <= H provides an upstream/downstream
-    # sanity envelope on every fold's record.
+    # Tsybakov 2009 envelope H^2 <= TV <= H*sqrt(2 - H^2) (substituted
+    # under bounded Hellinger) provides a per-fold sanity envelope.
     if warm_cold_diagnostic is not None:
         cold = hmm.filter_states(test_obs)
         diag_fold_id = fold_id if fold_id is not None else len(warm_cold_diagnostic.fold_records)

@@ -32,9 +32,10 @@ Divergence metric: Hellinger
 ----------------------------
 
 The diagnostic uses the **Hellinger distance** between the per-bar
-warm and cold filtered posteriors (Le Cam 1986 §15; Tsybakov 2009
-§2.4). For two N-state probability vectors ``p`` and ``q``, the
-Hellinger distance is
+warm and cold filtered posteriors (Le Cam 1986 (general Hellinger /
+total variation reference; specific inequality used here is Tsybakov
+2009 §2.4)). For two N-state probability vectors ``p`` and ``q``,
+the Hellinger distance is
 
     H(p, q) = (1 / sqrt(2)) * sqrt(sum_i (sqrt(p_i) - sqrt(q_i))^2).
 
@@ -45,7 +46,7 @@ Properties:
     disjoint. The bounded range yields portable cross-run summaries
     without per-fold rescaling.
   - Proper metric (symmetric, satisfies the triangle inequality)
-    on the probability simplex (Le Cam 1986 §15).
+    on the probability simplex (Le Cam 1986, general reference).
   - Convex in each argument; well-behaved under near-deterministic
     transitions where the symmetric Kullback–Leibler divergence
     diverges to ``+∞`` and would dominate summary statistics from a
@@ -59,23 +60,25 @@ Total-variation distance (Tsybakov 2009 §2.4)
 
     TV(p, q) = (1/2) * sum_i |p_i - q_i|
 
-is emitted as a secondary metric. Tsybakov 2009 Lemma 2.3 (eq. 2.20),
-restated under the bounded-Hellinger normalisation used here
+is emitted as a secondary metric. Tsybakov 2009 §2.4, restated under
+the bounded-Hellinger normalisation used here
 (``H = (1/sqrt(2)) ||sqrt(p) - sqrt(q)||_2``, so ``H ∈ [0, 1]``),
 gives the upstream/downstream envelope
 
     H(p, q)^2  <=  TV(p, q)  <=  H(p, q) * sqrt(2 - H(p, q)^2).
 
-Derivation: Tsybakov 2009 eq. 2.20 uses an unnormalised Hellinger
-``H_T^2 = sum_i (sqrt(p_i) - sqrt(q_i))^2`` (so ``H_T = sqrt(2) * H``);
-substituting yields the bounds above. The right-hand side is monotone
-increasing in ``H`` on ``[0, 1]`` and equals ``H`` only at ``H = 1``
-(disjoint supports). The bound ``TV <= H`` is *not* tight in general
-under the normalised Hellinger (counter-example:
-``p = (0.99, 0.01)``, ``q = (0.01, 0.99)`` has ``TV = 0.98`` and
-``H ≈ 0.895``, so ``TV > H``). Earlier audit drafts used the wrong
-direction; the corrected envelope above is what the per-fold
-``le_cam_envelope_holds`` flag asserts.
+Derivation: the Tsybakov 2009 §2.4 inequality uses an unnormalised
+Hellinger ``H_T^2 = sum_i (sqrt(p_i) - sqrt(q_i))^2`` (so
+``H_T = sqrt(2) * H``); substituting yields the bounds above. The
+right-hand side is monotone increasing in ``H`` on ``[0, 1]`` and
+equals ``H`` only at ``H = 1`` (disjoint supports). The bound
+``TV <= H`` is *not* tight in general under the normalised Hellinger
+(counter-example: ``p = (0.99, 0.01)``, ``q = (0.01, 0.99)`` has
+``TV = 0.98`` and ``H ≈ 0.895``, so ``TV > H``). Earlier audit drafts
+used the wrong direction; the corrected envelope above is what the
+per-fold ``le_cam_envelope_holds`` flag asserts. Precise lemma /
+equation pinning within Tsybakov 2009 §2.4 deferred to follow-up
+``P1-HMM-WARM-COLD-TSYBAKOV-PIN-VERIFY``.
 
 KL divergence is *not* used because near-deterministic transition
 matrices, which are exactly the slow-mixing regime where the
@@ -117,9 +120,10 @@ References
 ----------
 
   - Le Cam, L. M. (1986). *Asymptotic Methods in Statistical
-    Decision Theory*. Springer-Verlag, ISBN 978-1-4612-9343-3, §15
-    "Hellinger distance, total variation, and contiguity".
+    Decision Theory*. Springer-Verlag, ISBN 978-1-4612-9343-3.
     https://doi.org/10.1007/978-1-4612-4946-7
+    General Hellinger / total variation reference; the specific
+    inequality used at runtime here traces to Tsybakov 2009 §2.4.
   - Tsybakov, A. B. (2009). *Introduction to Nonparametric
     Estimation*. Springer, ISBN 978-0-387-79051-0, §2.4 "Distances
     between distributions".
@@ -170,7 +174,8 @@ def hellinger_distance_rows(p: npt.NDArray[np.float64], q: npt.NDArray[np.float6
     H(p, q) = (1 / sqrt(2)) * sqrt(sum_i (sqrt(p_i) - sqrt(q_i))^2)
 
     Defined on the probability simplex; returns values in ``[0, 1]``.
-    Le Cam 1986 §15; Tsybakov 2009 §2.4.
+    Le Cam 1986 (general reference); Tsybakov 2009 §2.4 (specific
+    inequality used in ``le_cam_envelope_holds``).
 
     Parameters
     ----------
@@ -207,10 +212,11 @@ def total_variation_rows(p: npt.NDArray[np.float64], q: npt.NDArray[np.float64])
 
     TV(p, q) = (1/2) * sum_i |p_i - q_i|
 
-    Tsybakov 2009 §2.4 eq. 2.4. Le Cam 1986 Lemma 15.1 ties TV and
-    Hellinger via ``H^2 / 2 <= TV <= H``. Returned as a secondary
-    metric for an upstream/downstream sanity envelope on the
-    diagnostic record.
+    Tsybakov 2009 §2.4 (substituted under bounded Hellinger
+    normalisation ``H = (1/sqrt(2)) * ||sqrt(p) - sqrt(q)||_2``)
+    yields ``H^2 <= TV <= H * sqrt(2 - H^2)``. Returned as a
+    secondary metric for the per-fold ``le_cam_envelope_holds``
+    sanity flag.
     """
     p_arr = np.asarray(p, dtype=np.float64)
     q_arr = np.asarray(q, dtype=np.float64)
@@ -281,7 +287,8 @@ class WarmColdDiagnostic:
     metric_primary: str = "hellinger"
     metric_secondary: str = "total_variation"
     metric_reference: str = (
-        "Le Cam 1986 §15 (doi:10.1007/978-1-4612-4946-7); Tsybakov 2009 §2.4 (doi:10.1007/b13794)"
+        "Tsybakov 2009 Section 2.4 (doi:10.1007/b13794); "
+        "Le Cam 1986 (doi:10.1007/978-1-4612-4946-7) general reference"
     )
     fold_records: list[WarmColdFoldRecord] = field(default_factory=list)
 
@@ -312,9 +319,8 @@ class WarmColdDiagnostic:
             raise ValueError(f"observe_fold: posteriors must be (T>=1, N); got {warm.shape}.")
         h = hellinger_distance_rows(warm, cold)
         tv = total_variation_rows(warm, cold)
-        # Tsybakov 2009 Lemma 2.3 (eq. 2.20), restated under the
-        # bounded-Hellinger normalisation H = (1/sqrt(2)) * ||sqrt(p) -
-        # sqrt(q)||_2:
+        # Tsybakov 2009 §2.4, restated under the bounded-Hellinger
+        # normalisation H = (1/sqrt(2)) * ||sqrt(p) - sqrt(q)||_2:
         #   H(p,q)^2  <=  TV(p,q)  <=  H(p,q) * sqrt(2 - H(p,q)^2).
         # Floating-point slack bounded by the float64 epsilon
         # accumulated across the (sqrt, square, sum) chain on N-state

@@ -118,3 +118,52 @@ ruff check src/skie_ninja/models/regime/diagnostics.py tests/unit/test_hmm_warm_
 ```
 
 → 32 errors total (baseline preserved on `run_walk_forward.py`; new files `diagnostics.py` and `test_hmm_warm_cold_diagnostic.py` ruff-clean). 18/18 warm-cold-diagnostic unit tests pass under the documented BLAS-pin env (`OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1`).
+
+## Round 3 — post-loop-verification (proper-subagent isolation)
+
+A post-Round-2 verification pass executed under proper subagent isolation (`audit-remediate-loop` with quant-auditor + literature-check lenses spawned as separate processes) surfaced four citation-precision issues that the in-context Round-2 self-audit missed: stale wrong inequality direction in two sibling docstrings/comments that escaped the Round-2 F-1-1 sweep; an unverifiable Le Cam 1986 §15 chapter-title claim asserted across four loci; and an unverifiable Tsybakov 2009 Lemma 2.3 / eq. 2.20 specific pin asserted across three loci. The runtime envelope check at [WarmColdDiagnostic.observe_fold](../../src/skie_ninja/models/regime/diagnostics.py) was confirmed correct (`H² ≤ TV ≤ H·√(2 − H²)` under bounded normalisation) and was NOT modified — these are documentation/citation precision fixes only.
+
+### Findings
+
+| ID | Severity | Location | Issue | Remediation | Citation precision claim relaxed |
+|---|---|---|---|---|---|
+| M6 / M8 | major | [src/skie_ninja/models/regime/diagnostics.py](../../src/skie_ninja/models/regime/diagnostics.py) `total_variation_rows` docstring | Stale wrong inequality direction `H²/2 ≤ TV ≤ H` (the F-1-1 form Round-2 was supposed to extinguish, missed in this sibling docstring). Counter-example `p=(0.99, 0.01)`, `q=(0.01, 0.99)` gives `H ≈ 0.895`, `TV = 0.98`, refuting the upper bound. | Replaced with Tsybakov 2009 §2.4 (substituted under bounded Hellinger) form `H² ≤ TV ≤ H·√(2 − H²)`. The operative envelope at `observe_fold` already used the correct form; only docstring text changed. | Le Cam 1986 Lemma 15.1 specific lemma claim dropped; replaced with Tsybakov 2009 §2.4 substituted form. |
+| M7 | major | [scripts/run_walk_forward.py](../../scripts/run_walk_forward.py) `_predict_fold` comment | Stale wrong inequality `H^2/2 <= TV <= H` in the orchestrator comment block describing the Le Cam envelope. | Replaced with `H^2 <= TV <= H*sqrt(2 - H^2)` and re-anchored on Tsybakov 2009 §2.4 substituted under bounded Hellinger. | Same as M6 / M8 — Le Cam Lemma claim dropped, Tsybakov 2009 §2.4 made primary. |
+| M9 | major | [src/skie_ninja/models/regime/diagnostics.py](../../src/skie_ninja/models/regime/diagnostics.py) module docstring (Hellinger paragraph + `hellinger_distance_rows` docstring + reference list); `WarmColdDiagnostic.metric_reference` default; [docs/decisions/ADR-0005-hmm-regime-toolkit.md](../decisions/ADR-0005-hmm-regime-toolkit.md) Implementation contract paragraph + reference list | "Le Cam 1986 §15" with asserted chapter title "Hellinger distance, total variation, and contiguity" unverifiable from accessible primary sources; the inequality used at runtime traces to Tsybakov 2009 §2.4, not Le Cam 1986. | Dropped "§15" and the asserted chapter title from all four loci; kept the book reference for general Hellinger / total variation / contiguity-flavored content. Made Tsybakov 2009 §2.4 the primary anchor at every site. | Specific Le Cam 1986 §15 chapter title relaxed to "general Hellinger / total variation reference"; primary anchor of the inequality reattributed to Tsybakov 2009 §2.4. |
+| M10 | major | [src/skie_ninja/models/regime/diagnostics.py](../../src/skie_ninja/models/regime/diagnostics.py) module docstring (top + inequality block) and [docs/decisions/ADR-0005-hmm-regime-toolkit.md](../decisions/ADR-0005-hmm-regime-toolkit.md) Implementation contract | Tsybakov 2009 "Lemma 2.3 / eq. 2.20" specific pin unverifiable; only §2.4 was verifiable in literature search. | Relaxed "Lemma 2.3 / eq. 2.20" to "§2.4" in all three loci. | Specific lemma / equation pin relaxed to section pin; deferred to follow-up `P1-HMM-WARM-COLD-TSYBAKOV-PIN-VERIFY`. |
+| Minor cleanup 1 | minor | [src/skie_ninja/models/regime/diagnostics.py](../../src/skie_ninja/models/regime/diagnostics.py) `WarmColdDiagnostic.metric_reference` default | Default string contained `§` (non-ASCII). Sidecar is written `ensure_ascii=False` so SHA-stable on disk, but a downstream `json.loads / dumps` cycle with `ensure_ascii=True` would break the SHA chain. | Replaced `§` with the ASCII word `Section`. No test currently asserts the string content (verified via grep) so no test edit was needed. | n/a — ASCII portability fix. |
+| Minor cleanup 2 | minor | [docs/decisions/ADR-0005-hmm-regime-toolkit.md](../decisions/ADR-0005-hmm-regime-toolkit.md) Cover & Thomas reference DOI | DOI `10.1002/047174882X` flagged for verification — Wiley book DOIs of this form often 404. | Verified via WebFetch: DOI resolves with HTTP 302 Found redirecting to `https://onlinelibrary.wiley.com/doi/book/10.1002/047174882X`. The downstream Wiley page returns 403 (paywall), but the DOI itself resolves cleanly. DOI retained. | n/a — DOI verified valid. |
+
+### Sidecar SHA256 change expected
+
+The two `metric_reference` edits (M9 wording change + minor cleanup 1 `§` → `Section`) change the persisted JSON content of the sidecar. Therefore the canonical sidecar SHA256 — and consequently `ReproLog.model_hash` for runs executed after these edits — will differ from any pre-Round-3 baseline. This is expected and intentional: the regression-detection contract demonstrated by `test_sidecar_changes_hash_on_warm_cold_regression` is unaffected (it tests that warm-vs-cold *posterior* differences flip the hash, not citation strings). Any CI consumer holding a baseline `warm_cold_diagnostic.json` SHA from Round-2 needs to refresh against a known-good post-Round-3 run.
+
+### Test posture
+
+```
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=src \
+  uv run --python 3.11 --extra dev pytest tests/unit/test_hmm_warm_cold_diagnostic.py -q
+→ 18 passed in 3.22s
+```
+
+All 18 warm-cold-diagnostic unit tests remain green. No test edits were required (no test asserted `metric_reference` string content; no test asserted Le Cam §15 chapter title or Tsybakov Lemma 2.3 pin).
+
+### Ruff posture
+
+```
+ruff check src/skie_ninja/models/regime/diagnostics.py
+→ All checks passed!
+
+ruff check scripts/run_walk_forward.py
+→ Found 31 errors (pre-existing baseline; Round-2 trail recorded 32 — net change ≤ 0).
+```
+
+`diagnostics.py` ruff-clean. `run_walk_forward.py` baseline preserved (no new violations introduced; baseline drifted from 32 → 31 owing to the comment-block restructure happening to remove one previously-flagged construct).
+
+### Exit verdict
+
+`accept`. Round 3 closed; M6 / M7 / M9 / M10 all remediated; both minor cleanups applied; Cover & Thomas DOI verified valid via WebFetch (HTTP 302). Per [audit-remediate-loop](file:///C:/Users/skoir/.claude/skills/audit-remediate-loop/SKILL.md) §"Exit check", a Round 4 is not warranted: residual is the deferred Tsybakov §2.4 lemma / equation pin, tracked as a follow-up below.
+
+### New follow-up
+
+- `P1-HMM-WARM-COLD-TSYBAKOV-PIN-VERIFY` — verify the precise lemma / equation reference for `H² ≤ TV ≤ H·√(2 − H²)` within Tsybakov 2009 §2.4 against the published PDF; tighten the citations at [src/skie_ninja/models/regime/diagnostics.py](../../src/skie_ninja/models/regime/diagnostics.py) module docstring + inequality block and [docs/decisions/ADR-0005-hmm-regime-toolkit.md](../decisions/ADR-0005-hmm-regime-toolkit.md) Implementation contract from "§2.4" back to a specific lemma / equation pin once verified. Should land before Cycle-7 freeze.
