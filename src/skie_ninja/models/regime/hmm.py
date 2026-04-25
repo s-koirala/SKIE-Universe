@@ -103,9 +103,9 @@ class FitResult:
 
     best_log_likelihood: float
     n_restarts_used: int
-    per_restart_log_likelihood: np.ndarray       # (n_restarts_used,)
-    per_restart_n_iter: np.ndarray               # (n_restarts_used,)
-    per_restart_converged: np.ndarray            # (n_restarts_used,) bool
+    per_restart_log_likelihood: np.ndarray  # (n_restarts_used,)
+    per_restart_n_iter: np.ndarray  # (n_restarts_used,)
+    per_restart_converged: np.ndarray  # (n_restarts_used,) bool
     covariance_floor: float
     em_tol: float
     max_iter: int
@@ -156,9 +156,7 @@ class GaussianHMM:
 
     def __post_init__(self) -> None:
         if self.n_states < 2:
-            raise ValueError(
-                f"n_states must be >= 2 (ADR-0005); got {self.n_states}."
-            )
+            raise ValueError(f"n_states must be >= 2 (ADR-0005); got {self.n_states}.")
 
     # ------------------------------------------------------------------
     # Fitting
@@ -201,17 +199,13 @@ class GaussianHMM:
                 f"got {min_restarts}."
             )
         if max_restarts < min_restarts:
-            raise ValueError(
-                f"max_restarts ({max_restarts}) < min_restarts ({min_restarts})."
-            )
+            raise ValueError(f"max_restarts ({max_restarts}) < min_restarts ({min_restarts}).")
 
         x_arr = np.asarray(x, dtype=np.float64)
         if x_arr.ndim == 1:
             x_arr = x_arr.reshape(-1, 1)
         if x_arr.ndim != 2:
-            raise ValueError(
-                f"x must be 1-D or 2-D (T,d); got shape {x_arr.shape!r}."
-            )
+            raise ValueError(f"x must be 1-D or 2-D (T,d); got shape {x_arr.shape!r}.")
         if x_arr.shape[0] < self.n_states * 5:
             # Not a statistical test, just a pragmatic lower bound that
             # the caller can override by constructing an HMM with a
@@ -312,9 +306,7 @@ class GaussianHMM:
             self.params_.covars,
             self.params_.covariance_type,
         )
-        log_alpha, _ = forward_log(
-            self.params_.log_pi, self.params_.log_transmat, log_B
-        )
+        log_alpha, _ = forward_log(self.params_.log_pi, self.params_.log_transmat, log_B)
         # Normalise each row: log_alpha[t] - logsumexp(log_alpha[t]).
         log_norm = logsumexp(log_alpha, axis=1, keepdims=True)
         return np.exp(log_alpha - log_norm)
@@ -339,9 +331,7 @@ class GaussianHMM:
             self.params_.covars,
             self.params_.covariance_type,
         )
-        log_alpha, _ = forward_log(
-            self.params_.log_pi, self.params_.log_transmat, log_B
-        )
+        log_alpha, _ = forward_log(self.params_.log_pi, self.params_.log_transmat, log_B)
         return log_alpha[-1].copy()
 
     def filter_states_from_prior(
@@ -375,6 +365,24 @@ class GaussianHMM:
             would mask the gap. ``=1`` matches the no-purge canonical
             formula; ``>1`` accommodates purge+embargo gaps per López
             de Prado 2018 AFML §7.
+
+        Notes
+        -----
+        This method returns only the row-normalised posterior over
+        states. The underlying ``forward_log_from_prior`` also produces
+        a scalar log-likelihood that is *conditional on the prior's
+        normalisation constant* (i.e., ``log P(o_test, o_train | θ) −
+        log P(o_train | θ)`` only when the prior is a properly
+        normalised filtered posterior). Because :meth:`terminal_log_alpha`
+        returns an unnormalised train-fold terminal log α, that scalar
+        must not be interpreted as stand-alone model evidence or used
+        in BIC/AIC-style cross-run comparisons without re-normalising
+        the prior. References: Hamilton, J. D. (1994). *Time Series
+        Analysis*. Princeton University Press, ISBN 978-0-691-04289-3,
+        §22.4 (filter-step normalisation constants);
+        Frühwirth-Schnatter, S. (2006). *Finite Mixture and Markov
+        Switching Models*. Springer, ISBN 978-0-387-32909-3, §11.4-11.5
+        (predictive vs marginal likelihood decomposition).
         """
         self._require_fitted()
         assert self.params_ is not None
@@ -441,9 +449,7 @@ class GaussianHMM:
 
     def _require_fitted(self) -> None:
         if self.params_ is None:
-            raise RuntimeError(
-                "GaussianHMM not fitted. Call .fit() before inference."
-            )
+            raise RuntimeError("GaussianHMM not fitted. Call .fit() before inference.")
 
 
 # ---------------------------------------------------------------------------
@@ -602,13 +608,9 @@ def _coerce_obs(x: npt.ArrayLike, *, expect_dim: int) -> np.ndarray:
     if arr.ndim == 1:
         arr = arr.reshape(-1, 1)
     if arr.ndim != 2:
-        raise ValueError(
-            f"observations must be 1-D or 2-D (T,d); got shape {arr.shape!r}."
-        )
+        raise ValueError(f"observations must be 1-D or 2-D (T,d); got shape {arr.shape!r}.")
     if arr.shape[1] != expect_dim:
-        raise ValueError(
-            f"observation dim {arr.shape[1]} != fitted dim {expect_dim}."
-        )
+        raise ValueError(f"observation dim {arr.shape[1]} != fitted dim {expect_dim}.")
     if not np.all(np.isfinite(arr)):
         raise ValueError("observations contain NaN or inf.")
     return arr

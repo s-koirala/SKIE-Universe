@@ -93,14 +93,14 @@ class HMMParams:
     fields; no other state is carried forward from the EM loop.
     """
 
-    log_pi: np.ndarray          # (N,) log initial-state probabilities
-    log_transmat: np.ndarray    # (N, N) row-stochastic log transitions
-    means: np.ndarray           # (N, d) emission means
-    covars: np.ndarray          # shape depends on covariance_type:
-                                #   spherical : (N,)
-                                #   diag      : (N, d)
-                                #   tied      : (d, d)
-                                #   full      : (N, d, d)
+    log_pi: np.ndarray  # (N,) log initial-state probabilities
+    log_transmat: np.ndarray  # (N, N) row-stochastic log transitions
+    means: np.ndarray  # (N, d) emission means
+    covars: np.ndarray  # shape depends on covariance_type:
+    #   spherical : (N,)
+    #   diag      : (N, d)
+    #   tied      : (d, d)
+    #   full      : (N, d, d)
     covariance_type: CovarianceType
 
     def n_states(self) -> int:
@@ -116,10 +116,10 @@ class BaumWelchResult:
 
     params: HMMParams
     log_likelihood: float
-    log_likelihood_trace: np.ndarray      # (n_iter,) per-iteration total LL
+    log_likelihood_trace: np.ndarray  # (n_iter,) per-iteration total LL
     n_iter: int
     converged: bool
-    covariance_floor: float               # variance floor actually used
+    covariance_floor: float  # variance floor actually used
     # F-1-5: record dead-state events across iterations (states whose
     # total responsibility Σ_t γ_t(i) fell below 1 in a given iter).
     # A zero count signals a clean fit; non-zero signals the caller
@@ -169,19 +169,14 @@ def log_emission_matrix(
     if x.ndim == 1:
         x = x.reshape(-1, 1)
     if x.ndim != 2:
-        raise ValueError(
-            f"x must be 1-D or 2-D (T,d); got shape {x.shape!r}."
-        )
+        raise ValueError(f"x must be 1-D or 2-D (T,d); got shape {x.shape!r}.")
     if not np.all(np.isfinite(x)):
         raise ValueError("Observations contain NaN or inf.")
 
     t_len, dim = x.shape
     n_states = means.shape[0]
     if means.shape != (n_states, dim):
-        raise ValueError(
-            f"means shape {means.shape} does not match (N, d) = "
-            f"({n_states}, {dim})."
-        )
+        raise ValueError(f"means shape {means.shape} does not match (N, d) = ({n_states}, {dim}).")
 
     # Route by covariance type. Each branch computes log N via the
     # standard multivariate Gaussian log-density:
@@ -190,15 +185,13 @@ def log_emission_matrix(
 
     if covariance_type == "spherical":
         if covars.shape != (n_states,):
-            raise ValueError(
-                f"spherical covars shape {covars.shape} != (N,) = ({n_states},)"
-            )
+            raise ValueError(f"spherical covars shape {covars.shape} != (N,) = ({n_states},)")
         if np.any(covars <= 0):
             raise ValueError("spherical covars must be strictly positive.")
         log_B = np.empty((t_len, n_states), dtype=np.float64)
         for i in range(n_states):
-            diff = x - means[i]                              # (T, d)
-            sq = np.einsum("td,td->t", diff, diff)           # (T,)
+            diff = x - means[i]  # (T, d)
+            sq = np.einsum("td,td->t", diff, diff)  # (T,)
             sigma2 = float(covars[i])
             log_det = dim * np.log(sigma2)
             log_B[:, i] = const_term - 0.5 * (log_det + sq / sigma2)
@@ -206,40 +199,32 @@ def log_emission_matrix(
 
     if covariance_type == "diag":
         if covars.shape != (n_states, dim):
-            raise ValueError(
-                f"diag covars shape {covars.shape} != (N, d) = "
-                f"({n_states}, {dim})."
-            )
+            raise ValueError(f"diag covars shape {covars.shape} != (N, d) = ({n_states}, {dim}).")
         if np.any(covars <= 0):
             raise ValueError("diag covars must be strictly positive.")
         log_B = np.empty((t_len, n_states), dtype=np.float64)
         for i in range(n_states):
-            diff = x - means[i]                              # (T, d)
-            var = covars[i]                                  # (d,)
+            diff = x - means[i]  # (T, d)
+            var = covars[i]  # (d,)
             log_det = np.sum(np.log(var))
-            sq = np.sum(diff * diff / var, axis=1)           # (T,)
+            sq = np.sum(diff * diff / var, axis=1)  # (T,)
             log_B[:, i] = const_term - 0.5 * (log_det + sq)
         return log_B
 
     if covariance_type == "tied":
         if covars.shape != (dim, dim):
-            raise ValueError(
-                f"tied covars shape {covars.shape} != (d, d) = "
-                f"({dim}, {dim})."
-            )
+            raise ValueError(f"tied covars shape {covars.shape} != (d, d) = ({dim}, {dim}).")
         # Cholesky for numerical stability over direct inversion.
         try:
             L = np.linalg.cholesky(covars)
         except np.linalg.LinAlgError as exc:
-            raise ValueError(
-                "tied covariance is not positive-definite."
-            ) from exc
+            raise ValueError("tied covariance is not positive-definite.") from exc
         log_det = 2.0 * np.sum(np.log(np.diag(L)))
         log_B = np.empty((t_len, n_states), dtype=np.float64)
         for i in range(n_states):
-            diff = x - means[i]                              # (T, d)
+            diff = x - means[i]  # (T, d)
             # solve L z = diff^T  →  z = L^{-1} diff^T; Mahal = ||z||^2
-            z = np.linalg.solve(L, diff.T).T                 # (T, d)
+            z = np.linalg.solve(L, diff.T).T  # (T, d)
             sq = np.einsum("td,td->t", z, z)
             log_B[:, i] = const_term - 0.5 * (log_det + sq)
         return log_B
@@ -247,8 +232,7 @@ def log_emission_matrix(
     if covariance_type == "full":
         if covars.shape != (n_states, dim, dim):
             raise ValueError(
-                f"full covars shape {covars.shape} != (N, d, d) = "
-                f"({n_states}, {dim}, {dim})."
+                f"full covars shape {covars.shape} != (N, d, d) = ({n_states}, {dim}, {dim})."
             )
         log_B = np.empty((t_len, n_states), dtype=np.float64)
         for i in range(n_states):
@@ -256,8 +240,7 @@ def log_emission_matrix(
                 L = np.linalg.cholesky(covars[i])
             except np.linalg.LinAlgError as exc:
                 raise ValueError(
-                    f"full covariance for state {i} is not "
-                    "positive-definite."
+                    f"full covariance for state {i} is not positive-definite."
                 ) from exc
             log_det = 2.0 * np.sum(np.log(np.diag(L)))
             diff = x - means[i]
@@ -299,9 +282,7 @@ def forward_log(
         # For each destination j, log α_t(j) = log b_j(y_t) +
         # logsumexp_i(log α_{t-1}(i) + log a_ij). Broadcasting:
         # log_alpha[t-1][:, None] + log_transmat  → (N_src, N_dst)
-        log_alpha[t] = log_B[t] + logsumexp(
-            log_alpha[t - 1][:, None] + log_transmat, axis=0
-        )
+        log_alpha[t] = log_B[t] + logsumexp(log_alpha[t - 1][:, None] + log_transmat, axis=0)
     log_likelihood = float(logsumexp(log_alpha[-1]))
     return log_alpha, log_likelihood
 
@@ -359,11 +340,27 @@ def forward_log_from_prior(
     log_likelihood
         Total ``log P(y_test | y_train, λ)`` up to the warm-start prior's
         normalisation constant.
+
+    Notes
+    -----
+    The returned ``log_likelihood`` is ``logsumexp(log_alpha[-1])`` and
+    equals ``log P(o_test, o_train | θ) − log P(o_train | θ)`` only when
+    ``log_alpha_prior`` is a properly normalised filtered posterior
+    (i.e., ``logsumexp(log_alpha_prior) = log P(o_train | θ)``). Because
+    the warm-start contract here accepts an unnormalised train-fold
+    terminal log α (see ``log_alpha_prior`` parameter description), the
+    scalar is a *conditional* log-likelihood up to that prior's
+    normalisation constant. Do not interpret it as a stand-alone
+    model-evidence term or pass it into BIC/AIC-style comparisons across
+    runs without first re-normalising the prior. References:
+    Hamilton, J. D. (1994). *Time Series Analysis*. Princeton University
+    Press, ISBN 978-0-691-04289-3, §22.4 (filter-step normalisation
+    constants); Frühwirth-Schnatter, S. (2006). *Finite Mixture and
+    Markov Switching Models*. Springer, ISBN 978-0-387-32909-3,
+    §11.4-11.5 (predictive vs marginal likelihood decomposition).
     """
     if n_propagation_steps < 0:
-        raise ValueError(
-            f"n_propagation_steps must be >= 0; got {n_propagation_steps}."
-        )
+        raise ValueError(f"n_propagation_steps must be >= 0; got {n_propagation_steps}.")
     log_alpha_prior = np.asarray(log_alpha_prior, dtype=np.float64)
     log_transmat = np.asarray(log_transmat, dtype=np.float64)
     log_B = np.asarray(log_B, dtype=np.float64)
@@ -376,16 +373,13 @@ def forward_log_from_prior(
     t_len = log_B.shape[0]
     if log_B.shape[1] != n_states:
         raise ValueError(
-            f"log_B has {log_B.shape[1]} state columns but transition "
-            f"matrix has {n_states} states."
+            f"log_B has {log_B.shape[1]} state columns but transition matrix has {n_states} states."
         )
     if t_len == 0:
         return np.empty((0, n_states), dtype=np.float64), 0.0
     log_alpha_prop = log_alpha_prior
     for _ in range(n_propagation_steps):
-        log_alpha_prop = logsumexp(
-            log_alpha_prop[:, None] + log_transmat, axis=0
-        )
+        log_alpha_prop = logsumexp(log_alpha_prop[:, None] + log_transmat, axis=0)
     if not np.all(np.isfinite(log_alpha_prop)):
         raise FloatingPointError(
             "K-step propagation produced non-finite log α; "
@@ -394,9 +388,7 @@ def forward_log_from_prior(
     log_alpha = np.empty((t_len, n_states), dtype=np.float64)
     log_alpha[0] = log_B[0] + log_alpha_prop
     for t in range(1, t_len):
-        log_alpha[t] = log_B[t] + logsumexp(
-            log_alpha[t - 1][:, None] + log_transmat, axis=0
-        )
+        log_alpha[t] = log_B[t] + logsumexp(log_alpha[t - 1][:, None] + log_transmat, axis=0)
     log_likelihood = float(logsumexp(log_alpha[-1]))
     return log_alpha, log_likelihood
 
@@ -513,7 +505,7 @@ def viterbi_log(
     delta[0] = log_pi + log_B[0]
     psi[0] = 0
     for t in range(1, t_len):
-        scores = delta[t - 1][:, None] + log_transmat     # (N_src, N_dst)
+        scores = delta[t - 1][:, None] + log_transmat  # (N_src, N_dst)
         psi[t] = np.argmax(scores, axis=0)
         delta[t] = log_B[t] + scores[psi[t], np.arange(n_states)]
 
@@ -534,13 +526,11 @@ def viterbi_log(
 class _MStepDiagnostics:
     """Per-iteration M-step diagnostics propagated to the fit record."""
 
-    dead_states: int      # states with Σ_t γ_t(i) < 1
+    dead_states: int  # states with Σ_t γ_t(i) < 1
     pd_ridge_applied: bool  # tied/full: True iff ridge was needed for PD
 
 
-def _ensure_pd(
-    mat: np.ndarray, min_var: float
-) -> tuple[np.ndarray, bool]:
+def _ensure_pd(mat: np.ndarray, min_var: float) -> tuple[np.ndarray, bool]:
     """Return (mat_pd, ridge_applied). Add min_var·I only if needed.
 
     F-1-4: unconditionally adding ``min_var·I`` biases the MLE. We
@@ -582,13 +572,13 @@ def _m_step_emissions(
     non-PD within the EM loop — a last-resort floor only (see note
     in module docstring).
     """
-    gamma = np.exp(log_gamma)                        # (T, N)
+    gamma = np.exp(log_gamma)  # (T, N)
     n_states = gamma.shape[1]
     dim = x.shape[1]
 
     # Normalise once; rows of (T, N) sum to 1 in exp-space but the
     # total weight per state is Σ_t γ_t(i).
-    weight = gamma.sum(axis=0)                       # (N,)
+    weight = gamma.sum(axis=0)  # (N,)
     # F-1-5: a state with total responsibility < 1 is effectively
     # unused — EM cannot estimate it. Count such states and floor the
     # divisor so the M-step does not blow up. The caller surfaces the
@@ -597,14 +587,14 @@ def _m_step_emissions(
     safe_weight = np.maximum(weight, float(np.finfo(np.float64).tiny))
 
     # μ — shared across covariance types.
-    means = (gamma.T @ x) / safe_weight[:, None]     # (N, d)
+    means = (gamma.T @ x) / safe_weight[:, None]  # (N, d)
 
     if covariance_type == "spherical":
         # σ²_i = average squared deviation across dimensions.
         covars = np.empty(n_states, dtype=np.float64)
         for i in range(n_states):
             diff = x - means[i]
-            sq = np.einsum("td,td->t", diff, diff)   # (T,)
+            sq = np.einsum("td,td->t", diff, diff)  # (T,)
             covars[i] = float((gamma[:, i] * sq).sum() / (safe_weight[i] * dim))
         covars = np.maximum(covars, min_var)
         return means, covars, _MStepDiagnostics(dead_states, False)
@@ -721,9 +711,7 @@ def baum_welch_em(
     pd_ridge_events = 0
 
     for iteration in range(max_it):
-        log_B = log_emission_matrix(
-            x, params.means, params.covars, params.covariance_type
-        )
+        log_B = log_emission_matrix(x, params.means, params.covars, params.covariance_type)
         _, _, log_gamma, log_xi_sum, log_ll = forward_backward_log(
             params.log_pi, params.log_transmat, log_B
         )
@@ -759,9 +747,7 @@ def baum_welch_em(
         # a_ij = exp(log ξ_sum[i,j] - log Σ_j' ξ_sum[i,j'])
         new_log_transmat = log_xi_sum - logsumexp(log_xi_sum, axis=1, keepdims=True)
 
-        new_means, new_covars, diag = _m_step_emissions(
-            x, log_gamma, params.covariance_type, mvar
-        )
+        new_means, new_covars, diag = _m_step_emissions(x, log_gamma, params.covariance_type, mvar)
         if diag.dead_states > 0:
             dead_state_events += diag.dead_states
         if diag.pd_ridge_applied:
