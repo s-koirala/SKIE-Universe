@@ -95,13 +95,23 @@ All selection happens **inside** the walk-forward train fold so no information l
 
 When the causal forward filter is applied across walk-forward fold boundaries, the test fold's first observation is processed with the **train-fold terminal filtered posterior** as its prior, propagated one transition step. Cold-starting the recursion from `log_pi` at every fold boundary discards the model's own sufficient statistic for future-state inference and biases early-test-fold posteriors toward the prior over O(dwell-time) bars for slow-mixing regimes.
 
-**Canonical formula.** For the filtered posterior `α_T(i) = P(s_T = i, y_{1:T} | θ)` at the terminal training bar `T_train` and test-fold first observation `o_{T_train+1}`:
+**Canonical formula (one-step, no purge/embargo).** For the filtered posterior `α_T(i) = P(s_T = i, y_{1:T} | θ)` at the terminal training bar `T_train` and test-fold first observation `o_{T_train+1}`:
 
 ```
 log_alpha_test[0, j] = logsumexp_i (log_alpha_train[T_train, i] + log_a_ij) + log_b_j(o_{T_train+1})
 ```
 
 This is one application of the standard forward recursion ([Rabiner 1989 §III.A forward variable, eq. ~18-21](https://doi.org/10.1109/5.18626); follow-up `P1-HMM-VERIFIED-EQ-NUMBERS` tracks direct PDF verification of equation numbers) from the train-terminal posterior into the test-first observation.
+
+**K-step generalisation (purged/embargoed walk-forward CV).** Under the López de Prado 2018 *Advances in Financial Machine Learning* (Wiley, ISBN 978-1-119-48208-6) §7.4.1 purging-and-embargo rule, the test-fold first index is offset from the train-fold terminal index by `K = test_idx[0] − train_idx[-1]` bars, where `K = purge_window + 1 ≥ 2`. The latent chain advances `K` transition steps between the last conditioned-on observation and the first scored observation, so the propagation step iterates the Hamilton prediction `K` times before applying the test emission:
+
+```
+log_alpha_prop^{(0)}_j = log_alpha_train[T_train, j]
+log_alpha_prop^{(k)}_j = logsumexp_i (log_alpha_prop^{(k-1)}_i + log_a_ij)         for k = 1, ..., K
+log_alpha_test[0, j]   = log_alpha_prop^{(K)}_j + log_b_j(o_{test_idx[0]})
+```
+
+`K=1` recovers the canonical one-step formula above. The `K`-step rule is the same Hamilton 1989 §3 / Hamilton 1994 §22.4 prediction step iterated `K` times, which is the correct sufficient-statistic propagation under the assumed first-order Markov chain — equivalent to multiplying the filtered probability vector by `A^K`. The implementation supplies `K` as a required argument (no default) so the caller cannot silently desynchronise the HMM-time clock from the bar-index clock; `K=0` is permitted only for the contiguous-sequence case (no purge, no skipped bars).
 
 **Why this is not leakage.** The walk-forward leakage rule prohibits use of *future* data, not of *past in-sample* data. The López de Prado 2018, *Advances in Financial Machine Learning* (Wiley, ISBN 978-1-119-48208-6) §7 purging-and-embargo definition — already adopted project-wide — defines leakage strictly in terms of train-set rows that overlap with test labels in the *forward* direction; passing the train-fold terminal `α_T_train` into the test fold uses no test-period information whatsoever. Discarding `α_T_train` is not a leakage fix; it is information loss against the assumed model.
 
@@ -121,7 +131,7 @@ These references establish the propagation rule for the *single-sample* forecast
 
 **The choice is methodological, not a tunable hyperparameter.** Grid-searching the boundary rule against held-out OOS performance would be data-dredging on a question the model definition answers ex ante; it would also break pre-registration discipline since the boundary rule is part of the model, not the hyperparameter set.
 
-**Implementation contract.** A `filter_states_from_prior(x, log_alpha_init)` public method on `GaussianHMM` takes the train-fold terminal log_alpha and seeds the test-fold recursion via the formula above. The orchestrator harvests `log_alpha_train[T_train]` after the train-fold filter pass and passes it to the test-fold call. Tracked under follow-up `P1-HMM-FOLD-WARM-START`.
+**Implementation contract.** A `filter_states_from_prior(x, log_alpha_prior, *, n_propagation_steps)` public method on `GaussianHMM` takes the train-fold terminal log α (harvested via `terminal_log_alpha`) and the K-step gap and seeds the test-fold recursion via the K-step formula above. `n_propagation_steps` is a required keyword argument with no default — preventing the silent K=1 desynchronisation hazard when the orchestrator purges or embargoes bars between train terminus and test inception. The orchestrator computes `K = test_idx[0] − train_idx[-1]` from the fold's positional indices (`train_idx`, `test_idx`) before each test-fold call. Tracked under follow-up `P1-HMM-FOLD-WARM-START`.
 
 ## Identifiability hazards and remediation
 

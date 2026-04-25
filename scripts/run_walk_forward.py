@@ -56,15 +56,6 @@ _LOG = logging.getLogger(__name__)
 # the estimator's asymptotic approximation is defensible.
 _MIN_OOS_FOR_CI: int = 30
 
-# Minimum non-zero returns in a training fold required to safely apply the
-# r_bar[0]=0 exclusion mask before passing to the HMM. 2 is the minimum
-# meaningful sequence length for a Markov chain; if fewer than 2 non-zero
-# returns remain after masking the construction-zero at position 0, the fold
-# is degenerate regardless and the mask is skipped. This is a structural guard,
-# not a tunable hyperparameter — the mask removes exactly one zero per symbol
-# per fold, so the failure case requires near-constant returns across the fold.
-_MIN_VALID_RETURNS_FOR_MASK: int = 2
-
 import numpy as np
 import pandas as pd
 import polars as pl
@@ -278,13 +269,22 @@ def _fit_fold(
     r_tr = r[train_idx]
 
     # HMM on returns — BIC over cov types, small grid.
-    # Exclude the synthetic zero at position 0 (r_bar[0] = 0 by construction;
-    # first bar has no prior close so its return is undefined — imputing 0
-    # biases HMM emission statistics). Fixed 2026-04-24 (R1 F-1-9).
-    valid_mask = r_tr != 0.0
-    r_tr_hmm = r_tr[valid_mask] if valid_mask.sum() >= _MIN_VALID_RETURNS_FOR_MASK else r_tr
+    # NOTE (Round-2 F-1-1 fix): the prior zero-mask `r_tr != 0.0` was
+    # dropped because it desynchronised the HMM's transition-matrix
+    # discrete-time clock from the bar-position clock used to compute
+    # the walk-forward warm-start propagation steps (ADR-0005
+    # §"Fold-boundary state continuity"). Under the mask, an HMM step
+    # corresponded to "one kept-bar" while the warm-start K-step
+    # propagation used "raw bars between train terminal and test first
+    # observation" — a silent inconsistency whenever any bar within
+    # train or test had r_bar == 0 (halts, flat closes, or the dataset's
+    # construction-zero at bar 0). The only construction-zero is at
+    # global bar 0 (a single observation in a 1-min ES/NQ panel of
+    # ~10^6 bars), so the bias from including it in the HMM emission
+    # statistics is negligible (<1e-6 of any moment). The bar-clock /
+    # HMM-clock invariant is preserved under no mask.
     hmm_selection = select_gaussian_hmm(
-        r_tr_hmm.reshape(-1, 1),
+        r_tr.reshape(-1, 1),
         n_states_grid=(2,),
         covariance_types=hmm_cov_types,
         seed=int(random_seed),
@@ -334,10 +334,21 @@ def _fit_fold(
     means = hmm.params_.means[:, 0]
     regime_high_mean = int(np.argmax(means))
 
+    # P1-HMM-FOLD-WARM-START: harvest train-fold terminal log α as the
+    # sufficient statistic for the test-fold filter prior (ADR-0005
+    # §"Fold-boundary state continuity"). With the zero-mask removed
+    # (Round-2 F-1-1 fix above), the HMM observation count equals the
+    # train-fold bar count, so the terminal HMM observation lives at
+    # bar position train_idx[-1].
+    hmm_terminal_log_alpha = hmm.terminal_log_alpha(r_tr.reshape(-1, 1))
+    hmm_train_terminal_position = int(train_idx[-1])
+
     return {
         "classifier": best_model,
         "hmm": hmm,
         "regime_high_mean": regime_high_mean,
+        "hmm_terminal_log_alpha": hmm_terminal_log_alpha,
+        "hmm_train_terminal_position": hmm_train_terminal_position,
     }
 
 
@@ -365,15 +376,30 @@ def _predict_fold(
             clf.predict(X_te).astype(float)
         )
     hmm: GaussianHMM = fitted["hmm"]
-    # Phase-A design note (F-3-1): filter_states restarts the forward
-    # recursion from the trained initial distribution (log_pi) at each
-    # fold boundary; the terminal filtered posterior from the training fold
-    # is not threaded through. For fast-mixing regimes the warm-up bias
-    # dissipates within O(1/p_switch) bars — acceptable in Phase-A
-    # composition. Evidence-bar runs MUST implement warm-start
-    # initialization (follow-up P1-HMM-FOLD-WARM-START, blocking before
-    # evidence-bar execution).
-    filtered = hmm.filter_states(r_te.reshape(-1, 1))
+    # P1-HMM-FOLD-WARM-START closure: warm-start the test-fold causal
+    # forward filter with the train-fold terminal log α, propagated K
+    # transition steps where K = test_first_position − train_terminal_position
+    # accounts for the purge+embargo gap (López de Prado 2018 AFML §7).
+    # Anchored on the Hamilton-filter prediction step (Hamilton 1989
+    # Econometrica §3, Hamilton 1994 §22.4, Kim & Nelson 1999 §4.2-4.3).
+    # ADR-0005 §"Fold-boundary state continuity" documents the choice
+    # and rejects the cold-start variants.
+    log_alpha_prior = fitted["hmm_terminal_log_alpha"]
+    test_first_position = int(test_idx[0])
+    train_terminal_position = int(fitted["hmm_train_terminal_position"])
+    n_propagation_steps = test_first_position - train_terminal_position
+    if n_propagation_steps < 1:
+        raise ValueError(
+            f"Walk-forward fold-boundary invariant violated: "
+            f"test_first_position={test_first_position} <= "
+            f"train_terminal_position={train_terminal_position}. "
+            f"Test fold must start strictly after train fold terminal."
+        )
+    filtered = hmm.filter_states_from_prior(
+        r_te.reshape(-1, 1),
+        log_alpha_prior=log_alpha_prior,
+        n_propagation_steps=n_propagation_steps,
+    )
     high_state = fitted["regime_high_mean"]
     regime_indicator = (filtered[:, high_state] > 0.5).astype(np.float64)
     return np.stack([p, regime_indicator], axis=1)

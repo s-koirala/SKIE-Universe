@@ -306,6 +306,101 @@ def forward_log(
     return log_alpha, log_likelihood
 
 
+def forward_log_from_prior(
+    log_alpha_prior: npt.NDArray[np.float64],
+    log_transmat: npt.NDArray[np.float64],
+    log_B: npt.NDArray[np.float64],
+    *,
+    n_propagation_steps: int,
+) -> tuple[np.ndarray, float]:
+    """Log-space forward recursion seeded from a prior ``log α``.
+
+    Used at walk-forward CV fold boundaries to warm-start the test-fold
+    filter with the train-fold terminal log α (ADR-0005
+    §"Fold-boundary state continuity"). The Hamilton-filter prediction
+    step ([Hamilton 1989, Econometrica §3](https://doi.org/10.2307/1912559);
+    Hamilton 1994 §22.4; Kim & Nelson 1999 §4.2-4.3) propagates the prior
+    forward by ``n_propagation_steps`` transition steps, then applies the
+    first emission:
+
+        log α_prop = log α_prior  ⊕^k log a               (k = n_propagation_steps)
+        log α_test[0, j] = log α_prop[j] + log b_j(y_1)
+        log α_test[t, j] = log b_j(y_t) + logsumexp_i [log α_test[t-1, i] + log a_ij]
+
+    where ``⊕`` denotes one transition step in log-space (logsumexp over
+    sources of `log α[:, None] + log_transmat`).
+
+    Parameters
+    ----------
+    log_alpha_prior
+        (N,) terminal log-α from the train fold (unnormalised joint
+        log-probability `log P(s_T, y_{1:T})`). Normalisation is
+        irrelevant: the final filter is renormalised by the caller.
+    log_transmat
+        (N, N) row-stochastic log transition matrix.
+    log_B
+        (T, N) log emission matrix for the test sequence.
+    n_propagation_steps
+        Number of transition steps to apply before the first emission.
+        Required (no default): in any walk-forward CV with non-zero
+        purge_window the value differs from 1, and silently defaulting
+        risks a hidden one-step approximation. ``=1`` matches the
+        canonical formula in [Hamilton 1989, Econometrica §3]
+        (https://doi.org/10.2307/1912559) for adjacent observations;
+        ``>1`` extends to purge+embargo gaps per López de Prado 2018
+        AFML §7. ``=0`` skips propagation (uses prior directly as the
+        seed for the first emission).
+
+    Returns
+    -------
+    log_alpha
+        (T, N) forward variable for the test sequence, comparable in
+        scale to ``forward_log`` run on a contiguous train+test sequence.
+    log_likelihood
+        Total ``log P(y_test | y_train, λ)`` up to the warm-start prior's
+        normalisation constant.
+    """
+    if n_propagation_steps < 0:
+        raise ValueError(
+            f"n_propagation_steps must be >= 0; got {n_propagation_steps}."
+        )
+    log_alpha_prior = np.asarray(log_alpha_prior, dtype=np.float64)
+    log_transmat = np.asarray(log_transmat, dtype=np.float64)
+    log_B = np.asarray(log_B, dtype=np.float64)
+    n_states = log_transmat.shape[0]
+    if log_alpha_prior.shape != (n_states,):
+        raise ValueError(
+            f"log_alpha_prior shape {log_alpha_prior.shape} != "
+            f"({n_states},); transition matrix has {n_states} states."
+        )
+    t_len = log_B.shape[0]
+    if log_B.shape[1] != n_states:
+        raise ValueError(
+            f"log_B has {log_B.shape[1]} state columns but transition "
+            f"matrix has {n_states} states."
+        )
+    if t_len == 0:
+        return np.empty((0, n_states), dtype=np.float64), 0.0
+    log_alpha_prop = log_alpha_prior
+    for _ in range(n_propagation_steps):
+        log_alpha_prop = logsumexp(
+            log_alpha_prop[:, None] + log_transmat, axis=0
+        )
+    if not np.all(np.isfinite(log_alpha_prop)):
+        raise FloatingPointError(
+            "K-step propagation produced non-finite log α; "
+            "check transition-matrix conditioning and K magnitude."
+        )
+    log_alpha = np.empty((t_len, n_states), dtype=np.float64)
+    log_alpha[0] = log_B[0] + log_alpha_prop
+    for t in range(1, t_len):
+        log_alpha[t] = log_B[t] + logsumexp(
+            log_alpha[t - 1][:, None] + log_transmat, axis=0
+        )
+    log_likelihood = float(logsumexp(log_alpha[-1]))
+    return log_alpha, log_likelihood
+
+
 def backward_log(
     log_transmat: npt.NDArray[np.float64],
     log_B: npt.NDArray[np.float64],

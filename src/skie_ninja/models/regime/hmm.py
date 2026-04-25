@@ -15,12 +15,21 @@ Wraps the log-space numerical core in :mod:`._core` with:
   - Post-fit label-switching canonicalisation by emission-mean rank
     (pre-registered per hypothesis; default ordering documented in
     :meth:`GaussianHMM.canonicalise`).
-  - Two distinct state-inference entry points:
-      * :meth:`GaussianHMM.filter_states` — **causal** forward filter
-        returning ``α_t = P(q_t = i | y_{1:t})``. The sole public
-        inference path. Safe for feature generation under the
-        project's no-look-ahead rule (CLAUDE.md "Time-series
+  - Three distinct state-inference entry points (all causal):
+      * :meth:`GaussianHMM.filter_states` — causal forward filter
+        seeded from the fitted ``log π``. Returns
+        ``α_t = P(q_t = i | y_{1:t})``. Safe for feature generation
+        under the project's no-look-ahead rule (CLAUDE.md "Time-series
         integrity").
+      * :meth:`GaussianHMM.terminal_log_alpha` /
+        :meth:`GaussianHMM.filter_states_from_prior` — warm-start
+        variant for walk-forward CV fold boundaries (ADR-0005
+        §"Fold-boundary state continuity"). The test fold's filter is
+        seeded from the train-fold terminal ``log α`` propagated K
+        transition steps, where K is the purge+embargo gap. Anchored
+        on the Hamilton-filter prediction step (Hamilton 1989
+        Econometrica §3; Hamilton 1994 §22.4; Kim & Nelson 1999
+        §4.2-4.3).
       * :meth:`GaussianHMM.viterbi_train_time` — full-sequence MAP
         decoding via :func:`._core.viterbi_log`. Kept behind a
         deliberately verbose method name because misuse would break
@@ -65,6 +74,7 @@ from skie_ninja.models.regime._core import (
     _DEFAULT_MIN_VAR,
     baum_welch_em,
     forward_log,
+    forward_log_from_prior,
     log_emission_matrix,
     viterbi_log,
 )
@@ -306,6 +316,81 @@ class GaussianHMM:
             self.params_.log_pi, self.params_.log_transmat, log_B
         )
         # Normalise each row: log_alpha[t] - logsumexp(log_alpha[t]).
+        log_norm = logsumexp(log_alpha, axis=1, keepdims=True)
+        return np.exp(log_alpha - log_norm)
+
+    def terminal_log_alpha(self, x: npt.ArrayLike) -> np.ndarray:
+        """Unnormalised log α_T after running the forward filter on ``x``.
+
+        Returns the (N,) joint log-probability ``log P(s_T = i, y_{1:T} | λ)``
+        at the final observation. Causal: depends only on ``y_{1:T}``.
+
+        Used at walk-forward fold boundaries to harvest the train-fold
+        terminal posterior for warm-start propagation into the test fold
+        (ADR-0005 §"Fold-boundary state continuity"; see
+        :meth:`filter_states_from_prior`).
+        """
+        self._require_fitted()
+        assert self.params_ is not None
+        x_arr = _coerce_obs(x, expect_dim=self.params_.dim())
+        log_B = log_emission_matrix(
+            x_arr,
+            self.params_.means,
+            self.params_.covars,
+            self.params_.covariance_type,
+        )
+        log_alpha, _ = forward_log(
+            self.params_.log_pi, self.params_.log_transmat, log_B
+        )
+        return log_alpha[-1].copy()
+
+    def filter_states_from_prior(
+        self,
+        x: npt.ArrayLike,
+        log_alpha_prior: npt.ArrayLike,
+        *,
+        n_propagation_steps: int,
+    ) -> np.ndarray:
+        """Causal forward filter seeded from a prior log α (warm-start).
+
+        At walk-forward CV fold boundaries the train-fold terminal
+        posterior `α(s_{T_train})` is the sufficient statistic for
+        future-state inference (ADR-0005 §"Fold-boundary state
+        continuity"; Hamilton 1989 Econometrica §3, Hamilton 1994 §22.4,
+        Kim & Nelson 1999 §4.2-4.3, Frühwirth-Schnatter 2006 §11.4-11.5).
+        Cold-starting from ``log_pi`` discards this statistic and
+        introduces O(dwell-time) warm-up bias.
+
+        Parameters
+        ----------
+        x
+            (T, d) test-fold observations.
+        log_alpha_prior
+            (N,) train-fold terminal log α (e.g. from
+            :meth:`terminal_log_alpha`). Unnormalised.
+        n_propagation_steps
+            Transition steps to apply before the first test emission.
+            Required (no default): in walk-forward CV with non-zero
+            purge_window the value differs from 1; silently defaulting
+            would mask the gap. ``=1`` matches the no-purge canonical
+            formula; ``>1`` accommodates purge+embargo gaps per López
+            de Prado 2018 AFML §7.
+        """
+        self._require_fitted()
+        assert self.params_ is not None
+        x_arr = _coerce_obs(x, expect_dim=self.params_.dim())
+        log_B = log_emission_matrix(
+            x_arr,
+            self.params_.means,
+            self.params_.covars,
+            self.params_.covariance_type,
+        )
+        log_alpha, _ = forward_log_from_prior(
+            np.asarray(log_alpha_prior, dtype=np.float64),
+            self.params_.log_transmat,
+            log_B,
+            n_propagation_steps=n_propagation_steps,
+        )
         log_norm = logsumexp(log_alpha, axis=1, keepdims=True)
         return np.exp(log_alpha - log_norm)
 
