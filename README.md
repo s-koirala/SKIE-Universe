@@ -94,6 +94,32 @@ python scripts/bootstrap_env.py
 
 Shared data directory: `~/datasets/` (override with `SKIE_SHARED_DATA` env var). See [config/shared_data.yaml](config/shared_data.yaml).
 
+## Reproducibility
+
+Per [ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md), BLAS
+thread counts must be pinned to 1 for any KMeans-bearing code path
+(unit suite, walk-forward orchestrator, anything that constructs
+`GaussianHMM`). On Windows this is required to avoid a non-deterministic
+`sklearn.cluster.KMeans` deadlock; on all platforms it stabilises
+`ReproLog.model_hash` SHA256 across runs.
+
+`pytest` invocations have the pin applied automatically once the
+`pytest-env`-based `[tool.pytest.ini_options] env` block lands
+(deferred follow-up `P1-BLAS-PIN-PYTEST-ENV-IMPLEMENT`). Until then,
+and for any direct invocation of `scripts/run_walk_forward.py` until
+follow-up `P1-BLAS-PIN-ORCHESTRATOR-WRAPPER` lands, set:
+
+```bash
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+```
+
+(Windows PowerShell: `$env:OMP_NUM_THREADS = "1"` etc; cmd.exe:
+`set OMP_NUM_THREADS=1` etc.) Set these *before* importing `numpy` /
+`sklearn` — BLAS libraries read the variables at process start, so
+exporting after a Python interpreter is already running has no effect.
+
 ## Key scripts
 
 ```bash
@@ -130,3 +156,6 @@ pytest tests/integration/ -v -m integration        # requires FRED_API_KEY
 | [ADR-0004](docs/decisions/ADR-0004-alpha-and-power-defaults.md) | Alpha and power defaults | accepted |
 | [ADR-0005](docs/decisions/ADR-0005-hmm-regime-toolkit.md) | HMM canonical regime-inference toolkit (Baum-Welch + causal Viterbi) | proposed |
 | [ADR-0006](docs/decisions/ADR-0006-scope-extension-hmm-0dte.md) | Scope extension: HMM track + sibling 0DTE repo | proposed |
+| [ADR-0007](docs/decisions/ADR-0007-embargo-placement.md) | Embargo placement: stacked vs overlap form | accepted |
+| [ADR-0008](docs/decisions/ADR-0008-spa-omega-method.md) | SPA omega estimator selection | accepted |
+| [ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md) | BLAS thread pinning for reproducibility | accepted |
