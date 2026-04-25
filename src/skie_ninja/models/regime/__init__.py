@@ -24,6 +24,19 @@ from skie_ninja.models.regime._core import (
     bic,
     count_free_parameters,
 )
+from skie_ninja.models.regime.diagnostics import (
+    WarmColdDiagnostic,
+    WarmColdFoldRecord,
+    compute_warm_cold_posteriors,
+    hellinger_distance_rows,
+    total_variation_rows,
+)
+from skie_ninja.models.regime.diagnostics import (
+    sidecar_path_for as warm_cold_sidecar_path_for,
+)
+from skie_ninja.models.regime.diagnostics import (
+    write_sidecar as write_warm_cold_sidecar,
+)
 from skie_ninja.models.regime.hmm import FitResult, GaussianHMM
 from skie_ninja.models.regime.selection import (
     SelectionCandidate,
@@ -45,10 +58,17 @@ __all__ = [
     "HMMSidecar",
     "SelectionCandidate",
     "SelectionResult",
+    "WarmColdDiagnostic",
+    "WarmColdFoldRecord",
     "bic",
     "build_sidecar",
+    "compute_warm_cold_posteriors",
     "count_free_parameters",
+    "hellinger_distance_rows",
     "select_gaussian_hmm",
     "sidecar_path_for",
+    "total_variation_rows",
+    "warm_cold_sidecar_path_for",
     "write_sidecar",
+    "write_warm_cold_sidecar",
 ]

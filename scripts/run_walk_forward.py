@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import hashlib
 import json
 import logging
 import sys
@@ -77,7 +78,13 @@ from skie_ninja.features.labels import (
 )
 from skie_ninja.inference import choose_block_length, hansen_spa_test
 from skie_ninja.inference.stats import opdyke2007_ci, sample_sharpe
-from skie_ninja.models.regime import GaussianHMM, select_gaussian_hmm
+from skie_ninja.models.regime import (
+    GaussianHMM,
+    WarmColdDiagnostic,
+    select_gaussian_hmm,
+    warm_cold_sidecar_path_for,
+    write_warm_cold_sidecar,
+)
 from skie_ninja.utils.hashing import frame_sha256
 from skie_ninja.utils.paths import ProjectPaths
 from skie_ninja.utils.reproducibility import with_model_hash
@@ -143,6 +150,7 @@ def load_config(path: Path) -> RunConfig:
     # changing the hash. Reproducibility audit relies on the byte hash
     # of the source file, not the parsed AST.
     import hashlib as _hashlib
+
     raw_bytes = Path(path).read_bytes()
     config_sha = _hashlib.sha256(raw_bytes).hexdigest()
     raw = yaml.safe_load(raw_bytes)
@@ -154,20 +162,14 @@ def load_config(path: Path) -> RunConfig:
         random_seed=int(raw["random_seed"]),
         feature_keys=tuple(raw["features"]),
         pt_sl_grid=tuple(float(x) for x in raw["labels"]["pt_sl_grid"]),
-        vertical_barrier_grid=tuple(
-            _parse_vb(x) for x in raw["labels"]["vertical_barrier_grid"]
-        ),
-        volatility_lookback_grid=tuple(
-            int(x) for x in raw["labels"]["volatility_lookback_grid"]
-        ),
+        vertical_barrier_grid=tuple(_parse_vb(x) for x in raw["labels"]["vertical_barrier_grid"]),
+        volatility_lookback_grid=tuple(int(x) for x in raw["labels"]["volatility_lookback_grid"]),
         lgb_grid={k: tuple(v) for k, v in raw["classifier"]["grid"].items()},
         lgb_n_draws=int(raw["classifier"]["search"]["n_draws"]),
         lgb_seed=int(raw["classifier"]["search"]["seed"]),
         hmm_cov_types=tuple(raw["hmm"]["covariance_type"]),
         spa_n_bootstrap=int(raw["gates"]["hansen_spa"]["n_bootstrap"]),
-        spa_omega_method=str(
-            raw["gates"]["hansen_spa"].get("omega_method", "bootstrap")
-        ),
+        spa_omega_method=str(raw["gates"]["hansen_spa"].get("omega_method", "bootstrap")),
         cost_model_id=str(raw.get("cost_model", "nt8_es_nq_rth_v1")),
         cost_sensitivity_mult=float(raw.get("cost_sensitivity_mult", 1.0)),
         gate_alpha=float(raw["gates"]["opdyke2007_ci"]["alpha"]),
@@ -311,8 +313,7 @@ def _fit_fold(
     for _ in range(n_draws_eff):
         params = {k: rng.choice(list(lgb_grid[k])) for k in keys}
         # Cast to Python scalars (lightgbm refuses numpy dtypes here).
-        params = {k: (int(v) if isinstance(v, np.integer) else float(v))
-                  for k, v in params.items()}
+        params = {k: (int(v) if isinstance(v, np.integer) else float(v)) for k, v in params.items()}
         # LightGBM's `LGBMClassifier` needs at least 2 classes in y.
         if len(np.unique(y_tr)) < 2:
             return {"classifier": None, "hmm": hmm, "regime_high_mean": 0}
@@ -358,13 +359,30 @@ def _predict_fold(
     *,
     X: np.ndarray,
     r: np.ndarray,
+    warm_cold_diagnostic: WarmColdDiagnostic | None = None,
+    fold_id_counter: list[int] | None = None,
 ) -> np.ndarray:
     """Emit two-column predictions: ``(classifier_p, regime_indicator)``.
 
     Regime is the indicator ``P(state = highest-mean state | y_{1:t})``
-    > 0.5 evaluated through :meth:`GaussianHMM.filter_states`
-    (causal). Classifier probability is the LightGBM class-1
-    probability.
+    > 0.5 evaluated through :meth:`GaussianHMM.filter_states_from_prior`
+    (causal warm-start; ADR-0005). Classifier probability is the
+    LightGBM class-1 probability.
+
+    The optional ``warm_cold_diagnostic`` collector is a passive
+    observer (P1-HMM-WARM-COLD-DIAGNOSTIC): when supplied, the
+    function additionally computes the cold-start posterior and
+    records per-fold Hellinger / total-variation summary statistics.
+    The cold-start path is discarded after observation; the
+    production output is unconditionally the warm-start posterior.
+    ``fold_id_counter`` is a single-element mutable list used as a
+    monotonic fold counter; the engine processes folds in fold_id
+    order (verified against
+    :class:`~skie_ninja.backtest.engine.walk_forward.WalkForwardEngine.run`),
+    so the counter mirrors
+    ``WalkForwardResult.fold_records[i].fold_id``. Cleaner refactor —
+    engine passes ``fold_id`` directly to ``predict_fn`` — tracked
+    as follow-up `P1-WF-ENGINE-FOLD-ID-PASSTHROUGH`.
     """
     X_te = X[test_idx]
     r_te = r[test_idx]
@@ -372,8 +390,10 @@ def _predict_fold(
     if clf is None:
         p = np.full(test_idx.size, 0.5, dtype=np.float64)
     else:
-        p = clf.predict_proba(X_te)[:, 1] if hasattr(clf, "predict_proba") else (
-            clf.predict(X_te).astype(float)
+        p = (
+            clf.predict_proba(X_te)[:, 1]
+            if hasattr(clf, "predict_proba")
+            else (clf.predict(X_te).astype(float))
         )
     hmm: GaussianHMM = fitted["hmm"]
     # P1-HMM-FOLD-WARM-START closure: warm-start the test-fold causal
@@ -395,11 +415,36 @@ def _predict_fold(
             f"train_terminal_position={train_terminal_position}. "
             f"Test fold must start strictly after train fold terminal."
         )
+    test_obs = r_te.reshape(-1, 1)
     filtered = hmm.filter_states_from_prior(
-        r_te.reshape(-1, 1),
+        test_obs,
         log_alpha_prior=log_alpha_prior,
         n_propagation_steps=n_propagation_steps,
     )
+    # P1-HMM-WARM-COLD-DIAGNOSTIC: passive observer. The cold posterior
+    # is computed only for the diagnostic record and is not used in the
+    # returned predictions. Hellinger distance (Le Cam 1986 §15;
+    # Tsybakov 2009 §2.4) is the primary divergence metric;
+    # total-variation distance is logged as a secondary metric so the
+    # Le Cam inequality H^2/2 <= TV <= H provides an upstream/downstream
+    # sanity envelope on every fold's record.
+    if warm_cold_diagnostic is not None:
+        cold = hmm.filter_states(test_obs)
+        fold_id = (
+            fold_id_counter[0]
+            if fold_id_counter is not None
+            else len(warm_cold_diagnostic.fold_records)
+        )
+        warm_cold_diagnostic.observe_fold(
+            fold_id=fold_id,
+            warm_posterior=filtered,
+            cold_posterior=cold,
+            n_propagation_steps=n_propagation_steps,
+            train_terminal_position=train_terminal_position,
+            test_first_position=test_first_position,
+        )
+        if fold_id_counter is not None:
+            fold_id_counter[0] += 1
     high_state = fitted["regime_high_mean"]
     regime_indicator = (filtered[:, high_state] > 0.5).astype(np.float64)
     return np.stack([p, regime_indicator], axis=1)
@@ -479,8 +524,12 @@ def _load_output_sha256(paths: Any) -> dict[str, str]:
     Falls back gracefully if no provenance file is present (dry-run).
     """
     import glob as _glob
+
     pattern = str(
-        paths.root / "data" / "processed" / "_provenance"
+        paths.root
+        / "data"
+        / "processed"
+        / "_provenance"
         / "vendor_legacy_1min_roll_adjusted_*.json"
     )
     files = sorted(_glob.glob(pattern))
@@ -520,8 +569,7 @@ def run(argv: list[str] | None = None) -> Path:
         # YAML hash onto ReproLog (not silently dropped on a kwarg-name
         # change). Cheap, byte-identity check.
         assert (  # noqa: S101
-            ctx.log is not None
-            and ctx.log.config_resolved_sha256 == cfg.config_resolved_sha256
+            ctx.log is not None and ctx.log.config_resolved_sha256 == cfg.config_resolved_sha256
         ), "RunContext failed to persist config_resolved_sha256 onto ReproLog"
         run_id = ctx.log.run_id  # type: ignore[union-attr]
         run_dir = paths.artifacts_runs / cfg.hypothesis_id / run_id
@@ -532,9 +580,7 @@ def run(argv: list[str] | None = None) -> Path:
 
         # 1. Panel.
         if args.dry_run:
-            panel = make_synthetic_panel(
-                n_per_symbol=args.smoke_n, seed=cfg.random_seed
-            )
+            panel = make_synthetic_panel(n_per_symbol=args.smoke_n, seed=cfg.random_seed)
         else:
             parquet_dir = paths.root / "data" / "processed" / "vendor_legacy_1min_roll_adjusted"
             panel = pl.read_parquet(str(parquet_dir / "**" / "*.parquet"))
@@ -549,9 +595,7 @@ def run(argv: list[str] | None = None) -> Path:
         # time (not at fold boundary). This is correct for bar-level PIT.
         # Follow-up P1-H050-FEATURE-PIT-ASSERT: add integration test asserting
         # feature_matrix row i has no value derived from bars beyond row i.
-        now_ts = pd.Timestamp(
-            panel.select(pl.col("ts_event").max()).item()
-        )
+        now_ts = pd.Timestamp(panel.select(pl.col("ts_event").max()).item())
         modules = [FEATURE_REGISTRY[k] for k in cfg.feature_keys]
         feature_matrix, prov = assemble_feature_matrix(
             modules=modules,
@@ -575,9 +619,7 @@ def run(argv: list[str] | None = None) -> Path:
         labeled = labeler.apply(panel, symbol_col="symbol", time_col="ts_event")
 
         # 4. Merge features + labels on (symbol, ts_event).
-        merged = labeled.join(
-            feature_matrix, on=["symbol", "ts_event"], how="left"
-        ).drop_nulls()
+        merged = labeled.join(feature_matrix, on=["symbol", "ts_event"], how="left").drop_nulls()
 
         # Order by (symbol, ts_event) so positional indices are stable.
         merged = merged.sort(["symbol", "ts_event"])
@@ -600,8 +642,7 @@ def run(argv: list[str] | None = None) -> Path:
         # coarser frequency once needed for date-binding regression).
         if not args.dry_run:
             sym_frame = sym_frame.filter(
-                (pl.col("ts_event") >= cfg.train_start)
-                & (pl.col("ts_event") <= cfg.test_end)
+                (pl.col("ts_event") >= cfg.train_start) & (pl.col("ts_event") <= cfg.test_end)
             )
         if sym_frame.shape[0] < 200:
             # Not enough rows to walk forward; abort early.
@@ -669,9 +710,7 @@ def run(argv: list[str] | None = None) -> Path:
         else:
             ts_event_pl = sym_frame.get_column("ts_event")
             initial_train = int((ts_event_pl <= cfg.val_end).sum())
-            val_mask_pl = (
-                (ts_event_pl >= cfg.val_start) & (ts_event_pl <= cfg.val_end)
-            )
+            val_mask_pl = (ts_event_pl >= cfg.val_start) & (ts_event_pl <= cfg.val_end)
             test_size = int(val_mask_pl.sum())
             step_size = test_size
             split_size_source = "calendar"
@@ -686,10 +725,7 @@ def run(argv: list[str] | None = None) -> Path:
                     f"against H050.yaml §data."
                 )
             test_window_bars = int(
-                (
-                    (ts_event_pl >= cfg.test_start)
-                    & (ts_event_pl <= cfg.test_end)
-                ).sum()
+                ((ts_event_pl >= cfg.test_start) & (ts_event_pl <= cfg.test_end)).sum()
             )
             if test_window_bars <= 0:
                 raise ValueError(
@@ -724,7 +760,9 @@ def run(argv: list[str] | None = None) -> Path:
 
         # 6. Engine.
         engine = WalkForwardEngine(split)
-        ts_arr = sym_frame.get_column("ts_event").to_numpy().astype("datetime64[ns]").astype(np.int64)
+        ts_arr = (
+            sym_frame.get_column("ts_event").to_numpy().astype("datetime64[ns]").astype(np.int64)
+        )
 
         # F-3-1 calendar-anchor guard: the positional initial_train was
         # derived from `(ts ≤ val.end).sum()`, but mode="rolling" with
@@ -755,6 +793,14 @@ def run(argv: list[str] | None = None) -> Path:
                         f"is contiguous, or land "
                         f"P1-H050-CALENDAR-ANCHORED-SPLITTER."
                     )
+        # P1-HMM-WARM-COLD-DIAGNOSTIC: passive per-fold collector for
+        # warm-vs-cold filter divergence. Hellinger + total-variation
+        # statistics are recorded; the production path remains warm-start.
+        # Sidecar serialised below; SHA256 rolled into ReproLog.model_hash
+        # via the multi-sidecar combiner so a future warm-start regression
+        # will surface as a model_hash change.
+        warm_cold_diag = WarmColdDiagnostic()
+        warm_cold_fold_counter = [0]
         result = engine.run(
             fit_fn=_fit_fold,
             predict_fn=_predict_fold,
@@ -770,7 +816,12 @@ def run(argv: list[str] | None = None) -> Path:
                 lgb_seed=cfg.lgb_seed,
                 random_seed=cfg.random_seed,
             ),
-            predict_kwargs=dict(X=X_full, r=r_bar),
+            predict_kwargs=dict(
+                X=X_full,
+                r=r_bar,
+                warm_cold_diagnostic=warm_cold_diag,
+                fold_id_counter=warm_cold_fold_counter,
+            ),
         )
 
         # Cost model: instantiate once per run; cost deduction per side per
@@ -779,9 +830,7 @@ def run(argv: list[str] | None = None) -> Path:
         # Per-side cost deducted as a return fraction: cost_usd / notional_usd.
         # Notional_usd = close_price × multiplier (ES=50, NQ=20).
         _MULTIPLIERS = {"ES": 50.0, "NQ": 20.0, "MES": 5.0, "MNQ": 2.0}
-        cost_model = NT8EsNqRthV1CostModel(
-            sensitivity_mult=cfg.cost_sensitivity_mult
-        )
+        cost_model = NT8EsNqRthV1CostModel(sensitivity_mult=cfg.cost_sensitivity_mult)
         sym_multiplier = _MULTIPLIERS.get(sym, 50.0)
         per_side_cost = cost_model.round_trip_cost(sym, 1) / 2.0
         closes_full = sym_frame.get_column("close").to_numpy().astype(np.float64)
@@ -833,9 +882,7 @@ def run(argv: list[str] | None = None) -> Path:
         # 8. Persist per-fold ledger + aggregate summary.
         write_run_ledger(
             result.fold_records,
-            ledger_path_for(
-                run_id, logs_reproducibility_dir=paths.logs_reproducibility
-            ),
+            ledger_path_for(run_id, logs_reproducibility_dir=paths.logs_reproducibility),
         )
         # Write per-fold records as JSON too for quick inspection.
         for rec in result.fold_records:
@@ -845,16 +892,14 @@ def run(argv: list[str] | None = None) -> Path:
             )
 
         # Raw OOS returns parquet.
-        pl.DataFrame(
-            {"gated_return": gated_arr, "unconditional_return": uncond_arr}
-        ).write_parquet(run_dir / "oos_returns.parquet")
+        pl.DataFrame({"gated_return": gated_arr, "unconditional_return": uncond_arr}).write_parquet(
+            run_dir / "oos_returns.parquet"
+        )
 
         # 9. Gates (only if we have enough returns).
         metrics: dict[str, Any]
         _gate_ok = (
-            gated_arr.size >= _MIN_OOS_FOR_CI
-            and gated_arr.std() > 0
-            and uncond_arr.std() > 0
+            gated_arr.size >= _MIN_OOS_FOR_CI and gated_arr.std() > 0 and uncond_arr.std() > 0
         )
         if not _gate_ok:
             _LOG.warning(
@@ -923,28 +968,42 @@ def run(argv: list[str] | None = None) -> Path:
             # the calendar contract; realized_envelope is what the engine
             # actually used. A reader can compute drift = realized − configured
             # without re-running.
-            ts_arr_ns = sym_frame.get_column("ts_event").to_numpy().astype(
-                "datetime64[ns]"
-            )
+            ts_arr_ns = sym_frame.get_column("ts_event").to_numpy().astype("datetime64[ns]")
             metrics["realized_envelope_per_fold"] = []
             for fold in split.folds:
                 tr = fold.train_indices()
                 te = fold.test_indices()
-                metrics["realized_envelope_per_fold"].append({
-                    "fold_id": fold.fold_id,
-                    "train_ts_min": str(ts_arr_ns[tr[0]]) if tr else None,
-                    "train_ts_max": str(ts_arr_ns[tr[-1]]) if tr else None,
-                    "test_ts_min": str(ts_arr_ns[te[0]]) if te else None,
-                    "test_ts_max": str(ts_arr_ns[te[-1]]) if te else None,
-                })
+                metrics["realized_envelope_per_fold"].append(
+                    {
+                        "fold_id": fold.fold_id,
+                        "train_ts_min": str(ts_arr_ns[tr[0]]) if tr else None,
+                        "train_ts_max": str(ts_arr_ns[tr[-1]]) if tr else None,
+                        "test_ts_min": str(ts_arr_ns[te[0]]) if te else None,
+                        "test_ts_max": str(ts_arr_ns[te[-1]]) if te else None,
+                    }
+                )
 
         _write_aggregate(agg_dir, metrics)
 
-        # 10. Model hash into ReproLog.
-        rolled = roll_up_model_hashes(
-            [(r.fold_id, r.model_hash) for r in result.fold_records]
+        # P1-HMM-WARM-COLD-DIAGNOSTIC: write the warm-vs-cold sidecar
+        # and hash it into ReproLog.model_hash alongside the per-fold
+        # ledger roll-up. The combined model_hash is the SHA256 over
+        # the canonical concatenation
+        #   "ledger_rollup={H1};warm_cold_diag={H2}"
+        # so a regression in either source flips the run-level hash.
+        # This matches the ADR-0005 sidecar pattern at
+        # src/skie_ninja/models/regime/serialization.py.
+        warm_cold_path = warm_cold_sidecar_path_for(
+            run_id, logs_reproducibility_dir=paths.logs_reproducibility
         )
-        new_log = with_model_hash(ctx.log, rolled)  # type: ignore[arg-type]
+        _, warm_cold_sha = write_warm_cold_sidecar(warm_cold_diag, warm_cold_path)
+
+        # 10. Model hash into ReproLog.
+        rolled = roll_up_model_hashes([(r.fold_id, r.model_hash) for r in result.fold_records])
+        combined = hashlib.sha256(
+            f"ledger_rollup={rolled};warm_cold_diag={warm_cold_sha}".encode()
+        ).hexdigest()
+        new_log = with_model_hash(ctx.log, combined)  # type: ignore[arg-type]
         ctx.log = new_log
 
         # 11. Copy ReproLog into the run artifact dir alongside the
