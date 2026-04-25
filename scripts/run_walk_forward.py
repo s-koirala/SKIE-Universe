@@ -87,6 +87,7 @@ from skie_ninja.features.labels import (
 from skie_ninja.inference import choose_block_length, hansen_spa_test
 from skie_ninja.inference.stats import opdyke2007_ci, sample_sharpe
 from skie_ninja.models.regime import GaussianHMM, select_gaussian_hmm
+from skie_ninja.utils.hashing import frame_sha256
 from skie_ninja.utils.paths import ProjectPaths
 from skie_ninja.utils.reproducibility import with_model_hash
 from skie_ninja.utils.runcontext import RunContext
@@ -113,6 +114,13 @@ class RunConfig:
     cost_model_id: str
     cost_sensitivity_mult: float
     gate_alpha: float
+    train_start: pd.Timestamp
+    train_end: pd.Timestamp
+    val_start: pd.Timestamp
+    val_end: pd.Timestamp
+    test_start: pd.Timestamp
+    test_end: pd.Timestamp
+    config_resolved_sha256: str
     raw: dict[str, Any]
 
 
@@ -121,8 +129,35 @@ def _parse_vb(item: str) -> pd.Timedelta:
     return pd.Timedelta(item)
 
 
+def _parse_window(window: dict[str, Any]) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Parse a {'start': 'YYYY-MM-DD', 'end': 'YYYY-MM-DD'} block into a
+    (start, end_inclusive) UTC-aware Timestamp pair.
+
+    The end date in H050.yaml is interpreted as the last calendar day
+    INCLUSIVE; converting it to ``end + 1d - 1ns`` UTC keeps the upper
+    bound on the same calendar day under intraday timestamps. This matches
+    the pre-registration's calendar-day semantics (H050 design.md §1)
+    rather than midnight-exclusive semantics.
+    """
+    start = pd.Timestamp(window["start"], tz="UTC")
+    end_day = pd.Timestamp(window["end"], tz="UTC")
+    end_inclusive = end_day + pd.Timedelta(days=1) - pd.Timedelta(nanoseconds=1)
+    return start, end_inclusive
+
+
 def load_config(path: Path) -> RunConfig:
-    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    # Read raw bytes first so we can hash the YAML content into ReproLog.
+    # Decoupling sha256 from yaml.safe_load round-trip protects against
+    # parser-level normalisation (e.g. quote-style changes) silently
+    # changing the hash. Reproducibility audit relies on the byte hash
+    # of the source file, not the parsed AST.
+    import hashlib as _hashlib
+    raw_bytes = Path(path).read_bytes()
+    config_sha = _hashlib.sha256(raw_bytes).hexdigest()
+    raw = yaml.safe_load(raw_bytes)
+    train_start, train_end = _parse_window(raw["data"]["train"])
+    val_start, val_end = _parse_window(raw["data"]["val"])
+    test_start, test_end = _parse_window(raw["data"]["test"])
     return RunConfig(
         hypothesis_id=str(raw["hypothesis_id"]),
         random_seed=int(raw["random_seed"]),
@@ -145,6 +180,13 @@ def load_config(path: Path) -> RunConfig:
         cost_model_id=str(raw.get("cost_model", "nt8_es_nq_rth_v1")),
         cost_sensitivity_mult=float(raw.get("cost_sensitivity_mult", 1.0)),
         gate_alpha=float(raw["gates"]["opdyke2007_ci"]["alpha"]),
+        train_start=train_start,
+        train_end=train_end,
+        val_start=val_start,
+        val_end=val_end,
+        test_start=test_start,
+        test_end=test_end,
+        config_resolved_sha256=config_sha,
         raw=raw,
     )
 
@@ -446,7 +488,15 @@ def run(argv: list[str] | None = None) -> Path:
         hypothesis_id=cfg.hypothesis_id,
         rng_seed=cfg.random_seed,
         dataset_checksums=dataset_checksums,
+        config_resolved_sha256=cfg.config_resolved_sha256,
     ) as ctx:
+        # F-3-3 round-trip assert: confirm RunContext persisted the
+        # YAML hash onto ReproLog (not silently dropped on a kwarg-name
+        # change). Cheap, byte-identity check.
+        assert (  # noqa: S101
+            ctx.log is not None
+            and ctx.log.config_resolved_sha256 == cfg.config_resolved_sha256
+        ), "RunContext failed to persist config_resolved_sha256 onto ReproLog"
         run_id = ctx.log.run_id  # type: ignore[union-attr]
         run_dir = paths.artifacts_runs / cfg.hypothesis_id / run_id
         paths.ensure(run_dir)
@@ -510,6 +560,23 @@ def run(argv: list[str] | None = None) -> Path:
         # (Cycle-6 Phase A: ES first-symbol only for the smoke run).
         sym = "ES"
         sym_frame = merged.filter(pl.col("symbol") == sym)
+        # Pre-reg date filter (P1-H050-SPLIT-PARAMS closure): on real runs,
+        # clip to the H050.yaml §data envelope [train.start, test.end] BEFORE
+        # deriving split sizes. Out-of-envelope rows (e.g. backfill that
+        # overshoots 2025-12-31) MUST NOT enter the walk-forward — keeping
+        # them would let the dataset's row count drive fold boundaries
+        # instead of the pre-registered calendar. End-inclusive semantics
+        # per _parse_window. The synthetic panel (n_per_symbol bars at
+        # 1-min freq) cannot span the 11-yr envelope, so dry-run skips the
+        # filter; engine composition is still exercised via row-fraction
+        # split sizes (follow-up P1-H050-SYNTHETIC-PANEL-PRE-REG-COVERAGE
+        # to extend make_synthetic_panel to span the envelope at a
+        # coarser frequency once needed for date-binding regression).
+        if not args.dry_run:
+            sym_frame = sym_frame.filter(
+                (pl.col("ts_event") >= cfg.train_start)
+                & (pl.col("ts_event") <= cfg.test_end)
+            )
         if sym_frame.shape[0] < 200:
             # Not enough rows to walk forward; abort early.
             _write_aggregate(
@@ -540,19 +607,84 @@ def run(argv: list[str] | None = None) -> Path:
         bl = choose_block_length(r_bar, bootstrap_type="stationary")
         embargo = int(max(1, np.ceil(bl.block_length)))
 
-        # Phase-A split sizes: initial_train = n//3, test_size = n//10.
-        # BLOCKING BEFORE EVIDENCE-BAR (F-3-3 / P1-H050-SPLIT-PARAMS):
-        # H050.yaml §data defines explicit date boundaries (train.end=2022-12-31,
-        # test.start=2024-01-01). Using row-count fractions instead of
-        # pre-registered date windows violates the pre-registration: fold
-        # boundaries change whenever the dataset is updated. Evidence-bar
-        # execution MUST parse raw['data']['train/val/test'] Timestamps from
-        # H050.yaml, filter sym_frame to those windows, and pass the resulting
-        # row counts as initial_train and test_size. P1-H050-SPLIT-PARAMS is
-        # promoted to a blocking prerequisite for the evidence-bar run.
-        initial_train = max(200, n // 3)
-        test_size = max(50, n // 10)
-        step_size = test_size
+        # Pre-reg-date-derived split sizes (P1-H050-SPLIT-PARAMS closure,
+        # F-3-3 of memo_h050-aggregation-rule_2026-04-24.md r4; Round-2
+        # F-1-2 fix: val window is part of the in-sample envelope, NOT an
+        # OOS fold):
+        #   initial_train_size = bars in [train.start, val.end]      (9 yr)
+        #     train (2015-2022) fits the model; val (2023) is consumed by the
+        #     in-fold inner CV used for HP selection (Varma & Simon 2006,
+        #     doi:10.1186/1471-2105-7-91; landing under follow-up
+        #     P1-H050-INNER-CV). Both are pre-registered as in-sample.
+        #   test_size          = bars in [val.start, val.end]        (~1 yr)
+        #     The val window is the smallest pre-registered granularity
+        #     available; using it as the fold cadence yields ~2 calendar-year
+        #     OOS folds across the test window.
+        #   step_size          = test_size  (rolling, non-overlapping OOS)
+        #
+        # With mode="rolling" + step_size = val-bars, expected OOS fold count
+        # = 2 (test_y1=2024, test_y2=2025), each trained on the prior rolling
+        # 9-yr in-sample window. Bar-count cadence drifts ~1 trading day vs
+        # leap-year calendar boundaries; absolute calendar anchoring is
+        # tracked under follow-up P1-H050-CALENDAR-ANCHORED-SPLITTER (Bailey
+        # & López de Prado 2014 doi:10.3905/jpm.2014.40.5.094 anti-HARK
+        # selection-bias guidance; AFML §11.2). Walk-forward methodology
+        # itself: Pesaran & Timmermann 1995 doi:10.1111/j.1540-6261.1995.tb04055.x;
+        # Bergmeir, Hyndman & Koo 2018 doi:10.1016/j.csda.2017.11.003;
+        # AFML §12.2.
+        # Dry-run uses row-fraction sizes because the sparse synthetic panel
+        # cannot span the pre-reg envelope (see P1-H050-SYNTHETIC-PANEL-
+        # PRE-REG-COVERAGE follow-up).
+        if args.dry_run:
+            initial_train = max(200, n // 3)
+            test_size = max(50, n // 10)
+            step_size = test_size
+            split_size_source = "row_fraction"
+        else:
+            ts_event_pl = sym_frame.get_column("ts_event")
+            initial_train = int((ts_event_pl <= cfg.val_end).sum())
+            val_mask_pl = (
+                (ts_event_pl >= cfg.val_start) & (ts_event_pl <= cfg.val_end)
+            )
+            test_size = int(val_mask_pl.sum())
+            step_size = test_size
+            split_size_source = "calendar"
+            if initial_train <= 0 or test_size <= 0:
+                raise ValueError(
+                    f"Pre-reg date-derived split sizes invalid: "
+                    f"initial_train={initial_train}, test_size={test_size}. "
+                    f"Expected >0 bars in both [train.start, val.end] and "
+                    f"[val.start, val.end] after filtering to "
+                    f"[train.start={cfg.train_start.date()}, "
+                    f"test.end={cfg.test_end.date()}]; verify panel coverage "
+                    f"against H050.yaml §data."
+                )
+            test_window_bars = int(
+                (
+                    (ts_event_pl >= cfg.test_start)
+                    & (ts_event_pl <= cfg.test_end)
+                ).sum()
+            )
+            if test_window_bars <= 0:
+                raise ValueError(
+                    f"Pre-reg test window [{cfg.test_start.date()}, "
+                    f"{cfg.test_end.date()}] is empty in the filtered panel; "
+                    f"verify ingest snapshot covers H050.yaml §data.test."
+                )
+
+        # Post-filter, post-symbol-restriction frame hash. R-4: the pre-filter
+        # roll-adjusted output_frame_sha256 cannot distinguish two snapshots
+        # that share envelope content but differ outside it. Bind the bytes
+        # that actually drove (initial_train, test_size). The mutation
+        # survives the later `with_model_hash` call because `with_model_hash`
+        # is `dataclasses.replace(log, model_hash=...)` (verified at
+        # src/skie_ninja/utils/reproducibility.py:232) which preserves the
+        # current `dataset_checksums` dict on `ctx.log`.
+        if not args.dry_run:
+            ctx.add_dataset_checksum(
+                "h050_pre_reg_filtered_es",
+                frame_sha256(sym_frame, sort_cols=["symbol", "ts_event"]),
+            )
         split = walk_forward_split(
             n_samples=n,
             initial_train_size=initial_train,
@@ -567,6 +699,36 @@ def run(argv: list[str] | None = None) -> Path:
         # 6. Engine.
         engine = WalkForwardEngine(split)
         ts_arr = sym_frame.get_column("ts_event").to_numpy().astype("datetime64[ns]").astype(np.int64)
+
+        # F-3-1 calendar-anchor guard: the positional initial_train was
+        # derived from `(ts ≤ val.end).sum()`, but mode="rolling" with
+        # bar-count cadence does not enforce that fold-0's first OOS bar
+        # lands strictly AFTER cfg.test_start. If holidays/halts compressed
+        # val_bars or the panel has gaps within [val.start, val.end], the
+        # first OOS bar can drift before cfg.test_start, re-introducing
+        # val/test conflation. The cheapest binding is a calendar
+        # post-condition on the engine's first test slice. Dry-run does not
+        # honour the pre-reg envelope, so the guard is real-data only.
+        if not args.dry_run and len(split.folds) > 0:
+            fold0_test = split.folds[0].test_indices()
+            if len(fold0_test) > 0:
+                first_oos_pos = int(fold0_test[0])
+                first_oos_ts_int = int(ts_arr[first_oos_pos])
+                test_start_ts_int = int(
+                    np.datetime64(cfg.test_start.to_datetime64())
+                    .astype("datetime64[ns]")
+                    .astype(np.int64)
+                )
+                if first_oos_ts_int < test_start_ts_int:
+                    raise ValueError(
+                        f"Fold-0 first OOS bar maps to "
+                        f"ts_int={first_oos_ts_int}, strictly less than "
+                        f"cfg.test_start ts_int={test_start_ts_int} — "
+                        f"calendar drift has put a pre-test_start bar into "
+                        f"OOS. Verify panel coverage in [val.start, val.end] "
+                        f"is contiguous, or land "
+                        f"P1-H050-CALENDAR-ANCHORED-SPLITTER."
+                    )
         result = engine.run(
             fit_fn=_fit_fold,
             predict_fn=_predict_fold,
@@ -694,6 +856,61 @@ def run(argv: list[str] | None = None) -> Path:
         metrics["n_features"] = len(cfg.feature_keys)
         metrics["feature_keys"] = list(cfg.feature_keys)
         metrics["feature_provenance"] = [p.to_dict() for p in prov]
+
+        # Split-geometry audit trail (R-3 / F-1-5 closure). Records the
+        # method by which (initial_train, test_size, step_size) were
+        # derived plus the pre-reg envelope so artifact readers can
+        # verify split fidelity without re-running. Calendar-anchoring
+        # drift is surfaced via fold-count expectation: with mode="rolling"
+        # + step_size = val-bars across [val.end, test.end], the engine
+        # is expected to emit ~2 OOS folds; a deviation is logged.
+        metrics["split_size_source"] = split_size_source
+        metrics["initial_train_size"] = int(initial_train)
+        metrics["test_size"] = int(test_size)
+        metrics["step_size"] = int(step_size)
+        if split_size_source == "calendar":
+            metrics["pre_reg_envelope"] = {
+                "train_start": cfg.train_start.isoformat(),
+                "train_end": cfg.train_end.isoformat(),
+                "val_start": cfg.val_start.isoformat(),
+                "val_end": cfg.val_end.isoformat(),
+                "test_start": cfg.test_start.isoformat(),
+                "test_end": cfg.test_end.isoformat(),
+            }
+            # Expected OOS fold count = ceil(test_window_bars / step_size).
+            # Pre-reg test window is 2 yr, step = 1 yr-bars → expect ~2.
+            # No defensive clamps: step_size > 0 and test_window_bars > 0
+            # are pre-conditions raised earlier in this branch (F-3-4).
+            expected_n_folds = int(np.ceil(test_window_bars / step_size))
+            metrics["expected_n_folds"] = expected_n_folds
+            if metrics["n_folds"] != expected_n_folds:
+                _LOG.warning(
+                    "Fold count drift: emitted %d, expected %d (calendar "
+                    "drift across leap years; see follow-up "
+                    "P1-H050-CALENDAR-ANCHORED-SPLITTER).",
+                    metrics["n_folds"],
+                    expected_n_folds,
+                )
+
+            # F-3-6: per-fold realized envelope (actual ts_event min/max
+            # of train + test indices). Configured pre_reg_envelope is
+            # the calendar contract; realized_envelope is what the engine
+            # actually used. A reader can compute drift = realized − configured
+            # without re-running.
+            ts_arr_ns = sym_frame.get_column("ts_event").to_numpy().astype(
+                "datetime64[ns]"
+            )
+            metrics["realized_envelope_per_fold"] = []
+            for fold in split.folds:
+                tr = fold.train_indices()
+                te = fold.test_indices()
+                metrics["realized_envelope_per_fold"].append({
+                    "fold_id": fold.fold_id,
+                    "train_ts_min": str(ts_arr_ns[tr[0]]) if tr else None,
+                    "train_ts_max": str(ts_arr_ns[tr[-1]]) if tr else None,
+                    "test_ts_min": str(ts_arr_ns[te[0]]) if te else None,
+                    "test_ts_max": str(ts_arr_ns[te[-1]]) if te else None,
+                })
 
         _write_aggregate(agg_dir, metrics)
 
