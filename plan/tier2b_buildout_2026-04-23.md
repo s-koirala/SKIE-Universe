@@ -68,6 +68,28 @@ This memo is updated at the conclusion of each cycle. Completed cycles get a `�
   - `P1-CYCLE6-REPRO-DATASET-CHECKSUM` *(repro)* — 5 Cycle-6 walk_forward repro logs carry `dataset_checksums={}`; `06f0402` fix wired `output_frame_sha256` into `RunContext` but no run has been executed post-fix.
   - `P1-HMM-BLAS-THREADING-ADR` *(repro)* — `sklearn.KMeans` deadlocks under default Windows MKL/OpenMP; `OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1` documented only in pause memo, not in repo README or any ADR. Pause memo §Issue 3 originally classified this "non-blocking, workaround known"; promoted to blocking here per [~/.claude/CLAUDE.md](C:/Users/skoir/.claude/CLAUDE.md) reproducibility schema (single-command reproduction without out-of-tree env-var setup).
 
-  Other (non-blocking) follow-ups carried forward: `P1-H050-FEATURE-PIT-ASSERT`, `P1-H050-COST-EMPIRICAL-CALIBRATION`. Cycle-6 row will flip to `[x] ✓ accepted` when (a) the user resolves Option B (data-coverage decision: B1 / B2 / B3) and (b) the 10 items are remediated and verified in a Phase-B audit-remediate-loop with a real-data run that populates `dataset_checksums` end-to-end.
+  Other (non-blocking) follow-ups carried forward: `P1-H050-FEATURE-PIT-ASSERT`, `P1-H050-COST-EMPIRICAL-CALIBRATION`. Cycle-6 row will flip to `[x] ✓ accepted` when (a) Cell I substrate backfill completes with atomic checksum re-freeze and (b) the remaining 8 quant + 2 repro items are remediated and verified in a Phase-B audit-remediate-loop with a real-data run that populates `dataset_checksums` end-to-end.
 
   Key deliverables (Phase-A committed): [src/skie_ninja/features/](../src/skie_ninja/features/) (labels + 4 microstructure modules), [src/skie_ninja/backtest/costs/nt8_es_nq_rth_v1.py](../src/skie_ninja/backtest/costs/nt8_es_nq_rth_v1.py), [scripts/run_walk_forward.py](../scripts/run_walk_forward.py), [research/01_hypothesis_register/H050/data_requirements.md](../research/01_hypothesis_register/H050/data_requirements.md), [config/hypotheses/H050.yaml](../config/hypotheses/H050.yaml), [docs/decisions/ADR-0007](../docs/decisions/ADR-0007-embargo-placement.md) + [ADR-0008](../docs/decisions/ADR-0008-spa-omega-method.md).
+
+## Option B decision — Cell I selected (2026-04-24)
+
+Path selected from the 2D substrate × disposition grid in [docs/research_notes/memo_option-b-data-coverage_2026-04-24.md](../docs/research_notes/memo_option-b-data-coverage_2026-04-24.md) §6: **Cell I — backfill ES+NQ 2015-2019 + NQ 2025 from Databento GLBX.MDP3 + run H050 as designed**. Anchored in:
+
+1. **Pre-reg fidelity** (project [CLAUDE.md](../CLAUDE.md) "longitudinal, exhaustive research program"): Cell I uniquely preserves the H050 ID and the §2 8-yr train claim without amendment.
+2. **Statistical-power maximization** ([rules/quant-project.md](../../.claude/rules/quant-project.md) Inference clause): Lo 2002 / Mertens 2002 / Opdyke 2007 SR-CI tightness scales with T; [Bailey & Lopez de Prado 2014, JPM 40(5):94-107, doi:10.3905/jpm.2014.40.5.094](https://doi.org/10.3905/jpm.2014.40.5.094) DSR threshold relaxes with T.
+3. **HARK avoidance** ([~/.claude/CLAUDE.md](C:/Users/skoir/.claude/CLAUDE.md) evidence hierarchy): Cells II/III register H050b with windows that fit inspected substrate — post-hoc-contaminated. Cell I avoids this.
+4. **Sibling-substrate value**: ES/NQ 2015-2019 substrate is consumed by H051 (HMM-Kalman pairs) + H052a (HMM-ORB futures) regardless of H050's outcome.
+
+### Cell I roadmap
+
+1. **Resolve P1-H050-AGGREGATION-RULE** (cross-symbol aggregation rule pre-reg) — must precede backfill; otherwise the choice is post-hoc-contaminated. Resolution proposal under audit-remediate; user decides design.md §1 amendment vs addendum.
+2. **Verify Databento billing** against the user's account tier (memo §3.2 — vendor cost not derivable from public docs alone).
+3. **Backfill via existing pipeline** — `python scripts/ingest.py --dataset vendor_legacy_1min` extended with 2015-2019 windows + NQ 2025; ratio-adjusted re-derivation end-to-end (memo §3.2). Vendor-data-drift check before stitching (Databento corrections changelog).
+4. **Atomic checksum re-freeze** of [research/01_hypothesis_register/H050/data_requirements.md](../research/01_hypothesis_register/H050/data_requirements.md) (memo §3.2, §3.4).
+5. **Phase-B audit-remediate-loop** closes the remaining 8 quant items (P1-HMM-FOLD-WARM-START, P1-H050-SPLIT-PARAMS, P1-H050-INNER-CV, P1-H050-CI-DIFFERENTIAL, P1-H050-LABEL-CV, P1-H050-UNIVERSE-ES-ONLY, P1-H050-SPA-M1-DEGENERATE, plus P1-HMM-BLAS-THREADING-ADR) + 1 repro (P1-CYCLE6-REPRO-DATASET-CHECKSUM populates naturally on real-data run).
+6. **Real-data H050 walk-forward** → audit-remediate-loop on results → MVP-1 disposition under design.md §10.
+
+### Fallback if Databento billing prohibitive
+
+Per memo §7 ("Recommendation framework — which constraint binds?"), the next-best fallback if vendor cost turns out prohibitive after step 2 is **Cell V** (backfill substrate for siblings, archive H050 via §10 amendment per B3a) — *not* Cell III, because Cell III has the HARK problem regardless of vendor cost.
