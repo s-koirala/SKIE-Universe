@@ -120,6 +120,7 @@ same reason.  Tracked as Phase-1 follow-up ``P1-SPA-PDF-VERIFY``.
 from __future__ import annotations
 
 import math
+import warnings
 from dataclasses import dataclass
 from typing import Literal
 
@@ -134,6 +135,21 @@ from skie_ninja.inference.bootstrap import (
 
 _VARIANT_LABELS = Literal["lower", "consistent", "upper"]
 _OMEGA_METHODS = Literal["bootstrap", "hac"]
+
+
+class SingleStrategySPAWarning(UserWarning):
+    """Emitted when :func:`hansen_spa_test` is called with ``m == 1``.
+
+    Hansen 2005 SPA is a multi-strategy null test (max over ``k = 1..m``).
+    With a single column the max collapses to one term and the
+    "superior-vs-benchmark family" interpretation degenerates to a
+    one-sided studentised bootstrap test of ``H_0: E[d] <= 0``.  The
+    machinery is mathematically valid (the max-of-one is well defined
+    and the recentering construction is continuous in ``m``) but the
+    SPA-vs-benchmark semantics no longer apply.  See
+    [docs/decisions/ADR-0008-spa-omega-method.md] §"Single-strategy
+    degenerate handling (|M|=1)".
+    """
 
 # Float64 ULP as a variance-scale floor to guard against division
 # by zero in studentized statistics for degenerate series. Applied
@@ -340,6 +356,33 @@ def hansen_spa_test(
         :func:`~skie_ninja.inference.stats.hac.nw_hac_variance`).
     rng
         NumPy Generator (caller-seeded for reproducibility).
+
+    Notes
+    -----
+
+    **Single-strategy degenerate case (``m == 1``).** Hansen 2005 SPA is
+    a multi-strategy null test (max over ``k = 1..m``).  When ``m == 1``
+    the max collapses to a single term and the recentering family
+    {SPA_l, SPA_c, SPA_u} no longer separates a "best" strategy from
+    its competitors — they only differ via the recentering term ``g_k``
+    on a single column.  In the practically relevant regime
+    ``d_bar > 0`` (positive sample mean), all three variants share
+    ``g = d_bar`` and yield identical p-values; for ``d_bar < 0`` the
+    variants split via the Andrews 1999 ``sqrt(2 log log n)`` threshold
+    and trivial truncation rules of §2.4.  Project policy
+    ([docs/decisions/ADR-0008-spa-omega-method.md] §"Single-strategy
+    degenerate handling (|M|=1)") chooses **pass-through**: the SPA
+    machinery is invoked as documented; a
+    :class:`SingleStrategySPAWarning` is emitted to flag the degenerate
+    invocation; the output is interpretable as a one-sided studentised
+    bootstrap p-value for ``H_0: E[d] <= 0``.  For the H050 single-
+    statistic case, the
+    :func:`skie_ninja.inference.stats.ledoit_wolf_2008.ledoit_wolf_2008_differential_ci`
+    confidence interval is the *primary* inference; the ``m = 1`` SPA
+    pass-through is corroborative only.  Multi-strategy SPA per
+    `~/.claude/rules/quant-project.md` applies once ``m >= 2``
+    (i.e., when sibling hypotheses such as H051, H052a enter the
+    family).
     """
     arr = np.asarray(d, dtype=float)
     if arr.ndim != 2:
@@ -352,6 +395,19 @@ def hansen_spa_test(
     if n < 4 or m < 1:
         raise ValueError(
             f"hansen_spa_test requires n >= 4 and m >= 1; got n={n}, m={m}."
+        )
+    if m == 1:
+        warnings.warn(
+            (
+                "hansen_spa_test invoked with m=1: SPA composite null "
+                "degenerates to a single-strategy one-sided test of "
+                "H_0: E[d] <= 0. Pass-through is project policy per "
+                "ADR-0008 §'Single-strategy degenerate handling (|M|=1)'; "
+                "for primary inference on a single statistic, prefer "
+                "ledoit_wolf_2008_differential_ci."
+            ),
+            SingleStrategySPAWarning,
+            stacklevel=2,
         )
     if n_bootstrap < 1:
         raise ValueError(f"n_bootstrap must be >= 1, got {n_bootstrap}.")
@@ -430,5 +486,6 @@ def hansen_spa_test(
 
 __all__ = [
     "HansenSPAResult",
+    "SingleStrategySPAWarning",
     "hansen_spa_test",
 ]

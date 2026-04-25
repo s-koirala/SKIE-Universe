@@ -8,10 +8,12 @@ per ADR-0003.
 
 from skie_ninja.inference.multipletest.hansen_spa import (
     HansenSPAResult,
+    SingleStrategySPAWarning,
     hansen_spa_test,
 )
 
 __all__ = [
     "HansenSPAResult",
+    "SingleStrategySPAWarning",
     "hansen_spa_test",
 ]

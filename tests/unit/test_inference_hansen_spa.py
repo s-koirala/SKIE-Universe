@@ -17,15 +17,29 @@ Coverage:
   preserved cross-column linear relationships).
 - Reproducibility with seeded generator.
 - Input validation (shape, finite, n bounds, unknown variant).
+- Single-strategy degenerate case (|M|=1): warning emitted,
+  pass-through p-value matches a one-sided manual stationary
+  bootstrap; |M|>=2 does not emit the warning. Per ADR-0008
+  §"Single-strategy degenerate handling (|M|=1)" (closes
+  P1-H050-SPA-M1-DEGENERATE).
 """
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 import pytest
 
-from skie_ninja.inference.bootstrap import BlockLengthSelection
-from skie_ninja.inference.multipletest import HansenSPAResult, hansen_spa_test
+from skie_ninja.inference.bootstrap import (
+    BlockLengthSelection,
+    stationary_bootstrap_indices,
+)
+from skie_ninja.inference.multipletest import (
+    HansenSPAResult,
+    SingleStrategySPAWarning,
+    hansen_spa_test,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -294,3 +308,148 @@ class TestHansenSPAResult:
         )
         with pytest.raises(Exception):
             res.p_value = 0.2  # type: ignore[misc]
+
+
+# ---------------------------------------------------------------------------
+# Single-strategy degenerate case (|M| = 1)
+# ---------------------------------------------------------------------------
+
+
+class TestSingleStrategyDegenerate:
+    """ADR-0008 §"Single-strategy degenerate handling (|M|=1)".
+
+    The Hansen 2005 SPA composite null degenerates to a one-sided
+    studentised bootstrap test of ``H_0: E[d] <= 0`` when ``m == 1``.
+    Project policy is pass-through with a ``SingleStrategySPAWarning``
+    emitted at function entry. Closes follow-up
+    ``P1-H050-SPA-M1-DEGENERATE``.
+    """
+
+    def test_m_eq_1_emits_warning(self):
+        d = _alt_panel(n=200, m=1, mu_best=0.3, seed=11)
+        with pytest.warns(SingleStrategySPAWarning, match="m=1"):
+            hansen_spa_test(
+                d,
+                n_bootstrap=200,
+                rng=np.random.default_rng(11),
+            )
+
+    def test_m_eq_1_warning_class_is_user_warning(self):
+        assert issubclass(SingleStrategySPAWarning, UserWarning)
+
+    def test_m_geq_2_no_warning(self):
+        d = _alt_panel(n=200, m=3, mu_best=0.3, seed=12)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", SingleStrategySPAWarning)
+            hansen_spa_test(
+                d,
+                n_bootstrap=200,
+                rng=np.random.default_rng(12),
+            )
+
+    def test_m_eq_1_returns_valid_result(self):
+        d = _alt_panel(n=200, m=1, mu_best=0.3, seed=13)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SingleStrategySPAWarning)
+            res = hansen_spa_test(
+                d,
+                n_bootstrap=300,
+                rng=np.random.default_rng(13),
+            )
+        assert res.n_strategies == 1
+        assert 0.0 <= res.p_value <= 1.0
+        assert 0.0 <= res.p_value_lower <= 1.0
+        assert 0.0 <= res.p_value_upper <= 1.0
+        assert res.best_strategy_index == 0
+
+    def test_m_eq_1_pvalue_matches_manual_one_sided_bootstrap(self):
+        """Pass-through p-value equals an independently-coded one-sided
+        studentised stationary-bootstrap p-value on the single column.
+
+        Construction (Hansen 2005 §2.4 SPA_c reduction at ``m = 1``,
+        positive-d_bar regime where g = d_bar):
+
+            T = max(0, sqrt(n) * d_bar / omega)
+            T*^b = max(0, sqrt(n) * (d_bar*^b - d_bar) / omega)
+            p = (1/B) * #{b: T*^b >= T}
+
+        Uses the same RNG seed and block length as the SPA call.
+        """
+        n = 240
+        d = _alt_panel(n=n, m=1, mu_best=0.4, seed=14)
+        seed = 1414
+        block_length = 5.0
+        n_boot = 400
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SingleStrategySPAWarning)
+            res = hansen_spa_test(
+                d,
+                n_bootstrap=n_boot,
+                block_length=block_length,
+                omega_method="bootstrap",
+                rng=np.random.default_rng(seed),
+            )
+
+        rng_manual = np.random.default_rng(seed)
+        boot_means = np.empty(n_boot, dtype=float)
+        for b in range(n_boot):
+            idx = stationary_bootstrap_indices(
+                n, block_length=block_length, rng=rng_manual
+            )
+            boot_means[b] = d[idx, 0].mean()
+
+        var_boot = boot_means.var(ddof=0)
+        omega_sq = max(n * var_boot, float(np.finfo(np.float64).eps))
+        omega = np.sqrt(omega_sq)
+        sqrt_n = np.sqrt(n)
+        d_bar = d[:, 0].mean()
+
+        # Sample-mean is positive in this fixture, so SPA_c recenters
+        # at g = d_bar (Hansen 2005 §2.4 + ADR-0008 variant-collapse
+        # table); the bootstrap analogue is therefore centred at
+        # d_bar*^b - d_bar.
+        assert d_bar > 0.0, (
+            "fixture invariant violated: expected positive sample mean."
+        )
+        t_obs = max(0.0, sqrt_n * d_bar / omega)
+        t_boot_manual = np.maximum(
+            0.0, sqrt_n * (boot_means - d_bar) / omega
+        )
+        p_manual = float((t_boot_manual >= t_obs).mean())
+
+        assert res.statistic == pytest.approx(t_obs, abs=1e-12)
+        assert res.p_value == pytest.approx(p_manual, abs=1e-12)
+
+    def test_m_eq_1_variant_collapse_in_positive_dbar_regime(self):
+        """ADR-0008 §"Variant collapse" — when ``d_bar > 0`` all three
+        variants share ``g = d_bar`` and yield identical p-values.
+        """
+        d = _alt_panel(n=300, m=1, mu_best=0.5, seed=15)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SingleStrategySPAWarning)
+            res = hansen_spa_test(
+                d,
+                n_bootstrap=400,
+                rng=np.random.default_rng(15),
+            )
+        assert d[:, 0].mean() > 0.0
+        assert res.p_value_lower == pytest.approx(res.p_value, abs=1e-12)
+        assert res.p_value == pytest.approx(res.p_value_upper, abs=1e-12)
+
+    def test_m_eq_1_variant_ordering_preserved(self):
+        """SPA_l <= SPA_c <= SPA_u still holds at m = 1 (mechanical
+        consequence of the recentering definitions, independent of
+        multi-strategy semantics)."""
+        rng_data = np.random.default_rng(16)
+        d = rng_data.normal(0.0, 1.0, size=(250, 1))
+        d[:, 0] -= 1.5  # negative-d_bar regime, splits SPA_l from SPA_c/SPA_u
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SingleStrategySPAWarning)
+            res = hansen_spa_test(
+                d,
+                n_bootstrap=400,
+                rng=np.random.default_rng(160),
+            )
+        assert res.p_value_lower <= res.p_value + 1e-9
+        assert res.p_value <= res.p_value_upper + 1e-9
