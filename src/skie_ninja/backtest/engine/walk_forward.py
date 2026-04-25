@@ -42,6 +42,8 @@ References
 from __future__ import annotations
 
 import hashlib
+import inspect
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -66,6 +68,16 @@ class FitFn(Protocol):
         the caller supplies the full ``X`` / ``y`` arrays as keyword
         args, and the ``fit_fn`` slices them with ``train_idx``.
 
+        The engine additionally injects ``fold_id`` as a keyword
+        argument when the callable accepts it (declared explicitly
+        or absorbed via ``**kwargs``). Callables whose signatures
+        bind no ``fold_id`` and no ``**kwargs`` keep working without
+        change — the engine introspects the signature once at
+        :meth:`WalkForwardEngine.run` entry and skips injection for
+        callables that do not advertise the parameter. The injected
+        value is identical to ``WalkForwardResult.fold_records[i].fold_id``
+        for the same fold (drawn from the same ``Fold.fold_id``).
+
     Returns
     -------
     Any
@@ -73,13 +85,17 @@ class FitFn(Protocol):
         engine is agnostic about the type.
     """
 
-    def __call__(
-        self, train_idx: np.ndarray, *args: Any, **kwargs: Any
-    ) -> Any: ...
+    def __call__(self, train_idx: np.ndarray, *args: Any, **kwargs: Any) -> Any: ...
 
 
 class PredictFn(Protocol):
-    """Callable signature for the per-fold predict step."""
+    """Callable signature for the per-fold predict step.
+
+    The engine injects ``fold_id`` as a keyword argument under the
+    same kwarg-tolerant rule as :class:`FitFn` — a ``predict_fn``
+    that does not declare ``fold_id`` (or ``**kwargs``) sees no
+    change.
+    """
 
     def __call__(
         self,
@@ -88,6 +104,47 @@ class PredictFn(Protocol):
         *args: Any,
         **kwargs: Any,
     ) -> np.ndarray: ...
+
+
+def _accepts_fold_id_kwarg(fn: Callable[..., Any]) -> bool:
+    """Return ``True`` iff ``fn`` accepts a ``fold_id`` keyword arg.
+
+    A callable accepts ``fold_id`` if (a) its signature binds a
+    parameter named ``fold_id`` that can be supplied by keyword, or
+    (b) it absorbs unknown keyword arguments via ``**kwargs``. Used
+    by :meth:`WalkForwardEngine.run` to decide whether to inject the
+    engine's per-fold ``fold_id`` into ``fit_fn`` / ``predict_fn``
+    without breaking pre-existing callables that bind a stricter
+    signature.
+
+    Builtins and C-extension callables whose signatures cannot be
+    introspected via :func:`inspect.signature` are conservatively
+    treated as NOT accepting ``fold_id`` — the engine skips
+    injection rather than risking a ``TypeError`` from a strict
+    callable.
+
+    Collision with a caller-supplied ``fold_id`` in
+    :paramref:`WalkForwardEngine.run.fit_kwargs` /
+    :paramref:`WalkForwardEngine.run.predict_kwargs` raises Python's
+    standard "got multiple values for keyword argument 'fold_id'"
+    ``TypeError`` when both routes inject the name. This is the
+    intended failure mode — a name collision is a programming error
+    against the engine's reserved-kwarg contract; do not pass
+    ``fold_id`` through ``fit_kwargs`` / ``predict_kwargs``.
+    """
+    try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return False
+    for param in sig.parameters.values():
+        if param.kind is inspect.Parameter.VAR_KEYWORD:
+            return True
+        if param.name == "fold_id" and param.kind in (
+            inspect.Parameter.KEYWORD_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        ):
+            return True
+    return False
 
 
 class HashFn(Protocol):
@@ -244,6 +301,15 @@ class WalkForwardEngine:
         fit_kwargs = dict(fit_kwargs or {})
         predict_kwargs = dict(predict_kwargs or {})
 
+        # Decide once per run whether each callable accepts fold_id.
+        # Using inspect.signature for non-introspectable callables
+        # (builtins, certain C extensions) returns False — the engine
+        # then skips fold_id injection rather than risking TypeError.
+        fit_accepts_fold_id = _accepts_fold_id_kwarg(fit_fn)
+        predict_accepts_fold_id = (
+            _accepts_fold_id_kwarg(predict_fn) if predict_fn is not None else False
+        )
+
         fold_records: list[FoldRecord] = []
         predictions: list[np.ndarray] = []
         test_indices: list[np.ndarray] = []
@@ -261,10 +327,18 @@ class WalkForwardEngine:
             train_idx = np.asarray(fold.train_indices(), dtype=np.int64)
             test_idx = np.asarray(fold.test_indices(), dtype=np.int64)
 
-            fitted = fit_fn(train_idx, **fit_kwargs)
+            # fold_id sourced from the same Fold whose fold_id is
+            # written into the FoldRecord below — invariant the
+            # passthrough is meant to surface.
+            fold_id = int(fold.fold_id)
+            fit_extra: dict[str, Any] = {"fold_id": fold_id} if fit_accepts_fold_id else {}
+            fitted = fit_fn(train_idx, **fit_kwargs, **fit_extra)
 
             if predict_fn is not None:
-                preds = predict_fn(fitted, test_idx, **predict_kwargs)
+                predict_extra: dict[str, Any] = (
+                    {"fold_id": fold_id} if predict_accepts_fold_id else {}
+                )
+                preds = predict_fn(fitted, test_idx, **predict_kwargs, **predict_extra)
                 preds_arr = np.asarray(preds)
                 if preds_arr.shape[0] != test_idx.size:
                     raise ValueError(
@@ -294,9 +368,7 @@ class WalkForwardEngine:
         )
 
 
-def roll_up_model_hashes(
-    per_fold: list[tuple[int, str]] | list[FoldRecord]
-) -> str:
+def roll_up_model_hashes(per_fold: list[tuple[int, str]] | list[FoldRecord]) -> str:
     """Canonical rolled-up hash.
 
     ``per_fold`` may be either a list of ``(fold_id, hash)`` tuples
@@ -418,8 +490,7 @@ def read_run_ledger(path: Path) -> list[FoldRecord]:
     actual_schema = {name: frame.schema[name] for name in _LEDGER_COLUMNS}
     if actual_schema != expected_schema:
         raise ValueError(
-            f"Run-ledger dtype mismatch. Expected {expected_schema!r}; "
-            f"got {actual_schema!r}."
+            f"Run-ledger dtype mismatch. Expected {expected_schema!r}; got {actual_schema!r}."
         )
     rows = frame.to_dicts()
     return [FoldRecord(**row) for row in rows]
@@ -440,9 +511,7 @@ def _ledger_schema() -> dict[str, Any]:
     return schema
 
 
-def ledger_path_for(
-    run_id: str, *, logs_reproducibility_dir: Path
-) -> Path:
+def ledger_path_for(run_id: str, *, logs_reproducibility_dir: Path) -> Path:
     """Canonical run-ledger location per the Cycle-4 spec.
 
     ``logs/reproducibility/{run_id}_walk_forward_folds.parquet``

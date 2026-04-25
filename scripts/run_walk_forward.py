@@ -360,7 +360,7 @@ def _predict_fold(
     X: np.ndarray,
     r: np.ndarray,
     warm_cold_diagnostic: WarmColdDiagnostic | None = None,
-    fold_id_counter: list[int] | None = None,
+    fold_id: int | None = None,
 ) -> np.ndarray:
     """Emit two-column predictions: ``(classifier_p, regime_indicator)``.
 
@@ -375,14 +375,15 @@ def _predict_fold(
     records per-fold Hellinger / total-variation summary statistics.
     The cold-start path is discarded after observation; the
     production output is unconditionally the warm-start posterior.
-    ``fold_id_counter`` is a single-element mutable list used as a
-    monotonic fold counter; the engine processes folds in fold_id
-    order (verified against
-    :class:`~skie_ninja.backtest.engine.walk_forward.WalkForwardEngine.run`),
-    so the counter mirrors
-    ``WalkForwardResult.fold_records[i].fold_id``. Cleaner refactor —
-    engine passes ``fold_id`` directly to ``predict_fn`` — tracked
-    as follow-up `P1-WF-ENGINE-FOLD-ID-PASSTHROUGH`.
+
+    ``fold_id`` is injected by
+    :meth:`~skie_ninja.backtest.engine.walk_forward.WalkForwardEngine.run`
+    (P1-WF-ENGINE-FOLD-ID-PASSTHROUGH closure) and is identical to
+    ``WalkForwardResult.fold_records[i].fold_id`` for the fold under
+    test. When ``None`` (e.g. the function is invoked outside the
+    engine for ad-hoc inspection) the diagnostic falls back to
+    ``len(warm_cold_diagnostic.fold_records)`` — the same fallback
+    used before the passthrough refactor.
     """
     X_te = X[test_idx]
     r_te = r[test_idx]
@@ -430,21 +431,15 @@ def _predict_fold(
     # sanity envelope on every fold's record.
     if warm_cold_diagnostic is not None:
         cold = hmm.filter_states(test_obs)
-        fold_id = (
-            fold_id_counter[0]
-            if fold_id_counter is not None
-            else len(warm_cold_diagnostic.fold_records)
-        )
+        diag_fold_id = fold_id if fold_id is not None else len(warm_cold_diagnostic.fold_records)
         warm_cold_diagnostic.observe_fold(
-            fold_id=fold_id,
+            fold_id=diag_fold_id,
             warm_posterior=filtered,
             cold_posterior=cold,
             n_propagation_steps=n_propagation_steps,
             train_terminal_position=train_terminal_position,
             test_first_position=test_first_position,
         )
-        if fold_id_counter is not None:
-            fold_id_counter[0] += 1
     high_state = fitted["regime_high_mean"]
     regime_indicator = (filtered[:, high_state] > 0.5).astype(np.float64)
     return np.stack([p, regime_indicator], axis=1)
@@ -799,8 +794,12 @@ def run(argv: list[str] | None = None) -> Path:
         # Sidecar serialised below; SHA256 rolled into ReproLog.model_hash
         # via the multi-sidecar combiner so a future warm-start regression
         # will surface as a model_hash change.
+        # P1-WF-ENGINE-FOLD-ID-PASSTHROUGH closure: the engine now injects
+        # ``fold_id`` directly into ``_predict_fold`` (when the signature
+        # accepts it), so the prior closure-mutated counter list is gone —
+        # the diagnostic's fold_id matches WalkForwardResult.fold_records[*].fold_id
+        # by construction (engine sources both from the same Fold).
         warm_cold_diag = WarmColdDiagnostic()
-        warm_cold_fold_counter = [0]
         result = engine.run(
             fit_fn=_fit_fold,
             predict_fn=_predict_fold,
@@ -820,7 +819,6 @@ def run(argv: list[str] | None = None) -> Path:
                 X=X_full,
                 r=r_bar,
                 warm_cold_diagnostic=warm_cold_diag,
-                fold_id_counter=warm_cold_fold_counter,
             ),
         )
 

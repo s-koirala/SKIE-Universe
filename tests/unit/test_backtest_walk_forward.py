@@ -299,13 +299,9 @@ class TestRunLedger:
         from skie_ninja.backtest.engine.walk_forward import _LEDGER_COLUMNS
 
         n = 2
-        data: dict[str, list[object]] = {
-            c: [0 for _ in range(n)] for c in _LEDGER_COLUMNS
-        }
+        data: dict[str, list[object]] = {c: [0 for _ in range(n)] for c in _LEDGER_COLUMNS}
         data["model_hash"] = ["a" * 64 for _ in range(n)]
-        schema: dict[str, object] = {
-            c: pl.Int64 for c in _LEDGER_COLUMNS if c != "model_hash"
-        }
+        schema: dict[str, object] = {c: pl.Int64 for c in _LEDGER_COLUMNS if c != "model_hash"}
         schema["fold_id"] = pl.Int32  # drift
         schema["model_hash"] = pl.Utf8
         bad = pl.DataFrame(data, schema=schema)
@@ -518,3 +514,123 @@ class TestHMMIntegration:
         )
         updated = with_model_hash(log, result.rolled_up_model_hash)
         assert updated.model_hash == result.rolled_up_model_hash
+
+
+# ---------------------------------------------------------------------------
+# fold_id passthrough (P1-WF-ENGINE-FOLD-ID-PASSTHROUGH)
+# ---------------------------------------------------------------------------
+
+
+class TestFoldIdPassthrough:
+    """The engine injects ``fold_id`` into ``fit_fn`` / ``predict_fn``
+    when the callable advertises the parameter (via explicit name or
+    ``**kwargs``); the injected value matches the Fold-derived fold_id
+    that ends up on :class:`FoldRecord`.
+    """
+
+    def test_predict_fn_receives_fold_id_matching_fold_record(self) -> None:
+        spec = walk_forward_split(
+            n_samples=40,
+            initial_train_size=10,
+            test_size=5,
+            step_size=5,
+            label_horizon=0,
+            embargo=0,
+        )
+        ts = np.arange(40, dtype=np.int64)
+        seen_fold_ids: list[int] = []
+
+        def predict_fn(fitted: object, test_idx: np.ndarray, *, fold_id: int) -> np.ndarray:
+            seen_fold_ids.append(fold_id)
+            return np.zeros(test_idx.size)
+
+        engine = WalkForwardEngine(spec)
+        result = engine.run(
+            fit_fn=lambda idx: "model",
+            predict_fn=predict_fn,
+            feature_timestamps=ts,
+            observation_timestamps=ts,
+        )
+
+        record_fold_ids = [r.fold_id for r in result.fold_records]
+        assert seen_fold_ids == record_fold_ids
+        # And both equal the SplitSpec's Fold.fold_id sequence — the
+        # invariant the passthrough is meant to surface.
+        assert record_fold_ids == [f.fold_id for f in spec.folds]
+
+    def test_fit_fn_receives_fold_id_matching_fold_record(self) -> None:
+        spec = walk_forward_split(
+            n_samples=40,
+            initial_train_size=10,
+            test_size=5,
+            step_size=5,
+            label_horizon=0,
+            embargo=0,
+        )
+        ts = np.arange(40, dtype=np.int64)
+        seen_fold_ids: list[int] = []
+
+        def fit_fn(train_idx: np.ndarray, *, fold_id: int) -> object:
+            seen_fold_ids.append(fold_id)
+            return "model"
+
+        engine = WalkForwardEngine(spec)
+        result = engine.run(
+            fit_fn=fit_fn,
+            feature_timestamps=ts,
+            observation_timestamps=ts,
+        )
+
+        assert seen_fold_ids == [r.fold_id for r in result.fold_records]
+
+    def test_callable_without_fold_id_param_unchanged(self) -> None:
+        """Pre-existing callables that bind no ``fold_id`` and no
+        ``**kwargs`` keep working — the engine introspects and skips
+        injection for them."""
+        spec = walk_forward_split(
+            n_samples=30,
+            initial_train_size=10,
+            test_size=5,
+            step_size=5,
+            label_horizon=0,
+            embargo=0,
+        )
+        ts = np.arange(30, dtype=np.int64)
+        engine = WalkForwardEngine(spec)
+
+        # No TypeError despite the engine not injecting fold_id.
+        result = engine.run(
+            fit_fn=lambda idx: "model",
+            predict_fn=lambda fitted, test_idx: np.zeros(test_idx.size),
+            feature_timestamps=ts,
+            observation_timestamps=ts,
+        )
+        assert len(result.fold_records) == len(spec.folds)
+
+    def test_var_keyword_callable_receives_fold_id(self) -> None:
+        """Callables that absorb ``**kwargs`` see the injected fold_id."""
+        spec = walk_forward_split(
+            n_samples=30,
+            initial_train_size=10,
+            test_size=5,
+            step_size=5,
+            label_horizon=0,
+            embargo=0,
+        )
+        ts = np.arange(30, dtype=np.int64)
+
+        seen_fold_ids: list[int] = []
+
+        def predict_fn(fitted: object, test_idx: np.ndarray, **kwargs: object) -> np.ndarray:
+            assert "fold_id" in kwargs
+            seen_fold_ids.append(int(kwargs["fold_id"]))  # type: ignore[arg-type]
+            return np.zeros(test_idx.size)
+
+        engine = WalkForwardEngine(spec)
+        result = engine.run(
+            fit_fn=lambda idx: "model",
+            predict_fn=predict_fn,
+            feature_timestamps=ts,
+            observation_timestamps=ts,
+        )
+        assert seen_fold_ids == [r.fold_id for r in result.fold_records]
