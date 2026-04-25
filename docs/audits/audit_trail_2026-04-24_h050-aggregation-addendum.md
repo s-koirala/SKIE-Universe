@@ -1,11 +1,11 @@
 ---
 name: H050 cross-symbol aggregation-rule addendum — audit trail
-description: 3-round audit-remediate trail for the H050 aggregation-rule addendum (Path A in-place pre-reg clarification of design.md), produced under the audit-remediate-loop skill (3-round cap)
+description: 3-round audit-remediate trail (inline) plus Round-4 post-loop-verification under proper subagent isolation for the H050 aggregation-rule addendum (Path A in-place pre-reg clarification of design.md)
 type: project
-status: closed
+status: closed (Round 4 corrective complete)
 date: 2026-04-24
-rounds: 3 (cap reached)
-verdict: accept
+rounds: 3 inline (cap reached) + Round 4 post-loop-verification (proper subagent isolation; corrective, not loop-extension)
+verdict: accept (Round-4-amended)
 ---
 
 # H050 cross-symbol aggregation-rule addendum — audit trail
@@ -141,3 +141,63 @@ Cited without DOI (deliberate, residual item 2):
 To be filled at commit time (per task constraints, this audit run does NOT create the commit):
 
 - `(this audit run)` — produced [research/01_hypothesis_register/H050/aggregation_rule_addendum_2026-04-24.md](../../research/01_hypothesis_register/H050/aggregation_rule_addendum_2026-04-24.md) (r1) and this audit trail; commit deferred to user. Suggested commit message: `feat(h050): formalise P1-H050-AGGREGATION-RULE addendum (r1) + 3-round audit trail`.
+- `(Round-4 corrective run, 2026-04-24)` — produced revision r2 of the addendum (post-loop-verification under proper subagent isolation) and the Round-4 section appended below in this trail; commit deferred to user. Suggested commit message: `fix(h050): r2 addendum post-loop-verification — arithmetic-return-space directive + LW2008 impl-gap binding`.
+
+## Round 4 — post-loop-verification (proper-subagent isolation)
+
+### Provenance and exception-to-cap rationale
+
+The audit-remediate-loop skill caps inline iterations at 3 rounds; Rounds 1-3 above were performed *inline* (auditor and auditee in the same context window) because the Task tool was unavailable in the executing harness, and that limitation was surfaced explicitly as Round-3 residual item 1. Subsequently, the executing harness made independent `quant-auditor` and `literature-check` subagent invocations available, and the user invoked them in a post-loop-verification pass against the r1 addendum.
+
+This Round 4 is therefore **not** a Round-4 of the original 3-round loop (which terminated correctly at the cap with verdict `accept`); it is a **corrective post-loop-verification** producing revision r2. The distinction matters for the skill's audit-trail semantics:
+
+- The original 3-round inline loop closed cleanly per its own protocol; verdict `accept` for r1 stands as recorded.
+- The corrective Round 4 was triggered by the inline-audit-substitution residual (Round-3 residual 1, "if the user wishes to re-run under proper subagent isolation, a successor audit appended as Round 4 must be invoked explicitly which exceeds the 3-round cap"). The user invoked it explicitly, which is the documented exception path.
+- r2's verdict is **accept (Round-4-amended)**; r1's verdict is preserved unchanged in the §"Verdict" block above for historical-audit traceability.
+
+This pattern (3-round inline cap reached → user-invoked proper-subagent re-audit as Round 4) is documented for the audit reader as the canonical exception-to-cap path when inline-audit substitution was the only available form during the original loop.
+
+### Round-4 auditor invocations (proper subagent isolation)
+
+- Independent `quant-auditor` subagent — methodological-framing pass over r1 with full context-window isolation from the addendum-author context. Rubric: critical / major / minor per the audit-remediate-loop skill.
+- Independent `literature-check` subagent — DOI / citation-verification pass over r1 with web-tool access for primary-source verification. Verified Whaley 1993 DOI `10.3905/jod.1993.407868` resolves clean against Crossref (title "Derivatives on Market Volatility", author Whaley R. E., page 71-84, 1993; 384 referenced-by-count); Campbell-Lo-MacKinlay 1997 *The Econometrics of Financial Markets* (Princeton; ISBN 978-0-691-04301-2; Crossref alt DOI `10.1515/9781400830213`) §1.4 is the canonical reference for the arithmetic-vs-log return convention.
+
+### Round-4 findings (2 major + 9 minor consolidated)
+
+| ID | Severity | Issue | Disposition (revision r2) |
+|---|---|---|---|
+| Q4.1 | **major** (M1) | §1.2 (line 27) and §2.2 (line 79 of r1) bind aggregation in "arithmetic-return space"; orchestrator [scripts/run_walk_forward.py:662](../../scripts/run_walk_forward.py) computes `r_bar[1:] = np.diff(np.log(closes))` (log returns). Portfolio identity `r_p = w·r_ES + w·r_NQ` holds *exactly* only for arithmetic returns; for log returns it is a first-order approximation. Both inline-audit chains (parent memo r4 + addendum Rounds 1-3) missed this. | Remediated: added §5.1 + §5.2 (binding directive — per-bar `R_i(t) = exp(r_i(t)) − 1` conversion before equal-weighted aggregation) + new follow-up `P1-H050-AGGREGATION-CONVENTION-TEST` (machine-precision unit test, evidence-bar-blocking). User-accepted §1.2 binding to arithmetic-return space preserved; r2 does not rebind to log-return space (such a rebinding would be a successor-ID amendment per [design.md](../../research/01_hypothesis_register/H050/design.md) §10). |
+| Q4.2 | **major** (M2) | §4.2 binds the differential CI to "Ledoit-Wolf 2008 studentized time-series bootstrap" but no callable LW2008 differential-CI function exists in the codebase. [src/skie_ninja/inference/stats/sharpe_ci.py:67-71](../../src/skie_ninja/inference/stats/sharpe_ci.py) explicitly states LW2008 was "used in Cycle 5 for SPA differentials, not here"; lines 94-97 say "will be implemented in Cycle 5" but no callable was actually shipped. | Remediated: added §5.3 (binding directive — implementation-gap acknowledgement + construction spec reusing existing `politis_white_block_length` + `stationary_bootstrap_indices` primitives on the paired-difference series) + new follow-up `P1-H050-LW2008-DIFFERENTIAL-CI-IMPL` (evidence-bar-blocking; first H050 walk-forward run gated on this callable). §6.3 updated to reflect spec-binding-closed but implementation-callable-open status of `P1-H050-CI-DIFFERENTIAL`. |
+| Q4.3 | minor | §2.1 cited line 852 in a 1030-line orchestrator file; current file is 1026 lines and the binding statement sits at line 848. The numeric anchors keep drifting across orchestrator edits. | Remediated §2.1: replaced numeric line/length references with grep-anchored text references ("locate via grep on the line containing `position = np.sign(2.0 * p - 1.0)`") + r1-vs-r2-drift footnote for forward-robustness. |
+| Q4.4 | minor | §3.2 substrate-blind attestation cited [CLAUDE.md](../../CLAUDE.md) "Phase 1 ingest — live on this machine" — loose reference; the Tier-2b 1-min ES+NQ substrate is described under a different bullet ("Tier-2b buildout (started 2026-04-23) → ES + NQ 1-min raw (evidence-bar tier)"). | Remediated §3.2: tightened citation to the specific [CLAUDE.md](../../CLAUDE.md) bullet + cross-reference to the ingest audit trail [docs/audits/audit_trail_2026-04-23_vendor-legacy-1min-ingest.md](audit_trail_2026-04-23_vendor-legacy-1min-ingest.md). |
+| Q4.5 | minor | §3.3.1 σ-value gap: the addendum named VIXCLS(2015-01-02) and VXNCLS(2015-01-02) symbolically but did not record the actual frozen values, leaving the Path-B variant's binding numerically incomplete at addendum-acceptance time. | Remediated §3.3.1: WebFetch on the FRED CSV endpoint returned VIXCLS(2015-01-02) = 17.79 and VXNCLS(2015-01-02) = 19.20; both values inserted verbatim into the σ definitions; canonical 2-line snapshot SHA256 `93f7d05caf6d4819ddd934383adbc77115c4c2d428af329c0d78ccb60aca21c4` recorded for deterministic auditor reproduction; resulting Path-B weights `w_ES_pathB ≈ 0.5191`, `w_NQ_pathB ≈ 0.4809`. |
+| L4.1 | minor | Whaley 1993 DOI `10.3905/jod.1993.407868` was dropped in r1 (Round-1 finding L1.1) due to "intermittent IIJ DOI registry coverage". Independent literature-check subagent (with Crossref web access) confirmed the DOI resolves clean. | Remediated §3.3.1: restored the DOI as a hyperlinked citation; Round-1 L1.1 residual closed; r1 unverified-DOI residual struck. |
+| L4.2 | minor | Campbell-Lo-MacKinlay 1997 was the canonical Tier-1 reference for the arithmetic-vs-log return convention but was not cited anywhere in the addendum. | Remediated §5.1: introduced the citation (ISBN 978-0-691-04301-2; Crossref alt DOI `10.1515/9781400830213`) + jointly cited [~/.claude/rules/quant-project.md](../../.claude/rules/quant-project.md) "Time-series integrity" clause. |
+| Q4.6 | minor | §6.3 (formerly §5.3) marked `P1-H050-CI-DIFFERENTIAL` as fully closed by §4.2; the new §5.3 implementation-gap finding makes it accurate to describe that follow-up as spec-binding-closed but implementation-callable-open. | Remediated §6.3: split closure into the two layers; new follow-up `P1-H050-LW2008-DIFFERENTIAL-CI-IMPL` named explicitly. |
+| Q4.7 | minor | §7 "Effective-from date and revision" did not document the r1 → r2 transition. | Remediated §7: bumped revision to r2; itemised the editorial-correction set (M1, M2, σ-values, Whaley-DOI, grep-anchored line refs, §3.2 tightening, renumbering); preserved binding-rule unchanged status under the §7 successor-amendment rule. |
+| Q4.8 | minor | Inserting a new §5 between §4 and the original §5 required renumbering former §5/§6/§7 → §6/§7/§8 and updating all internal cross-references (notably §1.2's "foreclosed by §7"). | Remediated: all `## §` and `### §` headers renumbered consistently; §1.2 reference updated to "§8"; verified clean via grep on `^## §|^### §` (no stale numeric §-references remain in body text). |
+| Q4.9 | minor | The new §5 implementation directives needed to be flagged as evidence-bar-blocking with same-footing as the existing CLAUDE.md blockers, not buried as cross-references. | Remediated §5: explicit "evidence-bar-blocking for the first H050 walk-forward run" framing in §5 preamble; §5.2 + §5.3 directives bound as the gating preconditions; §6.3 lists both new follow-ups under the same heading as inherited blockers. |
+
+### Round-4 disposition summary
+
+2 major (Q4.1, Q4.2) + 9 minor (Q4.3-Q4.9, L4.1, L4.2) findings — all remediated in revision r2. No critical findings.
+
+The original-loop residual list (§"Residual risk" above) is preserved verbatim because Round 4 was a corrective pass, not an extension of the loop. Two of those residuals are now closed by Round 4 and are amended below:
+
+- Round-3 residual 1 (inline-audit substitution) — **closed** by Round 4's proper-subagent invocation. The post-loop-verification was the documented exception-to-cap path the residual itself prescribed.
+- Round-3 residual 2 (Whaley 1993 DOI unverified) — **closed** by L4.1 (DOI verified clean against Crossref; restored to §3.3.1).
+
+### Round-4 residuals (surfaced to user per skill protocol)
+
+1. **`P1-H050-AGGREGATION-CONVENTION-TEST` test pending implementation** — the unit test is bound at the spec level by §5.2 but its commit is part of the `P1-H050-DUAL-SYMBOL-ORCHESTRATOR` workstream, not this addendum-revision run. Surfaced to user for tracking under the existing follow-up inventory.
+2. **`P1-H050-LW2008-DIFFERENTIAL-CI-IMPL` callable pending implementation** — same status; bound by §5.3, evidence-bar-blocking, requires a separate workstream to deliver the [src/skie_ninja/inference/stats/](../../src/skie_ninja/inference/stats/) callable. Surfaced to user as a new evidence-bar-blocking follow-up to be added to [CLAUDE.md](../../CLAUDE.md) blocker inventory by the parent agent (per task constraint, this addendum-revision run does not modify [CLAUDE.md](../../CLAUDE.md)).
+3. **FRED CSV endpoint date-filter behaviour** — the `cosd` / `coed` query parameters returned the full series rather than honouring the 2015-01-02 single-date filter at retrieval time; the 2015-01-02 row was extracted via post-fetch grep. The values are still primary-source FRED observations, but the snapshot SHA256 recorded in §3.3.1 is for the canonical 2-line `(header, 2015-01-02)` pair, not the raw HTTP response. Auditors reproducing the σ values must recompute the same canonical 2-line form to match the SHA256. Surfaced for transparency; not blocking.
+4. **r1 verdict-block historical preservation** — the §"Verdict" block above describes r1 as `accept`. r2's verdict is `accept (Round-4-amended)` per the front-matter. The two are not contradictory but the audit reader should note that the first instance of `accept` is the inline-loop verdict on r1, while the front-matter and the present Round-4 block carry the corrective-pass verdict on r2.
+
+### Round-4 verdict
+
+**accept (Round-4-amended)**
+
+The post-loop-verification surfaced 2 majors that the inline 3-round loop missed. Both are now remediated in revision r2 with binding §5 implementation directives. The Round-4 corrective pass is closed; r2 is the binding addendum revision gating Cell I, with §5.2 + §5.3 directives as additional evidence-bar-blocking preconditions on the first H050 walk-forward run.
+
+The 3-round skill cap is preserved as the operating norm; the Round-4 corrective is the documented exception path triggered by the explicit Round-3 inline-audit-substitution residual. Future addenda or revisions should aim for proper-subagent isolation from Round 1 to avoid a Round-4-corrective being needed at all.

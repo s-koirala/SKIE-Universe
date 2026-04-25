@@ -5,7 +5,7 @@ type: project
 hypothesis_id: H050
 parent: design.md
 status: designed
-revision: r1
+revision: r2
 effective_from: 2026-04-24
 owner: skoir
 ---
@@ -37,7 +37,7 @@ where `r_i_gated(t)` is symbol `i`'s arithmetic per-bar strategy return at bar `
 
 Both `r_p_gated` and `r_p_uncond` are then concatenated across all OOS walk-forward folds into two single series of length `T_oos = Σ_fold |test_fold|`, which feed the Sharpe-CI primitives.
 
-This formal definition assumes both ES and NQ panels cover the full pre-reg window per [design.md](design.md) §2 (2015-01-01 → 2025-12-31). Under the current substrate (ES 2020-2025 + NQ 2020-2024), `r_NQ_*(t)` is structurally absent for parts of the pre-reg window, which would silently halve the effective leverage of `r_p_*` on those bars under §2.2 sub-rule 3.3a. The addendum therefore presupposes the Cell I Databento backfill (`P1-H050-DATA-COVERAGE` resolution) has completed before any walk-forward run is executed under this rule; running under the current incomplete substrate would constitute an additional pre-reg deviation and is foreclosed by §7 below.
+This formal definition assumes both ES and NQ panels cover the full pre-reg window per [design.md](design.md) §2 (2015-01-01 → 2025-12-31). Under the current substrate (ES 2020-2025 + NQ 2020-2024), `r_NQ_*(t)` is structurally absent for parts of the pre-reg window, which would silently halve the effective leverage of `r_p_*` on those bars under §2.2 sub-rule 3.3a. The addendum therefore presupposes the Cell I Databento backfill (`P1-H050-DATA-COVERAGE` resolution) has completed before any walk-forward run is executed under this rule; running under the current incomplete substrate would constitute an additional pre-reg deviation and is foreclosed by §8 below.
 
 The weights are arithmetic-return-space weights, not notional-space weights. SR is scale-invariant under any positive scalar capital base (`SR(c · r) = sign(c) · SR(r)` for `c ≠ 0`), so the choice of return-space weights is well-defined irrespective of the live-execution capital plan. Live-execution mapping from return-space-equal-weights to integer-contract positions is tracked separately under follow-up `P1-H050-EXECUTION-WEIGHT-MAP` and is out of scope for this addendum.
 
@@ -63,7 +63,7 @@ By locking sub-rule 2a, the following alternative aggregation rules are foreclos
 
 ### §2.1 The position-value space
 
-Per [scripts/run_walk_forward.py:852](../../../scripts/run_walk_forward.py) the position mapping is `position = np.sign(2.0 * p − 1.0)` where `p` is the LightGBM classifier's probability output, so each per-symbol position takes values in `{−1, 0, +1}`. (Memo r4 §3.3 cited line 613 — line drift; orchestrator file is now 1030 lines and the binding statement sits at line 852 as of this addendum's effective date.) The flat (zero) position arises whenever the classifier emits exactly `p = 0.5`. LightGBM tree outputs are sums of leaf values — a discrete (though dense) set — so exact-tie predictions occur empirically rarely but are not measure-zero (memo r4 audit finding F-2-4); a runtime counter must be emitted (§2.4 below).
+Per [scripts/run_walk_forward.py](../../../scripts/run_walk_forward.py) (locate via grep on the line containing `position = np.sign(2.0 * p - 1.0)`; verified at line 848 of a 1026-line file as of revision r2 commit-time) the position mapping is `position = np.sign(2.0 * p − 1.0)` where `p` is the LightGBM classifier's probability output, so each per-symbol position takes values in `{−1, 0, +1}`. (Memo r4 §3.3 cited line 613; r1 of this addendum cited :852 against a 1030-line file. Both numeric anchors drifted across orchestrator edits, so r2 replaces numeric line/length references with grep-anchored text references for forward-robustness.) The flat (zero) position arises whenever the classifier emits exactly `p = 0.5`. LightGBM tree outputs are sums of leaf values — a discrete (though dense) set — so exact-tie predictions occur empirically rarely but are not measure-zero (memo r4 audit finding F-2-4); a runtime counter must be emitted (§2.4 below).
 
 For the gated series, the per-symbol per-bar return additionally multiplies by the HMM gate-state indicator `g_i(t) ∈ {0, 1}` (1 iff symbol `i`'s causal-filter-decoded state at `t` is the gate state per [design.md](design.md) §5). A bar with no gated contribution from symbol `i` therefore arises when either `position_i(t) = 0` or `g_i(t) = 0`.
 
@@ -117,7 +117,7 @@ If either gate fails, Path B (successor hypothesis ID `H050.1` or equivalent) be
 
 ### §3.2 Substrate-blind-rationale attestation
 
-The Tier-2b ES + NQ 1-min raw substrate landed on 2026-04-23 ([CLAUDE.md](../../../CLAUDE.md) "Phase 1 ingest — live on this machine"), one calendar day before this addendum (2026-04-24). The user has had ≥1 day of substrate access prior to addendum acceptance. The substrate-blind-rationale attestation, recorded here as part of the addendum's binding text, is:
+The Tier-2b ES + NQ 1-min raw substrate landed on 2026-04-23 ([CLAUDE.md](../../../CLAUDE.md) "Tier-2b buildout (started 2026-04-23) → ES + NQ 1-min raw (evidence-bar tier)" bullet; ingest audit trail [docs/audits/audit_trail_2026-04-23_vendor-legacy-1min-ingest.md](../../../docs/audits/audit_trail_2026-04-23_vendor-legacy-1min-ingest.md)), one calendar day before this addendum (2026-04-24). The user has had ≥1 day of substrate access prior to addendum acceptance. The substrate-blind-rationale attestation, recorded here as part of the addendum's binding text, is:
 
 > **Attestation (2026-04-24, owner skoir):** the choice of equal-weighted constant 0.5/0.5 in arithmetic-return space (sub-rule 2a) was made blind to the project's ES + NQ Tier-2b substrate. No relative-behavior inspection of ES vs NQ — including but not limited to per-symbol Sharpe, per-symbol gating-firing-rate, per-symbol vol or drift, per-symbol drawdown, or any cross-symbol diagnostic on the 2026-04-23-landed Tier-2b panel — was performed between substrate ingest (2026-04-23) and addendum acceptance (2026-04-24). The recorded basis for sub-rule 2a is the substrate-blind prior of "no asymmetry information asserted at pre-reg" (memo r4 §3.2 item 1), anchored exclusively in published prior-art:
 >
@@ -139,17 +139,19 @@ Path A's second eligibility criterion requires a falsifiable test that converts 
 The robustness variant is sub-rule 2c (risk-parity / equal-volatility) with the per-symbol volatility vector `σ = (σ_ES, σ_NQ)` frozen from a pre-substrate public source: the closing levels of [VIXCLS](https://fred.stlouisfed.org/series/VIXCLS) (CBOE Volatility Index, S&P 500 30-day implied vol — proxy for ES) and [VXNCLS](https://fred.stlouisfed.org/series/VXNCLS) (CBOE Nasdaq-100 Volatility Index — proxy for NQ), both pulled at the fixed pre-substrate baseline date **2015-01-02** (first NYSE/CBOE trading day of the pre-reg train window per [design.md](design.md) §2 line 37; 2015-01-01 is a holiday). The σ vector is therefore independent of any post-pre-reg ES/NQ price observations on the project's substrate.
 
 ```
-σ_ES := VIXCLS(2015-01-02)         # definitional proxy for ES 30-day implied vol
-σ_NQ := VXNCLS(2015-01-02)         # definitional proxy for NQ 30-day implied vol
-w_ES_pathB = (1/σ_ES) / (1/σ_ES + 1/σ_NQ)
-w_NQ_pathB = (1/σ_NQ) / (1/σ_ES + 1/σ_NQ)
+σ_ES := VIXCLS(2015-01-02) = 17.79 # definitional proxy for ES 30-day implied vol
+σ_NQ := VXNCLS(2015-01-02) = 19.20 # definitional proxy for NQ 30-day implied vol
+w_ES_pathB = (1/σ_ES) / (1/σ_ES + 1/σ_NQ) ≈ 0.5191
+w_NQ_pathB = (1/σ_NQ) / (1/σ_ES + 1/σ_NQ) ≈ 0.4809
 ```
+
+The frozen σ values were retrieved on 2026-04-24 via the FRED CSV endpoint `https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS,VXNCLS&cosd=2015-01-02&coed=2015-01-02`. Canonical 2-line snapshot (header + 2015-01-02 row) SHA256: `93f7d05caf6d4819ddd934383adbc77115c4c2d428af329c0d78ccb60aca21c4` (computed via `printf "observation_date,VIXCLS,VXNCLS\n2015-01-02,17.79,19.20\n" | sha256sum`). Any auditor must reproduce identical values; FRED revisions to the 2015-01-02 close (none expected for VIXCLS / VXNCLS, both of which are CBOE-published primary observations) would constitute a successor-ID amendment per [design.md](design.md) §10.
 
 The `:=` (definitional assignment) signals that VIXCLS and VXNCLS are not assumed equal to actual realised ES / NQ futures volatility; they are pre-substrate public-source proxies adopted as the σ inputs to the risk-parity formula. The empirical-equivalence question between VIX/VXN-frozen proxies and realised vol is deferred to §3.3.3 and the H050 evidence-bar deliverable.
 
 Anchor citations for the volatility-index design (historical):
 
-- Whaley, R. E. 1993. "Derivatives on Market Volatility: Hedging Tools Long Overdue." *J. Derivatives* 1(1):71-84 — historical-design reference for the original (Black-Scholes ATM-implied-vol-based) VIX. **Not the operational anchor** for VIXCLS, which uses the post-2003 CBOE model-free methodology; cited here for completeness of the VIX heritage chain. (DOI not asserted: the IIJ DOI registry coverage for *J. Derivatives* 1993 issues is intermittent; the canonical citation is the journal-volume-page form above.)
+- [Whaley, R. E. 1993. "Derivatives on Market Volatility: Hedging Tools Long Overdue." *J. Derivatives* 1(1):71-84, doi:10.3905/jod.1993.407868](https://doi.org/10.3905/jod.1993.407868) — historical-design reference for the original (Black-Scholes ATM-implied-vol-based) VIX. **Not the operational anchor** for VIXCLS, which uses the post-2003 CBOE model-free methodology; cited here for completeness of the VIX heritage chain. (DOI verified clean against the Crossref API on 2026-04-24 — the prior r1 unverified-DOI residual is closed.)
 
 Operational anchor:
 
@@ -212,9 +214,53 @@ This addendum does **not** substitute the [design.md](design.md) §8 single-stra
 
 [design.md](design.md) §1 line 30 phrases the multiple-testing family as "Romano-Wolf step-down". This addendum acknowledges the pre-existing pre-reg-artifact inconsistency between [design.md](design.md) (Romano-Wolf) and [config/hypotheses/H050.yaml](../../../config/hypotheses/H050.yaml) + [scripts/run_walk_forward.py](../../../scripts/run_walk_forward.py) (Hansen SPA); the inconsistency pre-dates this addendum and is tracked separately as `P1-H050-MULTIPLE-TEST-FAMILY-RECONCILE` (memo r4 §0 footnote F-1-8). Resolution of that inconsistency is **out of scope** for this aggregation-rule addendum and does not gate Cell I.
 
-## §5. Cross-references
+## §5. Implementation directives (binding for orchestrator)
 
-### §5.1 Resolution-memo and audit-trail anchors
+This section materialises the gap between the addendum-bound rule's spec and the current orchestrator's per-bar return computation. The directives below are **evidence-bar-blocking** for the first H050 walk-forward run executed under this addendum.
+
+### §5.1 Arithmetic-vs-log return-space binding (Round-4 M1 remediation)
+
+The §1.2 + §2.2 aggregation `r_p(t) = w_ES · r_ES(t) + w_NQ · r_NQ(t)` is bound in **arithmetic-return space**. The portfolio identity `r_p = w · r_ES + w · r_NQ` holds *exactly* only for arithmetic returns; for log returns it is a first-order Taylor approximation and the exactness is broken whenever `r_p` is later compounded ([Campbell, J. Y.; Lo, A. W.; MacKinlay, A. C. 1997. *The Econometrics of Financial Markets.* Princeton University Press. ISBN 978-0-691-04301-2; doi:10.1515/9781400830213](https://doi.org/10.1515/9781400830213) §1.4 "Continuously compounded returns" — log returns aggregate exactly across time but **not** across assets, while arithmetic returns aggregate exactly across assets but not across time). [~/.claude/rules/quant-project.md](../../../.claude/rules/quant-project.md) "Time-series integrity" clause requires explicit specification of log-vs-arithmetic and the compounding convention; this addendum's §1.2 + §2.2 binding to arithmetic-return space discharges that requirement.
+
+The current orchestrator [scripts/run_walk_forward.py](../../../scripts/run_walk_forward.py) (locate via grep on the line containing `r_bar[1:] = np.diff(np.log(closes))`; verified at line 662 of a 1026-line file as of revision r2 commit-time) computes per-bar **log returns**: `r_bar[t] = log(close[t]) − log(close[t−1])`. The discrepancy is small at 1-min ES/NQ scale — the magnitude bound is `|R(t) − r(t)| ≈ r(t)²/2` per Campbell-Lo-MacKinlay 1997 §1.4 eq. (1.4.4), and at 1-min ES/NQ realised vol on the order of 1e-4 per bar this gives `|R − r|` on the order of `O(1e-8)` per bar — but the addendum-bound rule requires the *exact* arithmetic-space aggregation, not a first-order-equivalent approximation. The user-accepted §1.2 binding to arithmetic-return space (memo r4 recommendation, accepted 2026-04-24) is preserved here; r2 does **not** rebind to log-return space (such a rebinding would be a successor-ID amendment per [design.md](design.md) §10).
+
+Directive (binding):
+
+> **Per-bar log-return → arithmetic-return conversion `R_i(t) = exp(r_i(t)) − 1` MUST be performed before the equal-weighted aggregation `R_p(t) = 0.5 · R_ES(t) + 0.5 · R_NQ(t)` is computed.** The conversion happens at the per-symbol per-bar gated/unconditional return scalar (i.e., on `r_i_gated(t)` and `r_i_uncond(t)` of §1.2) before the §2.2 weighted sum is taken. Strategy-side entry/exit signals (`sign(2 p − 1)`, `g(t)`) operate on the arithmetic per-bar return; cost deduction (`nt8_es_nq_rthv1`) is also applied in arithmetic-return space.
+
+The downstream [src/skie_ninja/inference/stats/](../../../src/skie_ninja/inference/stats/) Cycle-2 NW-HAC + Sharpe-CI primitives consume per-bar return series at the function-input boundary; they only require the input series be stationary and ergodic, and are convention-agnostic with respect to log-vs-arithmetic. The convention is therefore enforced upstream of `opdyke2007_ci` and the Ledoit-Wolf 2008 differential CI, not inside them.
+
+### §5.2 Verification gate (new follow-up `P1-H050-AGGREGATION-CONVENTION-TEST`)
+
+A unit test asserting numerical equivalence between (i) the addendum-bound rule's aggregate `R_p(t) = 0.5 · R_ES(t) + 0.5 · R_NQ(t)` with `R_i(t) = exp(r_i(t)) − 1` and (ii) the orchestrator's `P1-H050-DUAL-SYMBOL-ORCHESTRATOR` implementation MUST be added before the first H050 walk-forward run governed by this addendum. The test is tracked as new follow-up `P1-H050-AGGREGATION-CONVENTION-TEST`. Test contract:
+
+- Synthetic two-symbol panel covering ≥ 2 walk-forward folds at the same minute frequency as the production substrate.
+- Compute `R_p_test(t)` via the addendum-bound rule (per-bar `exp(r) − 1` → equal-weighted sum).
+- Compute `R_p_orch(t)` via the production orchestrator path under `P1-H050-DUAL-SYMBOL-ORCHESTRATOR`.
+- Assert `np.allclose(R_p_test, R_p_orch, atol=1e-12, rtol=0.0)` (machine-precision agreement; the per-bar conversion is a deterministic non-stochastic transformation, so atol = 1e-12 is the appropriate tolerance, not 1e-8).
+- The unit test lives under `tests/unit/orchestrator/test_h050_aggregation_convention.py` (or equivalent path under `P1-H050-DUAL-SYMBOL-ORCHESTRATOR`'s test layout) and is a CI-blocking test for any commit that touches `r_bar` computation in [scripts/run_walk_forward.py](../../../scripts/run_walk_forward.py) or its successor module.
+
+### §5.3 Ledoit-Wolf 2008 differential-CI implementation gap (Round-4 M2 remediation)
+
+The §4.2 binding to "Ledoit-Wolf 2008 studentized time-series bootstrap" for the differential CI on `T_H050 = SR(r_p_gated) − SR(r_p_uncond)` is currently a **spec-level binding without a callable implementation**. Verified at addendum revision r2 commit-time:
+
+- [src/skie_ninja/inference/stats/sharpe_ci.py](../../../src/skie_ninja/inference/stats/sharpe_ci.py) module docstring (locate via grep on the lines containing `Ledoit, O. & Wolf, M. 2008` and `used in Cycle 5 for SPA differentials, not here`) explicitly states LW2008 was *not* implemented in that module.
+- The same module's "Scope" section (locate via grep on `Ledoit-Wolf comparison CI (for Hansen SPA differentials) will be implemented in Cycle 5 alongside the SPA routines`) defers LW2008 to Cycle 5, but Cycle 5 ([CLAUDE.md](../../../CLAUDE.md) bullet) shipped Hansen 2005 SPA + Politis-Romano stationary bootstrap + Politis-White block-length only — no LW2008 callable was actually shipped to [src/skie_ninja/inference/](../../../src/skie_ninja/inference/).
+- No callable `ledoit_wolf_2008_*`, `lw2008_*`, or differential-Sharpe-CI function exists in the `inference` package as of r2.
+
+Directive (binding):
+
+> The Ledoit-Wolf 2008 studentized time-series bootstrap differential-CI for the gated-vs-unconditional Sharpe statistic is bound at the spec level (§4.2); the callable implementation is currently **absent** from [src/skie_ninja/inference/stats/](../../../src/skie_ninja/inference/stats/) and the gap is tracked as new evidence-bar-blocking follow-up `P1-H050-LW2008-DIFFERENTIAL-CI-IMPL`. **The first H050 walk-forward run governed by this addendum is gated on this callable's implementation.** Construction (per Ledoit & Wolf 2008 §3.1 + the project's existing bootstrap primitives):
+>
+> - Studentized statistic `(SR_gated − SR_uncond) / se_boot`, where `se_boot` is the stationary-bootstrap standard error of the per-bootstrap-replicate Sharpe difference, computed by reusing [src/skie_ninja/inference/bootstrap.py](../../../src/skie_ninja/inference/bootstrap.py) `politis_white_block_length` + `stationary_bootstrap_indices` primitives applied to the **paired-difference series** `r_p_gated(t) − r_p_uncond(t)` (consistent with the §4.2 unified-block-length binding).
+> - The studentization handles the non-pivotal nature of the SR difference; the time-series bootstrap handles autocorrelation in `r_p_*`. Bootstrap CI level: 95% two-sided per [ADR-0004](../../../docs/decisions/ADR-0004-alpha-and-power-defaults.md).
+> - The function signature should match the existing `opdyke2007_ci` style (return a frozen `SharpeCIResult`-equivalent dataclass with `lower`, `upper`, `level`, `method`, and the selected `block_length` for reproducibility).
+
+The follow-up `P1-H050-LW2008-DIFFERENTIAL-CI-IMPL` is to be added to the [CLAUDE.md](../../../CLAUDE.md) blocker inventory in a separate workstream by the parent agent — this addendum does not modify [CLAUDE.md](../../../CLAUDE.md). The follow-up is evidence-bar-blocking on the same footing as `P1-H050-CI-DIFFERENTIAL` (which §4.2 closes at the spec-binding level but which §5.3 keeps open at the implementation-callable level).
+
+## §6. Cross-references
+
+### §6.1 Resolution-memo and audit-trail anchors
 
 - Resolution memo (3-round audit-remediate-loop cap reached, r4): [docs/research_notes/memo_h050-aggregation-rule_2026-04-24.md](../../../docs/research_notes/memo_h050-aggregation-rule_2026-04-24.md).
 - Audit trail for memo: [docs/audits/audit_trail_2026-04-24_h050-aggregation-rule.md](../../../docs/audits/audit_trail_2026-04-24_h050-aggregation-rule.md).
@@ -223,35 +269,37 @@ This addendum does **not** substitute the [design.md](design.md) §8 single-stra
 - Cycle-6 pause memo: [docs/research_notes/memo_cycle6-pause-status_2026-04-24.md](../../../docs/research_notes/memo_cycle6-pause-status_2026-04-24.md).
 - Project [CLAUDE.md](../../../CLAUDE.md) "Cycle 6 partial" bullet for `P1-H050-AGGREGATION-RULE` summarises the accepted recommendation bundle with explicit anchors and gates.
 
-### §5.2 Pre-registration parent
+### §6.2 Pre-registration parent
 
 - [design.md](design.md) §1 (test statistic), §2 (universe and sample period), §10 (decision rule and archive policy) — the immutable pre-registration record. [design.md](design.md) is **not modified** by this addendum.
 
-### §5.3 Implementation surface (downstream)
+### §6.3 Implementation surface (downstream)
 
 - `P1-H050-DUAL-SYMBOL-ORCHESTRATOR` — orchestrator restructure for per-symbol fit/predict + per-bar portfolio combination per memo r4 §5; supersedes the bare `P1-H050-UNIVERSE-ES-ONLY` status flag.
 - `P1-CYCLE6-FOLD-STATIONARITY` — ADF + KPSS confirmatory-pair decision matrix on per-fold `r_p_gated` and `r_p_uncond`, per memo r4 §6 + Round-3 finding F-3-5; depends on `P1-H050-DUAL-SYMBOL-ORCHESTRATOR`.
 - `P1-MISSING-BAR-RATE-EMPIRICAL` — empirical re-tuning of the §2.3 1% missing-bar warn threshold against observed distribution from the first H050 walk-forward run.
 - `P1-GATE-RATE-RATIO-EMPIRICAL` — empirical re-tuning of the 3:1 per-symbol gate-firing-rate-ratio warn threshold per memo r4 §6 fifth bullet.
-- `P1-H050-CI-DIFFERENTIAL` — closed by §4.2 above (Ledoit-Wolf 2008 differential CI binding).
+- `P1-H050-CI-DIFFERENTIAL` — closed at the **spec-binding** level by §4.2 (Ledoit-Wolf 2008 differential CI binding); kept open at the **implementation-callable** level via the new evidence-bar-blocking follow-up `P1-H050-LW2008-DIFFERENTIAL-CI-IMPL` per §5.3 (no callable LW2008 differential CI exists in [src/skie_ninja/inference/](../../../src/skie_ninja/inference/) as of r2).
+- `P1-H050-AGGREGATION-CONVENTION-TEST` — new (per §5.2): unit test asserting numerical equivalence of the addendum-bound arithmetic-return-space aggregate vs the orchestrator's computed aggregate. Evidence-bar-blocking for the first H050 walk-forward run.
+- `P1-H050-LW2008-DIFFERENTIAL-CI-IMPL` — new (per §5.3): callable Ledoit-Wolf 2008 studentized time-series bootstrap differential-CI implementation under [src/skie_ninja/inference/stats/](../../../src/skie_ninja/inference/stats/). Evidence-bar-blocking for the first H050 walk-forward run.
 - `P1-H050-EXECUTION-WEIGHT-MAP` — out-of-scope: live-execution mapping from return-space-equal-weights to integer-contract positions; deferred to paper-trade phase.
 - `P1-H050-MULTIVARIATE-SR` — out-of-scope: Family-3 multivariate-SR test if equal-weighted single-series view ever judged insufficient.
 - `P1-H050-MULTIPLE-TEST-FAMILY-RECONCILE` — out-of-scope: pre-existing Romano-Wolf vs Hansen SPA inconsistency in [design.md](design.md) vs [config/hypotheses/H050.yaml](../../../config/hypotheses/H050.yaml).
 
-## §6. Effective-from date and revision
+## §7. Effective-from date and revision
 
 - **Effective from:** 2026-04-24.
-- **Revision:** r1 (initial; supersedes no prior addendum).
-- **Status:** `designed` (frozen at the same status as parent [design.md](design.md) on user acceptance 2026-04-24).
+- **Revision:** r2 (post-loop-verification under proper subagent isolation; supersedes r1 of same date). r1 was produced under inline-audit substitution per the audit-trail Subagent unavailability note; r2 applies the post-loop-verification findings (Round 4) including (a) §5 implementation directives newly added (M1: arithmetic-vs-log return-space binding; M2: LW2008 differential-CI implementation gap), (b) §3.3.1 σ-value materialisation + Whaley DOI restoration, (c) §2.1 grep-anchored line references, (d) §3.2 attestation-citation tightening, (e) renumbering of former §5 / §6 / §7 → §6 / §7 / §8 to accommodate the new §5.
+- **Status:** `designed` (frozen at the same status as parent [design.md](design.md) on user acceptance 2026-04-24; r1 → r2 is an editorial-correction revision that does not alter the binding §1.2 sub-rule 2a, §2.2 sub-rule 3.3a, §3.2 attestation, or §3.3 Path-B gate per the §7 successor-amendment rule below).
 - **Owner:** skoir.
-- **Successor amendments:** any change to §1.2 (sub-rule 2a), §2.2 (sub-rule 3.3a), §3.2 (substrate-blind-rationale attestation), or §3.3 (Path-B robustness gate) requires a successor hypothesis ID per [design.md](design.md) §10 + ¶22. Editorial corrections that do not alter the binding rule may be applied as an r2 within this file with an audit-trail note appended to [docs/audits/audit_trail_2026-04-24_h050-aggregation-addendum.md](../../../docs/audits/audit_trail_2026-04-24_h050-aggregation-addendum.md).
+- **Successor amendments:** any change to §1.2 (sub-rule 2a), §2.2 (sub-rule 3.3a), §3.2 (substrate-blind-rationale attestation), or §3.3 (Path-B robustness gate) requires a successor hypothesis ID per [design.md](design.md) §10 + ¶22. Editorial corrections that do not alter the binding rule may be applied as a further `rN` within this file with an audit-trail note appended to [docs/audits/audit_trail_2026-04-24_h050-aggregation-addendum.md](../../../docs/audits/audit_trail_2026-04-24_h050-aggregation-addendum.md).
 
-## §7. Gating note for Cell I (Databento backfill)
+## §8. Gating note for Cell I (Databento backfill)
 
-### §7.1 Forward-gating: addendum precedes Cell I ingest
+### §8.1 Forward-gating: addendum precedes Cell I ingest
 
 Acceptance of this addendum is the gating action for Cell I — the Databento GLBX.MDP3 backfill (2015-01-01 → 2025-12-31 for ES + NQ) that resolves `P1-H050-DATA-COVERAGE`. The addendum's commit timestamp must precede the Databento ingest billing/start timestamp; this is the temporal precondition under which the §3.2 substrate-blind-rationale attestation remains audit-defensible. Any auditor can re-check by comparing the two timestamps against `git log --follow` on this file and the Databento ingest provenance in [logs/reproducibility/](../../../logs/reproducibility/).
 
-### §7.2 Backward-gating: no walk-forward runs on incomplete substrate
+### §8.2 Backward-gating: no walk-forward runs on incomplete substrate
 
 No H050 walk-forward run governed by this addendum may be executed against the current substrate (ES 2020-2025 + NQ 2020-2024) prior to Cell I completion. Running before Cell I would silently halve the effective leverage of `r_p_*` on bars where the NQ panel is absent (per §1.2 paragraph 3) and would also fail the [design.md](design.md) §2 line 41 "re-runs on extended windows require a successor hypothesis ID" — the current substrate is a *sub-window* of the pre-reg window, and a run on a sub-window is an extended-window deviation in the opposite direction (truncation rather than extension), which equally requires a successor hypothesis ID. The orchestrator implementation tracked under `P1-H050-DUAL-SYMBOL-ORCHESTRATOR` must enforce this gate via a load-time assertion that both per-symbol panels cover `[2015-01-01, 2025-12-31]` before any walk-forward fold is constructed. Failure of that assertion must raise (no silent partial run).
