@@ -104,10 +104,14 @@ thread counts must be pinned to 1 for any KMeans-bearing code path
 `ReproLog.model_hash` SHA256 across runs.
 
 `pytest` invocations have the pin applied automatically once the
-`pytest-env`-based `[tool.pytest.ini_options] env` block lands
-(deferred follow-up `P1-BLAS-PIN-PYTEST-ENV-IMPLEMENT`). Until then,
-and for any direct invocation of `scripts/run_walk_forward.py` until
-follow-up `P1-BLAS-PIN-ORCHESTRATOR-WRAPPER` lands, set:
+`pytest-env`-based native `[tool.pytest_env]` block (with
+`pytest-env>=1.6` in the `[dev]` extras) lands per
+[ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md) §Implementation
+(deferred follow-up `P1-BLAS-PIN-PYTEST-ENV-IMPLEMENT`; the older
+`[tool.pytest.ini_options] env = [...]` form is **not** supported by
+`pytest-env` >= 1.0). Until that block lands, and for any direct
+invocation of `scripts/run_walk_forward.py` until follow-up
+`P1-BLAS-PIN-ORCHESTRATOR-WRAPPER` lands, set:
 
 ```bash
 export OMP_NUM_THREADS=1

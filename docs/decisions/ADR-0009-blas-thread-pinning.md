@@ -25,9 +25,11 @@ or from [scripts/run_walk_forward.py](../../scripts/run_walk_forward.py).
 The deadlock is a known incompatibility between MKL and OpenMP nesting
 on Windows when:
 
-1. `scikit-learn` wheels on PyPI are linked against `OpenBLAS` for the
-   numerical core (NumPy/SciPy), but `KMeans` internal Cython routines
-   use OpenMP via `_openmp_helpers`;
+1. `scikit-learn` wheels on PyPI use OpenMP via Cython routines (e.g.,
+   `KMeans` Lloyd iterations) in their internal native code; the
+   NumPy/SciPy stack they depend on is typically linked against OpenBLAS
+   on PyPI wheels and against MKL on conda defaults (per scikit-learn
+   parallelism docs);
 2. `joblib` (used by sklearn for `n_jobs > 1` and indirectly by KMeans
    for parallel chunked Lloyd iterations) spawns worker processes that
    re-enter the MKL/OpenMP thread pool;
@@ -37,35 +39,39 @@ on Windows when:
 
 The behaviour is documented upstream:
 
-- scikit-learn user guide §9.3.1 (Parallelism) — the canonical project
-  reference for thread-pool oversubscription. §9.3.1.4
-  "Oversubscription: spawning too many threads" describes how nested
-  parallelism between joblib worker processes and BLAS thread pools
-  causes oversubscription; §9.3.1.2 (Lower-level parallelism with
-  OpenMP) and §9.3.1.3 (Parallel NumPy and SciPy routines from
-  numerical libraries) document `OMP_NUM_THREADS`, `MKL_NUM_THREADS`,
-  and `OPENBLAS_NUM_THREADS` as the supported environment-variable
-  control surface, and recommend `threadpoolctl` for in-process
-  control.  See
+- scikit-learn user guide, "Parallelism, resource management, and
+  configuration" — the canonical project reference for thread-pool
+  oversubscription.  The sub-section "Oversubscription: spawning too
+  many threads" describes how nested parallelism between joblib worker
+  processes and BLAS thread pools causes oversubscription; the
+  sub-sections "Lower-level parallelism with OpenMP" and "Parallel
+  NumPy and SciPy routines from numerical libraries" document
+  `OMP_NUM_THREADS`, `MKL_NUM_THREADS`, and `OPENBLAS_NUM_THREADS` as
+  the supported environment-variable control surface, and recommend
+  `threadpoolctl` for in-process control.  See
   [scikit-learn user guide, "Parallelism, resource management, and
   configuration"](https://scikit-learn.org/stable/computing/parallelism.html).
 - Intel oneAPI Math Kernel Library — `MKL_NUM_THREADS` and
   `MKL_THREADING_LAYER` environment variables override MKL's internal
   threading and select the threading-runtime backend, allowing
   single-threaded execution and avoiding the OpenMP nesting conflict.
-  Documented in the oneMKL Developer Reference under "Threading
-  Control"; the canonical landing page is
-  [Intel oneAPI Math Kernel Library Developer Reference](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/current/overview.html).
-  (Direct deep-link verification was blocked by Intel CDN response
-  during the literature-check round; the env-var semantics are
-  cross-verified against the scikit-learn parallelism docs above.)
+  Documented in the oneMKL Developer Guide (Linux) under "Techniques
+  to Set the Number of Threads"; canonical URL is
+  [Intel oneMKL Developer Guide (Linux), "Techniques to Set the Number of Threads"](https://www.intel.com/content/www/us/en/docs/onemkl/developer-guide-linux/2023-0/techniques-to-set-the-number-of-threads.html).
+  (Verification gap: Intel CDN returns HTTP 403 to programmatic fetches
+  on every oneMKL deep-link tested during Round 1, Round 2, and the
+  Round 3 post-loop verification; the env-var semantics are
+  independently cross-verified against the scikit-learn parallelism
+  docs above, which document the same `MKL_NUM_THREADS` /
+  `MKL_THREADING_LAYER` control surface.)
 - OpenBLAS documentation — `OPENBLAS_NUM_THREADS` overrides the
   OpenBLAS thread pool independently of OpenMP; required when sklearn
-  is linked against OpenBLAS rather than MKL.  Quoted directly from
-  the OpenBLAS FAQ: *"If your application is already multi-threaded,
-  it will conflict with OpenBLAS multi-threading. Thus, you must set
-  OpenBLAS to use single thread as following: export
-  OPENBLAS_NUM_THREADS=1"*.  See
+  is linked against OpenBLAS rather than MKL.  Reproduced faithfully
+  from the OpenBLAS FAQ, which presents the env-var route as the first
+  bullet of a three-bullet list: *"If your application is already
+  multi-threaded, it will conflict with OpenBLAS multi-threading. Thus,
+  you must set OpenBLAS to use single thread as following."* — bullet 1:
+  *"export OPENBLAS_NUM_THREADS=1 in the environment variables."*  See
   [OpenBLAS FAQ, "How can I use OpenBLAS in multi-threaded
   applications?"](http://www.openmathlib.org/OpenBLAS/docs/faq/).
 - `joblib` documentation — discusses nested parallelism and BLAS
@@ -131,8 +137,9 @@ training samples bounded by `≤ 10⁶ bars` (5 years × 252 sessions ×
 390 min ≈ 4.9×10⁵ for ES RTH, doubled if ETH is added).  At this
 scale, the BLAS-parallelism gain on KMeans++ initialisation is
 ≤ 0.5 s per fold; the multiplicative penalty on Newey-West HAC
-matrix ops is ~1.3-2× per [Whaley & Brock 1989]-style benchmarks of
-small-matrix BLAS.  The aggregate slowdown on the H050 walk-forward
+matrix ops is ~1.3-2× (approximate consequence claim, not anchored to
+a specific small-matrix BLAS benchmark).  The aggregate slowdown on
+the H050 walk-forward
 (60 folds × ~30 s/fold inference + 6 × ~1 s HAC) is well under one
 minute, dwarfed by feature-assembly I/O.
 
@@ -144,10 +151,13 @@ SGEMM/DGEMM is non-deterministic, causing the last-place bits of
 KMeans cluster centroids and downstream Baum-Welch parameter estimates
 to drift.  Single-threaded execution yields bit-exact reproduction
 across runs on the same machine, which is required for
-`ReproLog.model_hash` SHA256 stability.  This is the same argument
-used by
-[Open Reproducible Research](https://www.repro-research.org/) and is
-operationalised in libraries such as `tensorflow-determinism`.
+`ReproLog.model_hash` SHA256 stability.  The non-associativity of
+finite-precision floating-point addition is the canonical foundation
+result here, treated in
+[Goldberg, D. (1991), "What Every Computer Scientist Should Know About
+Floating-Point Arithmetic", *ACM Computing Surveys* 23(1):5-48 (doi:10.1145/103162.103163)](https://doi.org/10.1145/103162.103163).
+The mitigation is operationalised in libraries such as
+`tensorflow-determinism`.
 
 ### 4. Cross-platform consistency
 
@@ -231,8 +241,9 @@ The choice of Option A as primary is justified by:
 
 - the pytest path is the most frequently exercised (every commit
   triggers it via `.pre-commit-config.yaml`);
-- `pytest-env` is a 110-line plugin maintained by the pytest core team
-  and has stable API since 0.6 ([pytest-env on
+- `pytest-env` is a small, focused plugin maintained under the
+  `pytest-dev` GitHub organisation by Bernát Gábor (third-party, not
+  pytest core) with stable API since 0.6 ([pytest-env on
   PyPI](https://pypi.org/project/pytest-env/));
 - adding `pytest-env` to the `[dev]` extras costs nothing for non-test
   users (it is not pulled into the runtime install).
@@ -240,9 +251,11 @@ The choice of Option A as primary is justified by:
 ## Consequences
 
 - Deferred follow-up `P1-BLAS-PIN-PYTEST-ENV-IMPLEMENT` adds
-  `pytest-env>=1.1` to `[project.optional-dependencies] dev` in
-  [pyproject.toml](../../pyproject.toml) and the `env` block in
-  `[tool.pytest.ini_options]`.
+  `pytest-env>=1.6` to `[project.optional-dependencies] dev` in
+  [pyproject.toml](../../pyproject.toml) and the native
+  `[tool.pytest_env]` block (per Implementation §Option A — the
+  legacy `[tool.pytest.ini_options] env = [...]` form is **not**
+  supported by `pytest-env` ≥ 1.0).
 - Deferred follow-up `P1-BLAS-PIN-ORCHESTRATOR-WRAPPER` adds a
   cross-platform Python entry-point wrapper at
   `scripts/run_walk_forward.py` (or a sibling launcher) that ensures
@@ -266,16 +279,29 @@ The choice of Option A as primary is justified by:
 
 ## References
 
-- scikit-learn maintainers, *scikit-learn User Guide*, "9.3 Parallelism,
+- scikit-learn maintainers, *scikit-learn User Guide*, "Parallelism,
   resource management, and configuration".
   https://scikit-learn.org/stable/computing/parallelism.html
-  (canonical project documentation; §9.3.1.2-9.3.1.4 cover OpenMP /
-  BLAS env vars, `threadpoolctl`, and oversubscription).
-- Intel Corporation, *oneAPI Math Kernel Library Developer Reference*
-  (current edition), Threading Control section.
-  https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-c/current/overview.html
-  (deep-link verification blocked by Intel CDN at draft time; env-var
-  semantics cross-verified against the scikit-learn parallelism docs).
+  (canonical project documentation; the named sub-sections
+  "Lower-level parallelism with OpenMP", "Parallel NumPy and SciPy
+  routines from numerical libraries", and "Oversubscription: spawning
+  too many threads" cover OpenMP / BLAS env vars, `threadpoolctl`, and
+  oversubscription).
+- Intel Corporation, *oneMKL Developer Guide (Linux)*, "Techniques to
+  Set the Number of Threads".
+  https://www.intel.com/content/www/us/en/docs/onemkl/developer-guide-linux/2023-0/techniques-to-set-the-number-of-threads.html
+  (Intel CDN returns HTTP 403 to programmatic fetches on every oneMKL
+  deep-link tested across Round 1, Round 2, and the Round 3 post-loop
+  verification; env-var semantics cross-verified against the
+  scikit-learn parallelism docs).
+- Goldberg, D. (1991). "What Every Computer Scientist Should Know About
+  Floating-Point Arithmetic". *ACM Computing Surveys* 23(1):5-48.
+  https://doi.org/10.1145/103162.103163
+  (foundation for non-associativity of finite-precision floating-point
+  reductions; ACM DOI redirects to dl.acm.org which returns HTTP 403 to
+  programmatic fetches — bibliographic metadata cross-verified via
+  Oracle's authorised reprint at
+  https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html).
 - OpenBLAS contributors, *OpenBLAS Documentation — FAQ*, "How can I
   use OpenBLAS in multi-threaded applications?".
   http://www.openmathlib.org/OpenBLAS/docs/faq/
