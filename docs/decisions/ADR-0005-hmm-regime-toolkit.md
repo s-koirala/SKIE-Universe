@@ -91,6 +91,38 @@ No hand-tuned values. Every run selects:
 
 All selection happens **inside** the walk-forward train fold so no information leaks forward, per [plan §4.1](../../plan/implementation-plan_2026-04-15.md).
 
+### Fold-boundary state continuity (filter warm-start)
+
+When the causal forward filter is applied across walk-forward fold boundaries, the test fold's first observation is processed with the **train-fold terminal filtered posterior** as its prior, propagated one transition step. Cold-starting the recursion from `log_pi` at every fold boundary discards the model's own sufficient statistic for future-state inference and biases early-test-fold posteriors toward the prior over O(dwell-time) bars for slow-mixing regimes.
+
+**Canonical formula.** For the filtered posterior `α_T(i) = P(s_T = i, y_{1:T} | θ)` at the terminal training bar `T_train` and test-fold first observation `o_{T_train+1}`:
+
+```
+log_alpha_test[0, j] = logsumexp_i (log_alpha_train[T_train, i] + log_a_ij) + log_b_j(o_{T_train+1})
+```
+
+This is one application of the standard forward recursion ([Rabiner 1989 §III.A forward variable, eq. ~18-21](https://doi.org/10.1109/5.18626); follow-up `P1-HMM-VERIFIED-EQ-NUMBERS` tracks direct PDF verification of equation numbers) from the train-terminal posterior into the test-first observation.
+
+**Why this is not leakage.** The walk-forward leakage rule prohibits use of *future* data, not of *past in-sample* data. The López de Prado 2018, *Advances in Financial Machine Learning* (Wiley, ISBN 978-1-119-48208-6) §7 purging-and-embargo definition — already adopted project-wide — defines leakage strictly in terms of train-set rows that overlap with test labels in the *forward* direction; passing the train-fold terminal `α_T_train` into the test fold uses no test-period information whatsoever. Discarding `α_T_train` is not a leakage fix; it is information loss against the assumed model.
+
+**Anchoring on the Hamilton-filter prediction step.** The propagation rule is the standard out-of-sample prediction step in the regime-switching econometrics literature, derived in:
+
+- [Hamilton 1989, *Econometrica* 57(2):357-384](https://doi.org/10.2307/1912559), §3 "Inference about the Unobserved State Variable" — the original derivation of the filtered probability propagation rule used here.
+- Hamilton 1994, *Time Series Analysis* (Princeton University Press, ISBN 978-0-691-04289-3), Ch. 22 "Modeling Time Series with Changes in Regime", §22.4 "Time Series Models of Changes in Regime" — textbook restatement of the Hamilton 1989 filter and its forecast step.
+- Kim & Nelson 1999, *State-Space Models with Regime Switching: Classical and Gibbs-Sampling Approaches with Applications* (MIT Press, ISBN 978-0-262-11238-3), §4.2–4.3 — Kim filter restatement; the terminal filtered posterior is the sufficient statistic for forward inference under the assumed model.
+- Frühwirth-Schnatter 2006, *Finite Mixture and Markov Switching Models* (Springer, ISBN 978-0-387-32909-3), §11.4–11.5 — Bayesian restatement of the same propagation rule.
+
+These references establish the propagation rule for the *single-sample* forecast step. Applying that same rule across walk-forward CV fold boundaries is a project-level methodological commitment derived from the rule, not a separately attested recommendation in the cited textbooks. We found no published source that recommends cold-start at fold boundaries in this setting; readers aware of one should open a follow-up issue.
+
+**Cold-start variants are not adopted.** Two alternatives were considered and rejected:
+
+1. *Cold-start from `log_pi`* (the trained initial distribution). Discards `α_T_train`; introduces O(dwell-time) warm-up bias on every test fold for slow-mixing regimes; no first-principles justification under the assumed model.
+2. *Cold-start from the stationary distribution `π* = lim_{n→∞} A^n π_0`*. Slightly less biased than (1) under stationarity but still discards the conditioning on `y_{1:T_train}`; the regime-switching econometrics literature uses the stationary distribution only when no prior data is available (start of sample).
+
+**The choice is methodological, not a tunable hyperparameter.** Grid-searching the boundary rule against held-out OOS performance would be data-dredging on a question the model definition answers ex ante; it would also break pre-registration discipline since the boundary rule is part of the model, not the hyperparameter set.
+
+**Implementation contract.** A `filter_states_from_prior(x, log_alpha_init)` public method on `GaussianHMM` takes the train-fold terminal log_alpha and seeds the test-fold recursion via the formula above. The orchestrator harvests `log_alpha_train[T_train]` after the train-fold filter pass and passes it to the test-fold call. Tracked under follow-up `P1-HMM-FOLD-WARM-START`.
+
 ## Identifiability hazards and remediation
 
 - **Label switching** ([Stephens 2000, JRSS B](https://doi.org/10.1111/1467-9868.00265)): states are only identified up to permutation. Remediation: post-hoc canonical ordering by emission-mean rank (or by emission-variance rank for vol-regime models); the canonicalization rule is pre-registered per hypothesis.
@@ -128,3 +160,6 @@ Every HMM-using hypothesis inherits this ADR by reference in its `citations` fro
 - [Hansen 1992, J. Applied Econometrics 7(S1):S61–S82](https://doi.org/10.1002/jae.3950070506)
 - Chan 2013, *Algorithmic Trading: Winning Strategies and Their Rationale*, Wiley, ISBN 978-1118460146 (publisher-page ISBN confirmation pending).
 - West & Harrison 1997, *Bayesian Forecasting and Dynamic Models*, 2nd ed., Springer, ISBN 978-0387947259 (publisher-page ISBN confirmation pending).
+- Hamilton 1994, *Time Series Analysis*, Princeton University Press, ISBN 978-0-691-04289-3 (publisher-page ISBN confirmation pending). Ch. 22 "Modeling Time Series with Changes in Regime".
+- Kim & Nelson 1999, *State-Space Models with Regime Switching: Classical and Gibbs-Sampling Approaches with Applications*, MIT Press, ISBN 978-0-262-11238-3 (publisher-page ISBN confirmation pending). §4.2–4.3.
+- Frühwirth-Schnatter 2006, *Finite Mixture and Markov Switching Models*, Springer, ISBN 978-0-387-32909-3 (publisher-page ISBN confirmation pending). §11.4–11.5.
