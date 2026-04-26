@@ -33,13 +33,13 @@ from skie_ninja.data.ingest.vendor_legacy_1min_roll_adjusted import (
     RollEvent,
     VendorLegacy1minRollAdjustedIngestJob,
     _adjust_one_symbol,
+    _assert_no_consecutive_year_collision,
     apply_persistence_guard,
     compute_roll_ratio_afml,
     detect_raw_front_month_by_day,
     detect_roll_events,
 )
 from skie_ninja.data.validation.schema import VendorLegacy1minRollAdjustedSchema
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -437,13 +437,15 @@ class TestMultiRollChain:
         df = pl.DataFrame(rows)
         out, summary = _adjust_one_symbol(df, "ES", window_days=3)
         factors = summary["contract_factors"]
-        assert math.isclose(factors["ESU4"], 1.0, abs_tol=1e-12)
+        # As of v0.3.0, summary keys are decade-disambiguated
+        # (contract_id_full = "{contract_symbol}_{YYYY}").
+        assert math.isclose(factors["ESU4_2024"], 1.0, abs_tol=1e-12)
         # ESM4 factor = ratio of roll 2 = 4130 / 4100.
         rho_2 = 4130.0 / 4100.0
-        assert math.isclose(factors["ESM4"], rho_2, abs_tol=1e-12)
+        assert math.isclose(factors["ESM4_2024"], rho_2, abs_tol=1e-12)
         # ESH4 factor = ρ_1 * ρ_2 = (4020/4000) * (4130/4100).
         rho_1 = 4020.0 / 4000.0
-        assert math.isclose(factors["ESH4"], rho_1 * rho_2, abs_tol=1e-12)
+        assert math.isclose(factors["ESH4_2024"], rho_1 * rho_2, abs_tol=1e-12)
 
 
 class TestChainContinuity:
@@ -629,9 +631,13 @@ class TestIngestJobContract:
         summary = payload["run_summary"]["ES"]
         assert summary["window_days"] == 3
         assert len(summary["rolls"]) == 1
-        assert summary["rolls"][0]["old_contract"] == "ESH4"
-        assert summary["rolls"][0]["new_contract"] == "ESM4"
-        assert set(summary["contract_factors"].keys()) == {"ESH4", "ESM4"}
+        # As of v0.3.0, RollEvent old/new_contract carry the
+        # disambiguated contract_id_full key, not the 1-digit display form.
+        assert summary["rolls"][0]["old_contract"] == "ESH4_2024"
+        assert summary["rolls"][0]["new_contract"] == "ESM4_2024"
+        # As of v0.3.0, summary keys are decade-disambiguated
+        # (contract_id_full = "{contract_symbol}_{YYYY}").
+        assert set(summary["contract_factors"].keys()) == {"ESH4_2024", "ESM4_2024"}
 
     def test_write_processed_atomic_rollback_on_schema_failure(
         self, tmp_path: Path
@@ -650,3 +656,185 @@ class TestIngestJobContract:
         base_dir = ctx.paths.data_processed / "vendor_legacy_1min_roll_adjusted"
         # No partitions survived the rollback.
         assert not any(base_dir.rglob("*.parquet"))
+
+
+# ---------------------------------------------------------------------------
+# Decade-wraparound disambiguation (v0.3.0)
+# ---------------------------------------------------------------------------
+
+
+class TestDecadeWraparound:
+    """Regression tests for the contract-symbol-collision bug fixed in
+    v0.3.0. CME equity-index futures use 1-digit year suffixes (ESH5
+    = March-2015 OR March-2025), so on a substrate spanning >=10
+    calendar years the display ``contract_symbol`` collides between
+    decades. Pre-v0.3.0 the cumulative-back-adjust loop overwrote the
+    newest contract's anchor (factor 1.0) with the cumulative product
+    of all rolls when traversing an older same-symbol contract. AFML
+    §2.4.3 requires the newest contract to be the unique anchor."""
+
+    def _decade_wraparound_frame(self) -> pl.DataFrame:
+        """Two ESH5 contracts spanning a decade: ESH5(2015) precedes
+        ESM5(2015), ESM5(2015) precedes ... eventually ESH5(2025)
+        precedes ESM5(2025). We minimize to a 4-roll chain that
+        exercises the collision: ESH5(2015) -> ESM5(2015) -> ESH5(2025)
+        -> ESM5(2025). The two ESH5 occurrences share the display
+        symbol; only the year disambiguates them.
+
+        Each segment carries 5 sessions of 10 bars at high volume
+        on its primary contract; window_days=3 commits each roll on
+        the third consecutive lead. Anchors are rigged at round
+        prices for easy verification."""
+        rows: list[dict] = []
+
+        def _seg(
+            year: int,
+            month: int,
+            days: tuple[int, ...],
+            contract: str,
+            base_open: float,
+            override_first_open: float | None,
+            override_last_close: float | None,
+        ) -> None:
+            for session_idx, day in enumerate(days):
+                for minute in range(10):
+                    ts = datetime(year, month, day, 14, 30 + minute, tzinfo=UTC)
+                    price = base_open + session_idx * 0.5 + minute * 0.1
+                    rows.append(_bar(ts, contract, "ES", price, 500))
+            if override_first_open is not None:
+                rows[-len(days) * 10]["open"] = override_first_open
+                rows[-len(days) * 10]["high"] = override_first_open + 0.25
+                rows[-len(days) * 10]["low"] = override_first_open - 0.25
+                rows[-len(days) * 10]["close"] = override_first_open + 0.05
+            if override_last_close is not None:
+                rows[-1]["close"] = override_last_close
+                rows[-1]["open"] = override_last_close - 0.05
+                rows[-1]["high"] = override_last_close + 0.10
+                rows[-1]["low"] = override_last_close - 0.20
+
+        # Segment 1: ESH5 in 2015 (March 2015 contract). Days 2-6 March.
+        _seg(
+            2015, 3, (2, 3, 4, 5, 6), "ESH5", 2000.0,
+            override_first_open=None,
+            override_last_close=2010.0,
+        )
+        # Segment 2: ESM5 in 2015 (June 2015 contract). Days 9-13 March.
+        _seg(
+            2015, 3, (9, 10, 11, 12, 13), "ESM5", 2050.0,
+            override_first_open=2050.0,
+            override_last_close=2060.0,
+        )
+        # Segment 3: ESH5 in 2025 (March 2025 contract). Days 3-7 March.
+        # NOTE: same display contract_symbol "ESH5" as segment 1.
+        _seg(
+            2025, 3, (3, 4, 5, 6, 7), "ESH5", 5000.0,
+            override_first_open=5000.0,
+            override_last_close=5010.0,
+        )
+        # Segment 4: ESM5 in 2025 (June 2025 contract).
+        _seg(
+            2025, 3, (10, 11, 12, 13, 14), "ESM5", 5050.0,
+            override_first_open=5050.0,
+            override_last_close=None,
+        )
+
+        return pl.DataFrame(rows)
+
+    def test_anchor_unique_across_decade_wraparound(self) -> None:
+        """Pre-v0.3.0 bug: when ESH5(2015) appeared in the contract_factor
+        dict, the cumulative-product loop overwrote the ESH5(2025) entry
+        (which had factor==1.0) with the cumulative product. Result: zero
+        contracts at factor 1.0 — validation invariant (a) failed.
+
+        Post-fix: the newest contract (ESM5_2025) anchors at 1.0 and the
+        validate() pass succeeds."""
+        df = self._decade_wraparound_frame()
+        out, summary = _adjust_one_symbol(df, "ES", window_days=3)
+
+        factors = summary["contract_factors"]
+        # Exactly one contract_id_full has factor == 1.0 (the anchor).
+        anchored = {k: v for k, v in factors.items() if math.isclose(v, 1.0, abs_tol=1e-12)}
+        assert len(anchored) == 1, (
+            f"Expected exactly one anchor contract at factor 1.0; "
+            f"got {anchored} from full factors {factors}"
+        )
+        # The anchor is the NEWEST contract (ESM5 in 2025).
+        assert "ESM5_2025" in anchored
+
+        # Both ESH5 instances are present and have DIFFERENT factors.
+        assert "ESH5_2015" in factors
+        assert "ESH5_2025" in factors
+        assert not math.isclose(factors["ESH5_2015"], factors["ESH5_2025"])
+
+        # The 2025 anchor is preserved end-to-end through validate().
+        VendorLegacy1minRollAdjustedIngestJob().validate(out.lazy())
+
+    def test_validate_rejects_pre_v030_collision_substrate(self) -> None:
+        """A direct construction of the pre-v0.3.0 failure mode:
+        if validate() is given an output where the display
+        front_contract_symbol "ESH5" appears with two distinct
+        factors across two calendar years, that's the LEGITIMATE
+        post-fix output — the decade-disambiguated invariants
+        accept it. The buggy pre-fix output would have had the
+        2025 ESH5 entry overwritten and zero anchors at 1.0;
+        validate() rejects that."""
+        df = self._decade_wraparound_frame()
+        out, _ = _adjust_one_symbol(df, "ES", window_days=3)
+
+        # Sanity: the (decade-disambiguated) cross-row invariants pass.
+        VendorLegacy1minRollAdjustedIngestJob().validate(out.lazy())
+
+        # Now corrupt the output to mimic the pre-fix bug: zero out
+        # the anchor by rescaling all factor-1.0 rows by a factor
+        # that destroys the anchor (this is how the bug manifested
+        # — zero contracts at 1.0 in the output).
+        broken = out.with_columns(
+            pl.when((pl.col("adjustment_factor") - 1.0).abs() < 1e-12)
+            .then(pl.lit(0.5))
+            .otherwise(pl.col("adjustment_factor"))
+            .alias("_scale"),
+        ).with_columns(
+            (pl.col("open") * pl.col("_scale") / pl.col("adjustment_factor")).alias("open"),
+            (pl.col("high") * pl.col("_scale") / pl.col("adjustment_factor")).alias("high"),
+            (pl.col("low") * pl.col("_scale") / pl.col("adjustment_factor")).alias("low"),
+            (pl.col("close") * pl.col("_scale") / pl.col("adjustment_factor")).alias("close"),
+            pl.col("_scale").alias("adjustment_factor"),
+        ).drop("_scale")
+        with pytest.raises(ValueError, match="adjustment_factor==1.0"):
+            VendorLegacy1minRollAdjustedIngestJob().validate(broken.lazy())
+
+    def test_assert_no_consecutive_year_collision_rejects_violation(self) -> None:
+        """A contract whose bars span two consecutive (gap < 10y) calendar
+        years violates the upstream contract-month-bounded ingest
+        invariant required for contract_id_full disambiguation. Surface
+        as ValueError. The 10-year gap rule permits the legitimate CME
+        decade-wraparound case (ESH5 in 2015 vs ESH5 in 2025) while
+        rejecting the cross-year-end contamination case (ESH6 with
+        bars in both Dec 2015 and Jan 2016)."""
+        rows = [
+            _bar(datetime(2015, 12, 31, 22, 0, tzinfo=UTC), "ESH6", "ES", 4000.0, 100),
+            # Same contract_symbol, adjacent calendar year — fabricated
+            # data that the upstream ingest's per-contract month-bounded
+            # windows would normally prevent.
+            _bar(datetime(2016, 1, 4, 14, 30, tzinfo=UTC), "ESH6", "ES", 4001.0, 100),
+        ]
+        df = pl.DataFrame(rows)
+        with pytest.raises(ValueError, match="consecutive"):
+            _adjust_one_symbol(df, "ES", window_days=3)
+
+    def test_assert_no_consecutive_year_collision_permits_decade_gap(self) -> None:
+        """A contract whose bars genuinely span 10+ years apart (the CME
+        decade-wraparound case) is the FIX target, not a bug — the
+        invariant must permit it."""
+        # ESH5 in 2015 and ESH5 in 2025 — a single fabricated contract
+        # row family per year, just enough to verify the assertion does
+        # NOT fire. The full pipeline downstream needs more bars to do
+        # anything meaningful, but the invariant check is what we're
+        # exercising here.
+        rows = [
+            _bar(datetime(2015, 3, 15, 14, 30, tzinfo=UTC), "ESH5", "ES", 2000.0, 100),
+            _bar(datetime(2025, 3, 15, 14, 30, tzinfo=UTC), "ESH5", "ES", 5000.0, 100),
+        ]
+        df = pl.DataFrame(rows)
+        # No exception — the 10y gap is the legitimate decade-wraparound case.
+        _assert_no_consecutive_year_collision(df, "ES")

@@ -164,6 +164,38 @@ Tracked as Phase-1 follow-up ``P1-LEVEL-USE-POLICY`` — the
 feature-factory contract (implementation-plan §3) will enforce
 this at the PIT property-test level in Cycle 4/6.
 
+Decade-wraparound disambiguation (contract_id_full)
+---------------------------------------------------
+
+CME equity-index futures contract symbols use a single-digit year
+suffix (e.g., ``ESH5`` denotes March-2015 *or* March-2025; ``NQZ7``
+denotes Dec-2017 *or* Dec-2027). On a substrate spanning ≥10
+calendar years (the post-Cell-I state, ES + NQ 2015–2025), the
+naive use of ``contract_symbol`` as a dictionary key collides
+between decades and silently destroys the cumulative-back-adjust
+anchor (the newest contract's factor of 1.0 gets overwritten by
+the cumulative product of all rolls when the loop traverses an
+older same-symbol contract).
+
+This module disambiguates by appending the calendar year (modulo
+100) of the contract's bars to form ``contract_id_full``:
+
+    contract_id_full = f"{contract_symbol}_{ts_event.year:04d}"
+
+Per-bar derivation is unambiguous because Databento's
+``download_historical_years`` issues per-contract requests bounded
+by the contract's expiry month, so every bar of a given
+``(contract_symbol, instrument_id)`` row family lands inside a
+single calendar year. The fix code asserts this single-year
+invariant per ``(symbol, contract_symbol)`` group; a violation is
+raised as a controlled ``ValueError`` flagging upstream data
+corruption rather than being silently ratio-adjusted.
+
+The original ``contract_symbol`` is preserved unchanged in the
+output as ``front_contract_symbol`` for downstream display and
+cross-referencing with vendor data; ``contract_id_full`` is an
+internal pipeline key only.
+
 Operational runbook for data gaps
 ---------------------------------
 
@@ -209,7 +241,7 @@ from skie_ninja.utils.runcontext import RunContext
 _log = logging.getLogger(__name__)
 
 _DATASET_NAME = "vendor_legacy_1min_roll_adjusted"
-_DATASET_VERSION = "0.2.0"  # bump: Round-2 remediation (anchor, persistence, PIT caveat)
+_DATASET_VERSION = "0.3.0"  # bump: decade-wraparound disambiguation (contract_id_full)
 
 _CME_TZ = "America/Chicago"
 # 17:00 CT is the boundary between CME trading sessions: a trade
@@ -220,6 +252,27 @@ _CME_TZ = "America/Chicago"
 # front-month volume argmax (holidays have near-zero volume and cannot
 # affect which contract wins the cumulative argmax).
 _CME_SESSION_SHIFT_HOURS = 7
+
+# Vendor symbology (Databento GLBX.MDP3 raw_symbol, the legacy substrate
+# convention) uses a single-digit calendar-year suffix in CME equity-
+# index futures contract codes — 3-letter product root + 1-letter month
+# code (CME Group, *Contract Month Codes*,
+# https://www.cmegroup.com/month-codes.html) + 1-digit year (CME Group,
+# *Understanding Contract Trading Codes*,
+# https://www.cmegroup.com/education/courses/introduction-to-futures/understanding-contract-trading-codes;
+# Databento, *Symbology Standards*,
+# https://databento.com/docs/standards-and-conventions/symbology). CME
+# itself permits both 1-digit (ESZ5) and 4-digit (ESZ2025) forms; the
+# 1-digit form is what the substrate carries. A 1-digit code recurs
+# every 10 calendar years (ESH5 → March-2015 OR March-2025). The
+# disambiguator ``contract_id_full = contract_symbol + "_" + YYYY``
+# is sound iff every contract's bars land within a single calendar
+# year; bars whose ``contract_symbol`` years are <10y apart could
+# legitimately be the same physical contract that crossed a year
+# boundary, in which case the disambiguator would split it. The
+# single source of truth for "decade-or-more apart" is therefore the
+# CME 10-year recurrence period.
+_CME_CONTRACT_CODE_RECURRENCE_YEARS = 10
 
 
 class NoOverlapError(ValueError):
@@ -431,16 +484,38 @@ class VendorLegacy1minRollAdjustedIngestJob:
                 f"first: {bad.head(1).to_dicts()}"
             )
 
+        # Decade-disambiguated grouping key for cross-row invariants.
+        # Two contracts whose 1-digit-year-suffix codes collide across
+        # decades (e.g. ESH5 in 2015 and ESH5 in 2025) must NOT be
+        # merged when checking factor uniqueness or first-session
+        # roll_flag — they are physically distinct contracts. The
+        # production pipeline keys on contract_id_full internally; the
+        # validate step re-derives the same key from
+        # (front_contract_symbol, ts_event.year) — sound because each
+        # (symbol, front_contract_symbol) row family lands inside a
+        # single calendar year (Databento contract-month-bounded
+        # download windows; see module docstring).
+        with_full = collected.with_columns(
+            (
+                pl.col("front_contract_symbol")
+                + pl.lit("_")
+                + pl.col("ts_event").dt.year().cast(pl.Utf8).str.zfill(4)
+            ).alias("_front_contract_id_full")
+        )
+
         # Cross-row invariant (a): exactly one contract per symbol with
         # adjustment_factor == 1.0. That's the anchor (newest) contract.
         # Use isclose rather than == to tolerate cumulative float error
         # (the newest contract itself never multiplies, but defensive).
-        for sym in sorted(collected["symbol"].unique(maintain_order=True).to_list()):
-            sym_rows = collected.filter(pl.col("symbol") == sym)
+        # Counts on contract_id_full so a 10-year wraparound that
+        # produces the same 1-digit display code in two decades does
+        # not falsely satisfy the invariant.
+        for sym in sorted(with_full["symbol"].unique(maintain_order=True).to_list()):
+            sym_rows = with_full.filter(pl.col("symbol") == sym)
             anchor_rows = sym_rows.filter(
                 (pl.col("adjustment_factor") - 1.0).abs() < 1e-12
             )
-            n_anchor_contracts = anchor_rows["front_contract_symbol"].n_unique()
+            n_anchor_contracts = anchor_rows["_front_contract_id_full"].n_unique()
             if n_anchor_contracts != 1:
                 raise ValueError(
                     f"Symbol {sym}: expected exactly one contract with "
@@ -449,9 +524,12 @@ class VendorLegacy1minRollAdjustedIngestJob:
                 )
 
         # Cross-row invariant (b): adjustment_factor is constant within
-        # each (symbol, front_contract_symbol).
+        # each (symbol, contract_id_full) — i.e. distinct decades of the
+        # same display contract_symbol get distinct factors and that's
+        # OK; what must NOT vary is the factor inside one physical
+        # contract.
         factor_variance = (
-            collected.group_by(["symbol", "front_contract_symbol"])
+            with_full.group_by(["symbol", "_front_contract_id_full"])
             .agg(pl.col("adjustment_factor").n_unique().alias("_n"))
             .filter(pl.col("_n") > 1)
         )
@@ -463,24 +541,25 @@ class VendorLegacy1minRollAdjustedIngestJob:
             )
 
         # Cross-row invariant (c): roll_flag True <=> first SESSION per
-        # (symbol, front_contract_symbol).  roll_flag marks every bar whose
+        # (symbol, contract_id_full).  roll_flag marks every bar whose
         # session_date equals the minimum session_date for that contract
         # (all intraday bars on the roll-in session).  The prior version
         # compared against min(ts_event) (first bar only), which was
         # inconsistent with the docstring ("rows whose session is the first
         # session") and with the production computation in _adjust_symbol
-        # (`_session_date == _first_session`).  Fixed 2026-04-24.
-        with_session = collected.with_columns(
+        # (`_session_date == _first_session`).  Fixed 2026-04-24. Keyed
+        # on contract_id_full as of v0.3.0 (decade-wraparound fix).
+        with_session = with_full.with_columns(
             _session_date_expr().alias("_session_date")
         )
         per_contract_first_session = (
             with_session.group_by(
-                ["symbol", "front_contract_symbol"], maintain_order=True
+                ["symbol", "_front_contract_id_full"], maintain_order=True
             ).agg(pl.col("_session_date").min().alias("_first_session"))
         )
         marker = with_session.join(
             per_contract_first_session,
-            on=["symbol", "front_contract_symbol"],
+            on=["symbol", "_front_contract_id_full"],
             how="inner",
         ).with_columns(
             (pl.col("_session_date") == pl.col("_first_session")).alias("_expected_flag")
@@ -730,6 +809,78 @@ class VendorLegacy1minRollAdjustedIngestJob:
 # ---------------------------------------------------------------------------
 
 
+def _contract_id_full_expr() -> pl.Expr:
+    """Polars expression deriving ``contract_id_full`` from
+    ``contract_symbol`` + ``ts_event.year``.
+
+    Single-digit year suffixes in CME contract codes (``ESH5`` →
+    March-2015 OR March-2025) collide on substrates that span >=10
+    calendar years. Disambiguation uses the bar's full 4-digit
+    calendar year because contract bars are guaranteed by upstream
+    ingest to fall within a single calendar year (each per-contract
+    Databento request is month-bounded by the contract's expiry).
+    The single-year invariant is asserted in
+    ``_assert_single_year_per_contract`` before this column is used
+    as a pipeline key.
+    """
+    return pl.col("contract_symbol") + pl.lit("_") + pl.col("ts_event").dt.year().cast(
+        pl.Utf8
+    ).str.zfill(4)
+
+
+def _assert_no_consecutive_year_collision(df: pl.DataFrame, symbol: str) -> None:
+    """Verify that no ``contract_symbol`` straddles two *adjacent*
+    calendar years.
+
+    The disambiguation key is ``contract_id_full =
+    contract_symbol + "_" + YYYY``, which is sound iff every physical
+    contract's bars land within a single calendar year. The CME
+    1-digit-year-suffix convention (``ESH5`` = March-2015 OR
+    March-2025) is fine when the year-pair is ≥10 years apart (a
+    decade wraparound; the 2015 contract and the 2025 contract are
+    physically distinct and produce two distinct ``contract_id_full``
+    keys). It is NOT fine if the year-pair is consecutive (e.g.,
+    ``ESH6`` with bars in both 2015 and 2016 would mean a single
+    physical contract has been split across two ``contract_id_full``
+    families). Empirically, the upstream Databento
+    ``download_historical_years`` per-contract month-bounded windows
+    prevent the consecutive case (verified against the 2015–2025
+    ES + NQ substrate on 2026-04-26).
+
+    Surface a controlled ``ValueError`` if the consecutive-year
+    invariant is violated rather than silently mis-adjusting.
+    """
+    by_contract = (
+        df.with_columns(pl.col("ts_event").dt.year().alias("_year"))
+        .group_by("contract_symbol")
+        .agg(pl.col("_year").unique().sort().alias("_years"))
+    )
+    offenders: list[dict[str, Any]] = []
+    for row in by_contract.iter_rows(named=True):
+        years = row["_years"]
+        if not years:
+            continue
+        for prev_year, next_year in zip(years[:-1], years[1:], strict=True):
+            if next_year - prev_year < _CME_CONTRACT_CODE_RECURRENCE_YEARS:
+                offenders.append(
+                    {
+                        "contract_symbol": row["contract_symbol"],
+                        "prev_year": prev_year,
+                        "next_year": next_year,
+                        "gap_years": next_year - prev_year,
+                    }
+                )
+                break
+    if offenders:
+        raise ValueError(
+            f"Symbol {symbol}: found {len(offenders)} contract_symbol "
+            f"value(s) whose bars span consecutive (gap < 10y) calendar "
+            f"years; this violates the upstream contract-month-bounded "
+            f"ingest invariant required for contract_id_full "
+            f"disambiguation. Offenders: {offenders[:5]}"
+        )
+
+
 def _session_date_expr() -> pl.Expr:
     """Polars expression mapping a UTC ``ts_event`` to CME session date.
 
@@ -759,42 +910,55 @@ def detect_raw_front_month_by_day(
     df: pl.DataFrame, window_days: int
 ) -> pl.DataFrame:
     """Per ``(symbol, session_date)``, identify the front-month contract
-    as ``argmax_{contract}(trailing_window_days_cumulative_volume)``.
+    as ``argmax_{contract_id_full}(trailing_window_days_cumulative_volume)``.
 
     Uses a trailing rolling sum of daily volume over ``window_days``
-    sessions per contract, then ``argmax`` across contracts per session.
-    Ties broken deterministically (higher cumulative volume first, then
-    lexicographically-earliest contract_symbol).
+    sessions per ``contract_id_full``, then ``argmax`` across
+    contract_id_full values per session. Ties broken deterministically
+    (higher cumulative volume first, then lexicographically-earliest
+    contract_id_full).
+
+    Input must already carry ``contract_id_full`` (derived once in
+    ``_adjust_one_symbol`` to avoid the decade-wraparound collision on
+    1-digit year suffixes; see module docstring).
 
     Returns a frame with columns
-    ``(symbol, session_date, front_contract_symbol, cumulative_volume)``.
+    ``(symbol, session_date, front_contract_id_full, cumulative_volume)``.
     """
     if window_days < 1:
         raise ValueError(f"window_days must be >= 1, got {window_days}.")
 
+    # Production path supplies contract_id_full pre-computed (decade-
+    # disambiguated). Synthetic single-decade fixtures pass only
+    # contract_symbol; preserve the legacy column-name contract for
+    # those callers so existing tests remain meaningful.
+    has_full = "contract_id_full" in df.columns
+    key_in = "contract_id_full" if has_full else "contract_symbol"
+    key_out = "front_contract_id_full" if has_full else "front_contract_symbol"
+
     daily = (
         df.with_columns(_session_date_expr().alias("session_date"))
-        .group_by(["symbol", "session_date", "contract_symbol"], maintain_order=True)
+        .group_by(["symbol", "session_date", key_in], maintain_order=True)
         .agg(pl.col("volume").sum().alias("daily_volume"))
-        .sort(["symbol", "contract_symbol", "session_date"])
+        .sort(["symbol", key_in, "session_date"])
     )
-    # Cumulative (trailing-window) volume per (symbol, contract).
+    # Cumulative (trailing-window) volume per (symbol, key_in).
     cum = daily.with_columns(
         pl.col("daily_volume")
         .rolling_sum(window_size=window_days, min_samples=1)
-        .over(["symbol", "contract_symbol"])
+        .over(["symbol", key_in])
         .alias("cum_volume")
     )
 
     # argmax per (symbol, session_date) with explicit tie-break.
     winners = (
         cum.sort(
-            ["symbol", "session_date", "cum_volume", "contract_symbol"],
+            ["symbol", "session_date", "cum_volume", key_in],
             descending=[False, False, True, False],
         )
         .group_by(["symbol", "session_date"], maintain_order=True)
         .agg(
-            pl.col("contract_symbol").first().alias("front_contract_symbol"),
+            pl.col(key_in).first().alias(key_out),
             pl.col("cum_volume").first().alias("cumulative_volume"),
         )
     )
@@ -823,6 +987,26 @@ def apply_persistence_guard(
     records: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
 
+    # Auto-detect the front-month column for back-compat with synthetic
+    # raw_front frames that pass ``front_contract_symbol`` directly
+    # (the disambiguation only matters when collisions are possible —
+    # synthetic test fixtures with one decade are isomorphic).
+    front_col = (
+        "front_contract_id_full"
+        if "front_contract_id_full" in raw_front.columns
+        else "front_contract_symbol"
+    )
+    eff_col = (
+        "effective_front_contract_id_full"
+        if front_col == "front_contract_id_full"
+        else "effective_front_contract_symbol"
+    )
+    raw_eff_col = (
+        "raw_front_contract_id_full"
+        if front_col == "front_contract_id_full"
+        else "raw_front_contract_symbol"
+    )
+
     for sym in sorted(raw_front["symbol"].unique(maintain_order=True).to_list()):
         sym_rows = raw_front.filter(pl.col("symbol") == sym).sort("session_date")
         incumbent: str | None = None
@@ -831,7 +1015,7 @@ def apply_persistence_guard(
         challenger_start: date | None = None
 
         for row in sym_rows.iter_rows(named=True):
-            raw = row["front_contract_symbol"]
+            raw = row[front_col]
 
             if incumbent is None:
                 # Seed: the first session's raw winner is the incumbent
@@ -892,7 +1076,7 @@ def apply_persistence_guard(
                             continue
                         if rec["session_date"] < challenger_start:
                             break
-                        rec["effective_front_contract_symbol"] = challenger
+                        rec[eff_col] = challenger
                     incumbent = challenger
                     challenger = None
                     challenger_streak = 0
@@ -902,8 +1086,8 @@ def apply_persistence_guard(
                 {
                     "symbol": sym,
                     "session_date": row["session_date"],
-                    "effective_front_contract_symbol": incumbent,
-                    "raw_front_contract_symbol": raw,
+                    eff_col: incumbent,
+                    raw_eff_col: raw,
                 }
             )
 
@@ -912,8 +1096,8 @@ def apply_persistence_guard(
             schema={
                 "symbol": pl.Utf8,
                 "session_date": pl.Date,
-                "effective_front_contract_symbol": pl.Utf8,
-                "raw_front_contract_symbol": pl.Utf8,
+                eff_col: pl.Utf8,
+                raw_eff_col: pl.Utf8,
             }
         )
     else:
@@ -924,17 +1108,31 @@ def apply_persistence_guard(
 
 def detect_roll_events(effective_front: pl.DataFrame) -> list[RollEvent]:
     """Identify committed roll events from the effective (post-persistence)
-    front-month series."""
+    front-month series.
+
+    Auto-detects the effective-front column: prefers the disambiguated
+    ``effective_front_contract_id_full`` (the production path through
+    ``_adjust_one_symbol``) and falls back to
+    ``effective_front_contract_symbol`` for synthetic test fixtures.
+    The returned ``RollEvent.old_contract`` / ``new_contract`` carry
+    the same key family as the input (i.e. ``contract_id_full`` for
+    production, raw ``contract_symbol`` for tests).
+    """
     events: list[RollEvent] = []
     if effective_front.height == 0:
         return events
+    eff_col = (
+        "effective_front_contract_id_full"
+        if "effective_front_contract_id_full" in effective_front.columns
+        else "effective_front_contract_symbol"
+    )
     for sym in sorted(
         effective_front["symbol"].unique(maintain_order=True).to_list()
     ):
         sym_rows = effective_front.filter(pl.col("symbol") == sym).sort("session_date")
         prev_contract: str | None = None
         for row in sym_rows.iter_rows(named=True):
-            current = row["effective_front_contract_symbol"]
+            current = row[eff_col]
             if prev_contract is not None and current != prev_contract:
                 events.append(
                     RollEvent(
@@ -960,13 +1158,27 @@ def compute_roll_ratio_afml(
     ``t_first_new`` = first 1-min bar of ``new`` on its first session as
     effective front-month (= ``event.roll_date``).
 
+    Auto-detects whether ``effective_front`` and ``df`` carry the
+    disambiguated ``contract_id_full`` (production path) or the raw
+    ``contract_symbol`` (legacy/synthetic). The ``RollEvent`` keys
+    must agree with the input's key family.
+
     Raises ``NoOverlapError`` if either anchor bar is missing.
     """
+    has_full = (
+        "effective_front_contract_id_full" in effective_front.columns
+        and "contract_id_full" in df.columns
+    )
+    eff_col = (
+        "effective_front_contract_id_full" if has_full else "effective_front_contract_symbol"
+    )
+    df_key_col = "contract_id_full" if has_full else "contract_symbol"
+
     # Find the old contract's last-as-effective-front session date.
     old_sessions = (
         effective_front.filter(
             (pl.col("symbol") == symbol)
-            & (pl.col("effective_front_contract_symbol") == event.old_contract)
+            & (pl.col(eff_col) == event.old_contract)
         )["session_date"]
         .sort()
     )
@@ -980,7 +1192,7 @@ def compute_roll_ratio_afml(
     old_bars = (
         df.filter(
             (pl.col("symbol") == symbol)
-            & (pl.col("contract_symbol") == event.old_contract)
+            & (pl.col(df_key_col) == event.old_contract)
             & (_session_date_expr() == old_last_session)
         )
         .sort("ts_event")
@@ -996,7 +1208,7 @@ def compute_roll_ratio_afml(
     new_bars = (
         df.filter(
             (pl.col("symbol") == symbol)
-            & (pl.col("contract_symbol") == event.new_contract)
+            & (pl.col(df_key_col) == event.new_contract)
             & (_session_date_expr() == event.roll_date)
         )
         .sort("ts_event")
@@ -1044,6 +1256,15 @@ def _adjust_one_symbol(
     if sym_df.height == 0:
         return _empty_adjusted_frame(), summary
 
+    # Decade-wraparound disambiguation: derive contract_id_full once
+    # and propagate it as the pipeline key so two contracts that share
+    # a 1-digit-year-suffix code across decades (e.g. ESH5 March-2015
+    # vs ESH5 March-2025) cannot collide in any downstream dictionary
+    # or groupby. The raw contract_symbol is preserved for output as
+    # front_contract_symbol. See module docstring for derivation.
+    _assert_no_consecutive_year_collision(sym_df, symbol)
+    sym_df = sym_df.with_columns(_contract_id_full_expr().alias("contract_id_full"))
+
     raw_front = detect_raw_front_month_by_day(sym_df, window_days)
     effective_front, rejected = apply_persistence_guard(raw_front, window_days)
     summary["rejected_oscillations"] = rejected
@@ -1066,9 +1287,9 @@ def _adjust_one_symbol(
                 f"event[{k+1}].old={ok!r}."
             )
 
-    # Derive newest contract from the effective front-month series
-    # (the last session's effective front). Assert consistency with
-    # the last roll event (if any).
+    # Derive newest contract_id_full from the effective front-month
+    # series (the last session's effective front). Assert consistency
+    # with the last roll event (if any).
     last_effective = (
         effective_front.filter(pl.col("symbol") == symbol)
         .sort("session_date")
@@ -1078,9 +1299,11 @@ def _adjust_one_symbol(
         # No effective front-month data (single-contract with no rolls
         # and empty guard output). Fall back to raw-front's last session.
         last_row = raw_front.filter(pl.col("symbol") == symbol).tail(1)
-        newest = last_row["front_contract_symbol"][0] if last_row.height else None
+        newest = (
+            last_row["front_contract_id_full"][0] if last_row.height else None
+        )
     else:
-        newest = last_effective["effective_front_contract_symbol"][0]
+        newest = last_effective["effective_front_contract_id_full"][0]
     if ratios and newest is not None and newest != ratios[-1].event.new_contract:
         raise ValueError(
             f"Newest-contract inconsistency for symbol {symbol}: "
@@ -1088,13 +1311,18 @@ def _adjust_one_symbol(
             f"but ratios[-1].new_contract = {ratios[-1].event.new_contract!r}."
         )
 
-    # Cumulative multiplicative factors. Newest = 1.0; older contracts
-    # get product of ρ_k for every roll newer than them.
+    # Cumulative multiplicative factors keyed by contract_id_full
+    # (decade-disambiguated). The newest contract_id_full anchors at
+    # 1.0 per AFML §2.4.3; older contracts walk backward through the
+    # ordered roll chain accumulating ρ_k. With the disambiguated
+    # key, no older contract can overwrite the anchor entry even when
+    # its raw contract_symbol (1-digit year) collides with the
+    # anchor's raw contract_symbol from another decade.
     contract_factor: dict[str, float] = {}
     if not ratios:
         only_contracts = (
             effective_front.filter(pl.col("symbol") == symbol)[
-                "effective_front_contract_symbol"
+                "effective_front_contract_id_full"
             ]
             .unique(maintain_order=True)
             .to_list()
@@ -1110,35 +1338,38 @@ def _adjust_one_symbol(
             contract_factor[rr.event.old_contract] = cum
     summary["contract_factors"] = dict(contract_factor)
 
-    # Front-month filter + factor attach + OHLC adjust.
+    # Front-month filter + factor attach + OHLC adjust. Join key is
+    # contract_id_full (decade-disambiguated); the display
+    # front_contract_symbol is the raw contract_symbol carried
+    # through from sym_df.
     front_map = effective_front.filter(pl.col("symbol") == symbol).select(
         pl.col("session_date"),
-        pl.col("effective_front_contract_symbol").alias("front_contract_symbol"),
+        pl.col("effective_front_contract_id_full").alias("contract_id_full"),
     )
     sym_with_date = sym_df.with_columns(_session_date_expr().alias("_session_date"))
     total_raw = sym_with_date.height
     front_only = sym_with_date.join(
         front_map,
-        left_on=["_session_date", "contract_symbol"],
-        right_on=["session_date", "front_contract_symbol"],
+        left_on=["_session_date", "contract_id_full"],
+        right_on=["session_date", "contract_id_full"],
         how="inner",
     )
     summary["bars_dropped_non_front"] = total_raw - front_only.height
 
     factor_rows = pl.DataFrame(
         {
-            "contract_symbol": list(contract_factor.keys()),
+            "contract_id_full": list(contract_factor.keys()),
             "adjustment_factor": list(contract_factor.values()),
         }
     )
-    enriched = front_only.join(factor_rows, on="contract_symbol", how="inner")
+    enriched = front_only.join(factor_rows, on="contract_id_full", how="inner")
 
     first_session = (
-        enriched.group_by("contract_symbol", maintain_order=True).agg(
+        enriched.group_by("contract_id_full", maintain_order=True).agg(
             pl.col("_session_date").min().alias("_first_session")
         )
     )
-    enriched = enriched.join(first_session, on="contract_symbol", how="inner")
+    enriched = enriched.join(first_session, on="contract_id_full", how="inner")
 
     adjusted = enriched.with_columns(
         (pl.col("open") * pl.col("adjustment_factor")).alias("_open_adj"),
