@@ -1,0 +1,23 @@
+# Cell I sources YAML manifest — runbook §7.1.
+#
+# Loaded by `python scripts/ingest.py --dataset vendor_legacy_1min
+# --sources-yaml config/cell_i_sources.yaml`. Schema enforced by
+# `load_sources_yaml` at
+# src/skie_ninja/data/ingest/vendor_legacy_1min.py.
+#
+# Closes the train-window substrate gap (ES + NQ 2015-2019) and the
+# test-window NQ 2025 gap per H050 design.md §2 + addendum r2 §3.2
+# substrate-blind constraint.
+
+sources:
+  - {symbol: ES, coverage: backfill_2015, filename: ES_2015_1min_databento.csv}
+  - {symbol: ES, coverage: backfill_2016, filename: ES_2016_1min_databento.csv}
+  - {symbol: ES, coverage: backfill_2017, filename: ES_2017_1min_databento.csv}
+  - {symbol: ES, coverage: backfill_2018, filename: ES_2018_1min_databento.csv}
+  - {symbol: ES, coverage: backfill_2019, filename: ES_2019_1min_databento.csv}
+  - {symbol: NQ, coverage: backfill_2015, filename: NQ_2015_1min_databento.csv}
+  - {symbol: NQ, coverage: backfill_2016, filename: NQ_2016_1min_databento.csv}
+  - {symbol: NQ, coverage: backfill_2017, filename: NQ_2017_1min_databento.csv}
+  - {symbol: NQ, coverage: backfill_2018, filename: NQ_2018_1min_databento.csv}
+  - {symbol: NQ, coverage: backfill_2019, filename: NQ_2019_1min_databento.csv}
+  - {symbol: NQ, coverage: forward_2025, filename: NQ_2025_1min_databento.csv}
