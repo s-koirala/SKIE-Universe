@@ -76,7 +76,8 @@ import hashlib
 import json
 import logging
 import sys
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -122,6 +123,129 @@ from skie_ninja.utils.hashing import frame_sha256
 from skie_ninja.utils.paths import ProjectPaths
 from skie_ninja.utils.reproducibility import with_model_hash
 from skie_ninja.utils.runcontext import RunContext
+
+# ---------------------------------------------------------------------------
+# HMM-fit cache (P1-H050-SMOKE-RUNTIME-INVESTIGATE)
+# ---------------------------------------------------------------------------
+#
+# Across the 27-cell label grid, the HMM input is the train-fold
+# log-return series ``r_tr = r[train_idx]``. ``r`` is symbol-specific
+# and CFG-INDEPENDENT (closes are not perturbed by label parameters);
+# ``train_idx`` is fold-deterministic (engine drives outer-fold
+# geometry from per-cfg ``label_horizon`` — see ``_run_symbol_label_cfg``
+# Round-2 §F-2 fix). Therefore HMM input is a function of
+# ``(symbol, fold_id, label_horizon)``. The cache key is exactly
+# ``(symbol, fold_id, label_horizon)``: cfgs sharing a vertical_barrier
+# (and hence a label_horizon) share the same outer-fold geometry and
+# share HMM fits; cfgs with diverging vertical_barriers get separate
+# cache entries (no collision). For the H050 27-cell grid this yields
+# 3 vertical_barrier strata × N folds = 3N HMM fits (rather than 27N
+# without cache or 1N with the unsafe key-collision form). The cache
+# invariant (``train_idx_len`` + first/last position) is preserved as a
+# defensive backstop against future refactors that decouple
+# label_horizon from fold geometry; under the current splitter contract
+# (purge_window = label_horizon, AFML §7.4) it never fires in normal
+# operation, only on programmer error.
+
+
+@dataclass(frozen=True)
+class _CachedHmmFit:
+    """Frozen record of one HMM fit, keyed on
+    ``(symbol, fold_id, label_horizon)``.
+
+    Carries every artifact the cache-hit path of :func:`_fit_fold`
+    needs to skip ``select_gaussian_hmm`` and emit the same return
+    dict as a cache miss. The fields are deliberately one-to-one with
+    the keys consumed by ``_predict_fold`` (``hmm``, ``regime_high_mean``,
+    ``hmm_terminal_log_alpha``, ``hmm_train_terminal_position``); plus
+    cache-invariant guards (``train_idx_len`` + first/last positions)
+    that defend against fold geometries diverging across cfgs.
+    """
+
+    hmm: GaussianHMM
+    regime_high_mean: int
+    hmm_terminal_log_alpha: np.ndarray
+    hmm_train_terminal_position: int
+    train_idx_len: int
+    train_idx_first: int
+    train_idx_last: int
+
+
+@dataclass
+class _HmmCacheStats:
+    """Operational telemetry; not a methodological artifact.
+
+    Reported at end-of-run only. Counts and timings are reset per
+    :func:`_run_symbol` invocation (cache itself is per-symbol). The
+    cache toggle ``--no-hmm-cache`` simply disables population /
+    lookup; statistics are still tracked so the disabled-path baseline
+    can be measured against the enabled-path speedup.
+    """
+
+    n_hits: int = 0
+    n_misses: int = 0
+    total_hmm_fit_time_s: float = 0.0
+    total_cache_lookup_time_s: float = 0.0
+    unique_keys: set[tuple[str, int, int]] = field(default_factory=set)
+
+    @property
+    def n_unique_keys(self) -> int:
+        return len(self.unique_keys)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "n_hits": int(self.n_hits),
+            "n_misses": int(self.n_misses),
+            "n_unique_keys": int(self.n_unique_keys),
+            "total_hmm_fit_time_s": float(self.total_hmm_fit_time_s),
+            "total_cache_lookup_time_s": float(self.total_cache_lookup_time_s),
+        }
+
+
+def _validate_cache_invariant(
+    cached: _CachedHmmFit,
+    train_idx: np.ndarray,
+    *,
+    symbol: str,
+    fold_id: int,
+    label_horizon: int,
+) -> None:
+    """Raise if a cache key collides with a different fold geometry.
+
+    Under the current splitter contract (``purge_window =
+    label_horizon`` per AFML §7.4) the cache key
+    ``(symbol, fold_id, label_horizon)`` already partitions divergent
+    fold geometries into disjoint cache entries; this invariant is
+    therefore expected to never fire in normal operation. It is kept as
+    a defensive backstop against future refactors that decouple
+    ``purge_window`` from ``label_horizon`` (e.g. an embargo-mode ADR
+    promotes a separate purge knob), in which case two cfgs sharing
+    ``(symbol, fold_id, label_horizon)`` could still produce different
+    ``train_idx`` and silently reusing the cache would be a correctness
+    violation. We raise so the caller treats the collision as a
+    programmer error (e.g. fold-id + horizon sharing across two engines
+    with different additional geometry levers) rather than a silent
+    recompute path.
+    """
+    if (
+        cached.train_idx_len != int(len(train_idx))
+        or cached.train_idx_first != int(train_idx[0])
+        or cached.train_idx_last != int(train_idx[-1])
+    ):
+        raise RuntimeError(
+            "HMM cache invariant violated for "
+            f"(symbol={symbol!r}, fold_id={fold_id}, "
+            f"label_horizon={label_horizon}): cached "
+            f"(train_idx_len={cached.train_idx_len}, "
+            f"first={cached.train_idx_first}, "
+            f"last={cached.train_idx_last}) vs requested "
+            f"(len={len(train_idx)}, first={int(train_idx[0])}, "
+            f"last={int(train_idx[-1])}). Two engines with different "
+            "fold geometry collided on the same cache key. The cache "
+            "must be reset between engine runs whose splitter "
+            "geometry diverges beyond label_horizon."
+        )
+
 
 # ---------------------------------------------------------------------------
 # Config loader
@@ -559,7 +683,7 @@ def _label_panel_for_cfg(
     return X, y_bin, r_bar, ts_int, merged
 
 
-def _fit_fold(
+def _fit_fold(  # noqa: PLR0912, PLR0915
     train_idx: np.ndarray,
     *,
     X: np.ndarray,
@@ -573,6 +697,10 @@ def _fit_fold(
     label_horizon: int,
     embargo: int,
     n_inner_folds: int,
+    fold_id: int | None = None,
+    symbol: str | None = None,
+    hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = None,
+    hmm_cache_stats: _HmmCacheStats | None = None,
 ) -> dict[str, Any]:
     """Fit the classifier + HMM on the outer fold's training rows.
 
@@ -604,15 +732,76 @@ def _fit_fold(
     # ~10^6 bars), so the bias from including it in the HMM emission
     # statistics is negligible (<1e-6 of any moment). The bar-clock /
     # HMM-clock invariant is preserved under no mask.
-    hmm_selection = select_gaussian_hmm(
-        r_tr.reshape(-1, 1),
-        n_states_grid=(2,),
-        covariance_types=hmm_cov_types,
-        seed=int(random_seed),
-        min_restarts=5,
-        max_restarts=10,
-    )
-    hmm: GaussianHMM = hmm_selection.best_model
+    #
+    # P1-H050-SMOKE-RUNTIME-INVESTIGATE: amortise HMM fit across the
+    # 27-cell label grid. The HMM input ``r_tr`` is a function of
+    # ``(symbol, train_idx)`` only — label cfg perturbs ``y`` (and the
+    # outer-fold geometry through ``label_horizon``-derived
+    # ``purge_window``) but not the close-derived returns. When
+    # ``hmm_cache`` is supplied and a hit is found, we skip
+    # ``select_gaussian_hmm`` entirely.
+    #
+    # F-PLV-1 (Round-2 post-loop verification): the cache key is
+    # ``(symbol, fold_id, label_horizon)``. Cfgs sharing a
+    # vertical_barrier (and hence label_horizon) share their HMM fits;
+    # cfgs with diverging vertical_barriers get separate cache entries
+    # and never collide. On the H050 27-cell grid this delivers
+    # 3 vertical_barrier strata × N folds = 3N HMM fits, ~9× faster
+    # than the cache-disabled path. The earlier 2-tuple key
+    # ``(symbol, fold_id)`` was unsafe: with per-cfg purge_window driven
+    # by label_horizon (Round-2 §F-2 fix), divergent vertical_barriers
+    # produced different ``train_idx`` for the same fold_id — the
+    # invariant guard would have raised on the first cross-stratum cfg
+    # transition, terminating the orchestrator. The 3-tuple key
+    # eliminates that collision.
+    cache_key: tuple[str, int, int] | None
+    if hmm_cache is not None and symbol is not None and fold_id is not None:
+        cache_key = (str(symbol), int(fold_id), int(label_horizon))
+    else:
+        cache_key = None
+
+    cached: _CachedHmmFit | None = None
+    if cache_key is not None and hmm_cache is not None:
+        _t_lookup_0 = time.perf_counter()
+        cached = hmm_cache.get(cache_key)
+        if hmm_cache_stats is not None:
+            hmm_cache_stats.total_cache_lookup_time_s += (
+                time.perf_counter() - _t_lookup_0
+            )
+
+    if cached is not None:
+        _validate_cache_invariant(
+            cached,
+            train_idx,
+            symbol=str(symbol),
+            fold_id=int(fold_id) if fold_id is not None else -1,
+            label_horizon=int(label_horizon),
+        )
+        hmm: GaussianHMM = cached.hmm
+        hmm_terminal_log_alpha_cached = cached.hmm_terminal_log_alpha
+        hmm_train_terminal_position_cached = cached.hmm_train_terminal_position
+        regime_high_mean_cached: int | None = cached.regime_high_mean
+        if hmm_cache_stats is not None:
+            hmm_cache_stats.n_hits += 1
+    else:
+        _t_fit_0 = time.perf_counter()
+        hmm_selection = select_gaussian_hmm(
+            r_tr.reshape(-1, 1),
+            n_states_grid=(2,),
+            covariance_types=hmm_cov_types,
+            seed=int(random_seed),
+            min_restarts=5,
+            max_restarts=10,
+        )
+        hmm = hmm_selection.best_model
+        if hmm_cache_stats is not None:
+            hmm_cache_stats.total_hmm_fit_time_s += time.perf_counter() - _t_fit_0
+            hmm_cache_stats.n_misses += 1
+            if cache_key is not None:
+                hmm_cache_stats.unique_keys.add(cache_key)
+        hmm_terminal_log_alpha_cached = None
+        hmm_train_terminal_position_cached = None
+        regime_high_mean_cached = None
 
     # P1-H050-INNER-CV: nested walk-forward CV per Varma & Simon 2006
     # (doi:10.1186/1471-2105-7-91). model.score(X_tr, y_tr) is REMOVED;
@@ -621,12 +810,40 @@ def _fit_fold(
     import lightgbm as lgb
 
     if len(np.unique(y_tr)) < 2:  # noqa: PLR2004
+        # Reuse cached scalars when available so the no-classifier
+        # branch never recomputes the forward pass on a hit.
+        if regime_high_mean_cached is not None:
+            rhm_short = regime_high_mean_cached
+        else:
+            rhm_short = int(np.argmax(hmm.params_.means[:, 0])) if hmm.params_ else 0
+        if hmm_terminal_log_alpha_cached is not None:
+            tla_short = hmm_terminal_log_alpha_cached
+        else:
+            tla_short = hmm.terminal_log_alpha(r_tr.reshape(-1, 1))
+        if hmm_train_terminal_position_cached is not None:
+            ttp_short = hmm_train_terminal_position_cached
+        else:
+            ttp_short = int(train_idx[-1])
+        if (
+            cached is None
+            and cache_key is not None
+            and hmm_cache is not None
+        ):
+            hmm_cache[cache_key] = _CachedHmmFit(
+                hmm=hmm,
+                regime_high_mean=int(rhm_short),
+                hmm_terminal_log_alpha=tla_short,
+                hmm_train_terminal_position=int(ttp_short),
+                train_idx_len=int(len(train_idx)),
+                train_idx_first=int(train_idx[0]),
+                train_idx_last=int(train_idx[-1]),
+            )
         return {
             "classifier": None,
             "hmm": hmm,
-            "regime_high_mean": int(np.argmax(hmm.params_.means[:, 0])) if hmm.params_ else 0,
-            "hmm_terminal_log_alpha": hmm.terminal_log_alpha(r_tr.reshape(-1, 1)),
-            "hmm_train_terminal_position": int(train_idx[-1]),
+            "regime_high_mean": int(rhm_short),
+            "hmm_terminal_log_alpha": tla_short,
+            "hmm_train_terminal_position": int(ttp_short),
             "selected_hp": None,
             "inner_cv_logloss": np.inf,
             "inner_cv_sharpe": -np.inf,
@@ -670,17 +887,38 @@ def _fit_fold(
     # Highest-mean regime state (for inference-time gating). Taken
     # from the HMM's emission means.
     assert hmm.params_ is not None
-    means = hmm.params_.means[:, 0]
-    regime_high_mean = int(np.argmax(means))
+    if regime_high_mean_cached is not None:
+        regime_high_mean = int(regime_high_mean_cached)
+    else:
+        means = hmm.params_.means[:, 0]
+        regime_high_mean = int(np.argmax(means))
 
     # P1-HMM-FOLD-WARM-START: harvest train-fold terminal log α as the
     # sufficient statistic for the test-fold filter prior (ADR-0005
     # §"Fold-boundary state continuity"). With the zero-mask removed
     # (Round-2 F-1-1 fix above), the HMM observation count equals the
     # train-fold bar count, so the terminal HMM observation lives at
-    # bar position train_idx[-1].
-    hmm_terminal_log_alpha = hmm.terminal_log_alpha(r_tr.reshape(-1, 1))
-    hmm_train_terminal_position = int(train_idx[-1])
+    # bar position train_idx[-1]. Cache hit reuses the cached forward
+    # pass; cache miss recomputes once and stores for subsequent cfgs.
+    if hmm_terminal_log_alpha_cached is not None:
+        hmm_terminal_log_alpha = hmm_terminal_log_alpha_cached
+    else:
+        hmm_terminal_log_alpha = hmm.terminal_log_alpha(r_tr.reshape(-1, 1))
+    if hmm_train_terminal_position_cached is not None:
+        hmm_train_terminal_position = int(hmm_train_terminal_position_cached)
+    else:
+        hmm_train_terminal_position = int(train_idx[-1])
+
+    if cached is None and cache_key is not None and hmm_cache is not None:
+        hmm_cache[cache_key] = _CachedHmmFit(
+            hmm=hmm,
+            regime_high_mean=int(regime_high_mean),
+            hmm_terminal_log_alpha=hmm_terminal_log_alpha,
+            hmm_train_terminal_position=int(hmm_train_terminal_position),
+            train_idx_len=int(len(train_idx)),
+            train_idx_first=int(train_idx[0]),
+            train_idx_last=int(train_idx[-1]),
+        )
 
     return {
         "classifier": final_model,
@@ -862,6 +1100,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             f"{_DEFAULT_INNER_N_FOLDS} inner folds."
         ),
     )
+    ap.add_argument(
+        "--no-hmm-cache",
+        action="store_true",
+        help=(
+            "Disable the per-symbol HMM-fit cache (P1-H050-SMOKE-RUNTIME-"
+            "INVESTIGATE). Default: enabled. The cache amortises the "
+            "BIC-selected GaussianHMM fit across the 27-cell label grid "
+            "since HMM input r_tr is cfg-independent for a given "
+            "(symbol, fold). The disabled path is the legacy code path "
+            "and is exposed for byte-identical-output regression "
+            "verification."
+        ),
+    )
     return ap.parse_args(argv)
 
 
@@ -942,6 +1193,8 @@ def _run_symbol_label_cfg(  # noqa: PLR0915
     volatility_lookback: int,
     lgb_n_draws: int,
     n_inner_folds: int,
+    hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = None,
+    hmm_cache_stats: _HmmCacheStats | None = None,
 ) -> dict[str, Any] | None:
     """Run the engine for one symbol × one label cfg.
 
@@ -1097,6 +1350,9 @@ def _run_symbol_label_cfg(  # noqa: PLR0915
             label_horizon=label_horizon,
             embargo=embargo,
             n_inner_folds=n_inner_folds,
+            symbol=sym,
+            hmm_cache=hmm_cache,
+            hmm_cache_stats=hmm_cache_stats,
         ),
         predict_kwargs=dict(
             X=X_full,
@@ -1239,6 +1495,25 @@ def _run_symbol(  # noqa: PLR0912, PLR0915
     # (AFML §7.4). The Round-1 grid-max (`ceil(max(vb)/60)`) is removed
     # so each cfg pays only its own purge; the geometry varies slightly
     # per cfg, which is correct.
+    #
+    # P1-H050-SMOKE-RUNTIME-INVESTIGATE: per-symbol HMM-fit cache. The
+    # cache is keyed on (symbol, fold_id, label_horizon) (F-PLV-1 fix)
+    # and is reset between symbols (each symbol has its own return
+    # series; bleed-through would be a correctness violation). With the
+    # 3-tuple key, cfgs sharing a vertical_barrier value share fits and
+    # cfgs with divergent vertical_barriers populate disjoint cache
+    # entries — eliminating the cross-stratum collision that the
+    # 2-tuple key would have triggered on the H050 27-cell grid. The
+    # cache invariant in `_validate_cache_invariant` is retained as a
+    # defensive backstop. With the cache enabled, the dominant per-cfg
+    # cost (HMM BIC selection over a multi-restart EM grid) is paid
+    # once per (fold, label_horizon) stratum instead of 27× — a 9×
+    # speedup on the H050 grid (3 strata × 9 cfgs/stratum).
+    use_cache: bool = not bool(getattr(args, "no_hmm_cache", False))
+    hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = (
+        {} if use_cache else None
+    )
+    hmm_cache_stats = _HmmCacheStats()
     candidate_runs: list[tuple[tuple[float, pd.Timedelta, int], dict[str, Any]]] = []
     for pt_sl, vb, vl in label_grid:
         candidate = _run_symbol_label_cfg(
@@ -1252,6 +1527,8 @@ def _run_symbol(  # noqa: PLR0912, PLR0915
             volatility_lookback=vl,
             lgb_n_draws=lgb_n_draws,
             n_inner_folds=n_inner_folds,
+            hmm_cache=hmm_cache,
+            hmm_cache_stats=hmm_cache_stats,
         )
         if candidate is None:
             continue
@@ -1459,12 +1736,30 @@ def _run_symbol(  # noqa: PLR0912, PLR0915
         f"ledger_rollup={rolled};warm_cold_diag={warm_cold_sha}".encode()
     ).hexdigest()
 
+    # P1-H050-SMOKE-RUNTIME-INVESTIGATE: emit per-symbol cache stats.
+    # Operational telemetry only — not a methodological artifact, not
+    # included in the model hash. INFO-level so production runs surface
+    # the speedup figure without the user opting into DEBUG.
+    _LOG.info(
+        "HMM cache stats sym=%s: hits=%d, misses=%d, unique_keys=%d, "
+        "fit_time_s=%.3f, lookup_time_s=%.6f, enabled=%s",
+        sym,
+        hmm_cache_stats.n_hits,
+        hmm_cache_stats.n_misses,
+        hmm_cache_stats.n_unique_keys,
+        hmm_cache_stats.total_hmm_fit_time_s,
+        hmm_cache_stats.total_cache_lookup_time_s,
+        hmm_cache is not None,
+    )
+
     return {
         "status": "ok",
         "sym_dir": sym_dir,
         "n_folds": len(result.fold_records),
         "model_hash_combined": combined,
         "metrics": metrics,
+        "hmm_cache_stats": hmm_cache_stats.to_dict(),
+        "hmm_cache_enabled": hmm_cache is not None,
     }
 
 
@@ -1574,8 +1869,13 @@ def run(argv: list[str] | None = None) -> Path:
             "lgb_n_draws_effective": lgb_n_draws,
             "inner_n_folds": n_inner_folds,
             "smoke": bool(args.smoke),
+            "hmm_cache_enabled": not bool(args.no_hmm_cache),
             "per_symbol_status": {
-                k: {"status": v.get("status"), "n_folds": v.get("n_folds", 0)}
+                k: {
+                    "status": v.get("status"),
+                    "n_folds": v.get("n_folds", 0),
+                    "hmm_cache_stats": v.get("hmm_cache_stats"),
+                }
                 for k, v in per_symbol_results.items()
             },
         }
