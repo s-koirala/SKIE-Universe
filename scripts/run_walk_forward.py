@@ -5,7 +5,7 @@ Usage::
     python scripts/run_walk_forward.py \
         --hypothesis H050 \
         --config config/hypotheses/H050.yaml \
-        [--dry-run] [--smoke-n 5000]
+        [--dry-run] [--smoke-n 5000] [--smoke]
 
 Pipeline (per Cycle-6 brief)
 ----------------------------
@@ -13,26 +13,59 @@ Pipeline (per Cycle-6 brief)
   1. Open :class:`~skie_ninja.utils.runcontext.RunContext`.
   2. Load panel (real data OR synthetic on ``--dry-run``).
   3. Compute features via :data:`FEATURE_REGISTRY` enumeration.
-  4. Triple-barrier labels; derive ``max_label_horizon``.
+  4. Triple-barrier labels (López de Prado 2018 AFML §3.4 "The
+     Triple-Barrier Method"; design.md §4 cites §3.2 — that misattribution
+     is an inherited erratum from design.md line 53, preserved by Path-A
+     pre-reg immutability and documented in the orchestrator-triple
+     audit trail) — joint CV selection over the 27-cell
+     pre-registered grid (``pt_sl × vertical_barrier × volatility_lookback``)
+     per design.md §4 INSIDE each outer fold. Selection metric: the
+     ungated mean inner-OOS Sharpe of the inner-CV-selected
+     classifier under each candidate label config. The label-grid
+     selection metric is intentionally DECOUPLED from the gated
+     production metric ``T_H050 = SR_gated − SR_unconditional``
+     (design.md §1): labels optimise classifier signal quality, while
+     the regime gate is a separate inference-time conditioning
+     component (AFML §3.4 "labels are downstream of the trading rule's
+     P&L, not of any inference-time gate"). An empirical sensitivity
+     study (gated vs ungated label-CV) is tracked under follow-up
+     ``P1-H050-LABEL-CV-GATED-METRIC``. Ties on the Sharpe metric are
+     broken by the smallest mean inner-CV log-loss to make selection
+     deterministic. (P1-H050-LABEL-CV closure.)
   5. Build :class:`~skie_ninja.backtest.splits.SplitSpec` with purge
      >= ``max_label_horizon``, data-driven embargo
      (Politis-White 2004 auto block-length).
-  6. Per fold: nested random-search LightGBM (CV-selected inside
-     fold) + HMM BIC selection (inside fold). ``predict_fn`` gates
-     classifier probability by ``filter_states`` indicator.
+  6. Per OUTER fold: nested walk-forward inner CV
+     (Varma & Simon 2006, doi:10.1186/1471-2105-7-91) selects
+     LightGBM hyperparameters by mean inner-OOS log-loss
+     (the training objective); 200 random-search draws by default
+     (Bergstra & Bengio 2012, JMLR 13:281-305) with `--smoke`
+     reducing to 5 for CI. HMM BIC selection inside the same outer
+     train block. ``predict_fn`` gates classifier probability by
+     warm-started ``filter_states`` regime indicator.
+     P1-H050-INNER-CV closure.
   7. :class:`~skie_ninja.backtest.engine.walk_forward.WalkForwardEngine`
-     executes the run.
+     executes the run PER SYMBOL declared in
+     ``config.universe`` (H050.yaml line 3 = ``[ES, NQ]``).
+     P1-H050-UNIVERSE-ES-ONLY closure. Per-symbol artifacts;
+     cross-symbol aggregation is deferred to
+     ``P1-H050-DUAL-SYMBOL-ORCHESTRATOR``.
   8. OOS PnL, Sharpe of gated vs unconditional filtered series.
   9. Opdyke 2007 CI on the Sharpe differential via stationary
      bootstrap.
  10. Hansen SPA (strategy universe = {H050} for Cycle-6).
- 11. Persist artifacts under ``artifacts/runs/H050/{run_id}/``.
+ 11. Persist artifacts under ``artifacts/runs/H050/{run_id}/{symbol}/``.
  12. :func:`with_model_hash` the ReproLog from the engine rolled-up
      hash.
 
 Dry-run mode generates a synthetic OHLCV panel. The feature factory,
 labels, splitter, engine, bootstrap, and SPA are executed on the
 synthetic data so the full composition is exercised end-to-end.
+
+The ``--smoke`` flag reduces ``lgb_n_draws`` and the inner-CV fold
+count for CI tractability. Smoke values are CI-only overrides; the
+production walk-forward run uses the H050.yaml-bound
+``classifier.search.n_draws = 200`` per design.md §5.
 """
 
 from __future__ import annotations
@@ -245,6 +278,286 @@ def make_synthetic_panel(*, n_per_symbol: int, seed: int) -> pl.DataFrame:
 # Fit / predict functions (nested CV inside fold)
 # ---------------------------------------------------------------------------
 
+# Default inner-walk-forward fold count for nested CV (Varma & Simon 2006,
+# doi:10.1186/1471-2105-7-91). Choice rationale (López de Prado 2018 AFML §7):
+# 3 inner folds balances per-draw compute against per-fold variance for an
+# outer train block of ~9 calendar years of 1-min bars. With 3 inner folds
+# and step_size = test_size, each inner fold sees ~25% of the outer-train
+# block as inner-test — large enough that the inner-OOS log-loss estimator
+# has acceptable variance, small enough that 27 (label grid) × N_draws
+# inner-CV evaluations per outer fold remain tractable.
+_DEFAULT_INNER_N_FOLDS: int = 3
+# Smoke override: 2 inner folds for CI tractability. Documented as
+# CI-only; production runs use _DEFAULT_INNER_N_FOLDS.
+_SMOKE_INNER_N_FOLDS: int = 2
+# Smoke override for N_draws. The production setting is bound by
+# H050.yaml `classifier.search.n_draws = 200` per design.md §5.
+# Bergstra & Bengio 2012 (JMLR 13:281-305) §2.2 derives the volume
+# argument: N i.i.d. uniform draws from the search space miss a region
+# of relative volume v with probability (1 − v)^N, so N ≥ ceil(log(1−p)/
+# log(1−v)) draws cover a v-volume "good" region with probability ≥ p.
+# For (v=0.05, p=0.95) the threshold is N ≥ 59 (the canonical "60-trial"
+# B&B result). The argument is dimension-INDEPENDENT (it is a statement
+# about volume measure on the search space, not on its intrinsic
+# dimensionality). The H050 LightGBM grid is a 12-cell discrete product
+# (3 × 2 × 2 = num_leaves × learning_rate × min_data_in_leaf — see
+# H050.yaml `classifier.grid`); N=200 over 12 cells is heavy
+# oversampling rather than a B&B-dictated coverage requirement. The
+# N=200 binding from H050.yaml `classifier.search.n_draws` predates the
+# discrete-grid analysis and is preserved here under pre-reg fidelity;
+# an empirical N_draws calibration on the actual 12-cell discrete grid
+# is tracked under follow-up `P1-H050-LGB-N-DRAWS-EMPIRICAL`.
+# Smoke uses 5 to keep the CI fixture tractable; this value is NOT a
+# production setting.
+_SMOKE_LGB_N_DRAWS: int = 5
+# Smoke override for the label grid: take only the center cell so smoke
+# exercises the joint-CV plumbing without paying the 27-cell cost.
+# Production walk-forward uses the full 27-cell grid per design.md §4.
+_SMOKE_LABEL_GRID_LIMIT: int = 1
+
+
+def _build_inner_folds(
+    n_train_outer: int,
+    *,
+    label_horizon: int,
+    embargo: int,
+    n_inner_folds: int,
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Build an inner walk-forward CV split inside one outer training block.
+
+    Returns a list of ``(inner_train_local_idx, inner_test_local_idx)``
+    tuples where indices are LOCAL positions into the outer train block
+    (``0..n_train_outer-1``). The caller adds the outer block's offset to
+    map back into the global panel.
+
+    The inner split honours the same purge/embargo discipline as the
+    outer engine (López de Prado 2018 AFML §7.4); we delegate to
+    :func:`walk_forward_split` with ``mode="rolling"`` and
+    ``step_size = inner_test_size`` so inner test blocks are disjoint.
+    """
+    if n_train_outer < 4 * n_inner_folds:
+        # Too few rows to build n_inner_folds disjoint test blocks plus a
+        # non-degenerate initial training block. Caller should treat this
+        # as "single inner fold = full train" — handled at call site.
+        return []
+    inner_test_size = max(2, n_train_outer // (n_inner_folds + 2))
+    inner_initial = max(inner_test_size, n_train_outer - n_inner_folds * inner_test_size)
+    if inner_initial + inner_test_size > n_train_outer:
+        return []
+    inner_split = walk_forward_split(
+        n_samples=n_train_outer,
+        initial_train_size=inner_initial,
+        test_size=inner_test_size,
+        step_size=inner_test_size,
+        label_horizon=label_horizon,
+        embargo=embargo,
+        mode="rolling",
+        purge_window=label_horizon,
+        max_folds=n_inner_folds,
+    )
+    return [
+        (
+            np.asarray(f.train_indices(), dtype=np.int64),
+            np.asarray(f.test_indices(), dtype=np.int64),
+        )
+        for f in inner_split.folds
+    ]
+
+
+def _logistic_loss_safe(y_true: np.ndarray, p_pred: np.ndarray, eps: float = 1e-15) -> float:
+    """Mean cross-entropy between Bernoulli targets and predicted prob.
+
+    Standard scikit-learn `log_loss` formulation; eps clipping prevents
+    `log(0)` blow-ups when the classifier saturates (probability
+    arbitrarily close to 0 or 1). Lower is better.
+    """
+    p_clipped = np.clip(p_pred, eps, 1.0 - eps)
+    return float(-np.mean(y_true * np.log(p_clipped) + (1.0 - y_true) * np.log(1.0 - p_clipped)))
+
+
+def _strategy_sharpe_simple(p_pred: np.ndarray, r_te: np.ndarray) -> float:
+    """Cost-free directional Sharpe of position = sign(2p − 1) on r_te.
+
+    Used for label-grid selection within the inner CV: the labels and
+    HP are jointly chosen by the downstream Sharpe of the candidate
+    classifier on inner-OOS bars. Cost deduction is intentionally
+    omitted at the inner-CV level — the production cost model
+    (`nt8_es_nq_rth_v1`) is applied at the outer-fold OOS evaluation
+    only, so the label-grid selection criterion is the cost-free signal
+    quality. Sample-size guard: insufficient variance in the strategy
+    return → -inf so this config loses any tie-break.
+    """
+    pos = np.sign(2.0 * p_pred - 1.0)
+    s = pos * r_te
+    if s.size < 2 or s.std() <= 0:  # noqa: PLR2004
+        return -np.inf
+    return float(s.mean() / s.std())
+
+
+def _draw_random_lgb_params(
+    rng: np.random.Generator,
+    grid: dict[str, tuple[Any, ...]],
+    n_draws: int,
+) -> list[dict[str, Any]]:
+    """Sample distinct random LightGBM hyperparameter configurations.
+
+    Bergstra & Bengio 2012 (JMLR 13:281-305) — random search; with
+    n_draws bounded above by the grid's combinatorial size, sampling
+    without replacement is equivalent to a permutation of the full grid.
+    Above that cap, we sample with replacement (the design intent of
+    random search is breadth over the surface, not coverage of every
+    cell).
+    """
+    keys = list(grid.keys())
+    n_combos = 1
+    for vals in grid.values():
+        n_combos *= max(1, len(vals))
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[Any, ...]] = set()
+    for _ in range(n_draws):
+        # Try unique sampling first; if exhausted, fall through to with-replacement.
+        for _retry in range(20):
+            params = {k: rng.choice(list(grid[k])) for k in keys}
+            sig = tuple(params[k] for k in keys)
+            if sig not in seen or len(seen) >= n_combos:
+                break
+        seen.add(sig)
+        # Cast to Python scalars (lightgbm refuses numpy dtypes here).
+        params_cast = {
+            k: (int(v) if isinstance(v, np.integer) else float(v)) for k, v in params.items()
+        }
+        out.append(params_cast)
+    return out
+
+
+def _inner_cv_select_hp(
+    *,
+    X_train_outer: np.ndarray,
+    y_train_outer: np.ndarray,
+    r_train_outer: np.ndarray,
+    lgb_grid: dict[str, tuple[Any, ...]],
+    lgb_n_draws: int,
+    lgb_seed: int,
+    random_seed: int,
+    label_horizon: int,
+    embargo: int,
+    n_inner_folds: int,
+) -> tuple[dict[str, Any] | None, float, float]:
+    """Inner walk-forward CV over LightGBM HP draws.
+
+    Returns ``(best_params, best_inner_logloss, best_inner_sharpe)``.
+
+    Per Varma & Simon 2006 (doi:10.1186/1471-2105-7-91), model
+    selection is performed STRICTLY on inner-OOS folds — never on the
+    inner-training data. The selection metric is mean inner-OOS
+    logistic loss (matches the LightGBM training objective per
+    design.md §5). The inner-OOS Sharpe is also returned so the
+    caller can use it for label-grid selection (P1-H050-LABEL-CV).
+    """
+    import lightgbm as lgb
+
+    inner_folds = _build_inner_folds(
+        n_train_outer=X_train_outer.shape[0],
+        label_horizon=label_horizon,
+        embargo=embargo,
+        n_inner_folds=n_inner_folds,
+    )
+    if not inner_folds:
+        return None, np.inf, -np.inf
+
+    rng = np.random.default_rng(lgb_seed)
+    draws = _draw_random_lgb_params(rng, lgb_grid, lgb_n_draws)
+
+    best_params: dict[str, Any] | None = None
+    best_logloss = np.inf
+    best_sharpe = -np.inf
+    for params in draws:
+        fold_loglosses: list[float] = []
+        fold_sharpes: list[float] = []
+        for inner_tr, inner_te in inner_folds:
+            X_in_tr = X_train_outer[inner_tr]
+            y_in_tr = y_train_outer[inner_tr]
+            X_in_te = X_train_outer[inner_te]
+            y_in_te = y_train_outer[inner_te]
+            r_in_te = r_train_outer[inner_te]
+            if len(np.unique(y_in_tr)) < 2 or len(np.unique(y_in_te)) < 2:  # noqa: PLR2004
+                continue
+            model = lgb.LGBMClassifier(
+                n_estimators=50,
+                random_state=int(random_seed),
+                verbose=-1,
+                **params,
+            )
+            model.fit(X_in_tr, y_in_tr)
+            if hasattr(model, "predict_proba"):
+                p_te = model.predict_proba(X_in_te)[:, 1]
+            else:
+                p_te = model.predict(X_in_te).astype(float)
+            fold_loglosses.append(_logistic_loss_safe(y_in_te, p_te))
+            fold_sharpes.append(_strategy_sharpe_simple(p_te, r_in_te))
+        if not fold_loglosses:
+            continue
+        mean_logloss = float(np.mean(fold_loglosses))
+        finite_sharpes = [s for s in fold_sharpes if np.isfinite(s)]
+        mean_sharpe = float(np.mean(finite_sharpes)) if finite_sharpes else -np.inf
+        if mean_logloss < best_logloss:
+            best_logloss = mean_logloss
+            best_sharpe = mean_sharpe
+            best_params = params
+
+    return best_params, best_logloss, best_sharpe
+
+
+def _label_panel_for_cfg(
+    panel_for_symbol: pl.DataFrame,
+    feature_matrix: pl.DataFrame,
+    *,
+    pt_sl: float,
+    vertical_barrier: pd.Timedelta,
+    volatility_lookback: int,
+    feature_keys: tuple[str, ...],
+    train_start_ts: pd.Timestamp | None,
+    test_end_ts: pd.Timestamp | None,
+    apply_pre_reg_filter: bool,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, pl.DataFrame]:
+    """Apply triple-barrier labels for a single label config and join features.
+
+    Returns ``(X, y_bin, r_bar, ts_int, sym_frame)``. ``y_bin`` is the
+    binary classification target ``label > 0``; ``r_bar`` is the per-bar
+    log return used for HMM emissions and PnL. The pre-reg date filter
+    is honoured per design.md §2 / P1-H050-SPLIT-PARAMS — clip to
+    ``[train.start, test.end]`` BEFORE deriving split sizes.
+    """
+    label_cfg = TripleBarrierConfig(
+        pt_sl=(pt_sl, pt_sl),
+        vertical_barrier=vertical_barrier,
+        volatility_lookback=volatility_lookback,
+    )
+    labeler = TripleBarrierLabeler(label_cfg)
+    labeled = labeler.apply(panel_for_symbol, symbol_col="symbol", time_col="ts_event")
+    merged = labeled.join(feature_matrix, on=["symbol", "ts_event"], how="left").drop_nulls()
+    merged = merged.sort(["symbol", "ts_event"])
+    if apply_pre_reg_filter and train_start_ts is not None and test_end_ts is not None:
+        merged = merged.filter(
+            (pl.col("ts_event") >= train_start_ts) & (pl.col("ts_event") <= test_end_ts)
+        )
+    if merged.shape[0] == 0:
+        return (
+            np.zeros((0, len(feature_keys)), dtype=np.float64),
+            np.zeros(0, dtype=np.int64),
+            np.zeros(0, dtype=np.float64),
+            np.zeros(0, dtype=np.int64),
+            merged,
+        )
+    X = merged.select(list(feature_keys)).to_numpy().astype(np.float64)
+    y_full = merged.get_column("label").to_numpy().astype(np.int64)
+    y_bin = (y_full > 0).astype(np.int64)
+    closes = merged.get_column("close").to_numpy().astype(np.float64)
+    r_bar = np.zeros(len(closes), dtype=np.float64)
+    r_bar[1:] = np.diff(np.log(closes))
+    ts_int = merged.get_column("ts_event").to_numpy().astype("datetime64[ns]").astype(np.int64)
+    return X, y_bin, r_bar, ts_int, merged
+
 
 def _fit_fold(
     train_idx: np.ndarray,
@@ -257,14 +570,20 @@ def _fit_fold(
     lgb_n_draws: int,
     lgb_seed: int,
     random_seed: int,
+    label_horizon: int,
+    embargo: int,
+    n_inner_folds: int,
 ) -> dict[str, Any]:
-    """Fit a classifier + HMM regime model on the fold's training rows.
+    """Fit the classifier + HMM on the outer fold's training rows.
 
-    The classifier is intentionally lightweight for Phase-A: we
-    sample up to ``min(lgb_n_draws, 10)`` hyperparameter
-    combinations from the grid and pick the highest-in-sample
-    log-loss winner. The point of Phase A is composition — a full
-    nested random-search + inner CV lives in the live run.
+    HP selection uses a nested walk-forward inner CV over
+    ``lgb_n_draws`` random search draws (Varma & Simon 2006,
+    doi:10.1186/1471-2105-7-91; Bergstra & Bengio 2012, JMLR
+    13:281-305). The selection metric is mean inner-OOS logistic loss
+    — matches the LightGBM training objective per H050 design.md §5.
+
+    The HMM is fit on all train-fold rows (no inner CV — model
+    selection happens via BIC over covariance types per ADR-0005).
     """
     X_tr = X[train_idx]
     y_tr = y[train_idx]
@@ -295,39 +614,58 @@ def _fit_fold(
     )
     hmm: GaussianHMM = hmm_selection.best_model
 
-    # LightGBM classifier (intentionally shallow random search —
-    # composition, not performance). Phase-A uses in-sample accuracy for
-    # selection; inner-fold CV is the evidence-bar standard (follow-up
-    # P1-H050-INNER-CV: replace model.score(X_tr, y_tr) with inner
-    # purged walk-forward CV per Varma & Simon 2006, doi:10.1186/1471-2105-7-91).
+    # P1-H050-INNER-CV: nested walk-forward CV per Varma & Simon 2006
+    # (doi:10.1186/1471-2105-7-91). model.score(X_tr, y_tr) is REMOVED;
+    # selection metric is mean inner-OOS logistic loss across
+    # `n_inner_folds` purged+embargoed inner walk-forward folds.
     import lightgbm as lgb
 
-    rng = np.random.default_rng(lgb_seed)
-    keys = list(lgb_grid.keys())
-    n_combos = 1
-    for vals in lgb_grid.values():
-        n_combos *= max(1, len(vals))
-    n_draws_eff = int(min(lgb_n_draws, n_combos, 10))
-    best_model: lgb.LGBMClassifier | None = None
-    best_score = -np.inf
-    for _ in range(n_draws_eff):
-        params = {k: rng.choice(list(lgb_grid[k])) for k in keys}
-        # Cast to Python scalars (lightgbm refuses numpy dtypes here).
-        params = {k: (int(v) if isinstance(v, np.integer) else float(v)) for k, v in params.items()}
-        # LightGBM's `LGBMClassifier` needs at least 2 classes in y.
-        if len(np.unique(y_tr)) < 2:
-            return {"classifier": None, "hmm": hmm, "regime_high_mean": 0}
-        model = lgb.LGBMClassifier(
-            n_estimators=50,
-            random_state=int(random_seed),
-            verbose=-1,
-            **params,
-        )
-        model.fit(X_tr, y_tr)
-        score = float(model.score(X_tr, y_tr))
-        if score > best_score:
-            best_score = score
-            best_model = model
+    if len(np.unique(y_tr)) < 2:  # noqa: PLR2004
+        return {
+            "classifier": None,
+            "hmm": hmm,
+            "regime_high_mean": int(np.argmax(hmm.params_.means[:, 0])) if hmm.params_ else 0,
+            "hmm_terminal_log_alpha": hmm.terminal_log_alpha(r_tr.reshape(-1, 1)),
+            "hmm_train_terminal_position": int(train_idx[-1]),
+            "selected_hp": None,
+            "inner_cv_logloss": np.inf,
+            "inner_cv_sharpe": -np.inf,
+        }
+
+    best_params, best_logloss, best_sharpe = _inner_cv_select_hp(
+        X_train_outer=X_tr,
+        y_train_outer=y_tr,
+        r_train_outer=r_tr,
+        lgb_grid=lgb_grid,
+        lgb_n_draws=lgb_n_draws,
+        lgb_seed=lgb_seed,
+        random_seed=random_seed,
+        label_horizon=label_horizon,
+        embargo=embargo,
+        n_inner_folds=n_inner_folds,
+    )
+
+    # Refit the selected HP on the FULL outer-train block. Inner CV
+    # used disjoint inner-test blocks for selection only; the
+    # production model is trained on all outer-train rows — the
+    # standard nested-CV refit step (Varma & Simon 2006 §3).
+    if best_params is None:
+        # Fallback — inner CV produced no usable folds (e.g. tiny
+        # train block in dry-run). Train a single model with the grid
+        # midpoint to keep the pipeline alive without selecting on
+        # in-sample data.
+        midpoint = {k: list(lgb_grid[k])[len(lgb_grid[k]) // 2] for k in lgb_grid}
+        midpoint = {
+            k: (int(v) if isinstance(v, np.integer) else float(v)) for k, v in midpoint.items()
+        }
+        best_params = midpoint
+    final_model = lgb.LGBMClassifier(
+        n_estimators=50,
+        random_state=int(random_seed),
+        verbose=-1,
+        **best_params,
+    )
+    final_model.fit(X_tr, y_tr)
 
     # Highest-mean regime state (for inference-time gating). Taken
     # from the HMM's emission means.
@@ -345,11 +683,14 @@ def _fit_fold(
     hmm_train_terminal_position = int(train_idx[-1])
 
     return {
-        "classifier": best_model,
+        "classifier": final_model,
         "hmm": hmm,
         "regime_high_mean": regime_high_mean,
         "hmm_terminal_log_alpha": hmm_terminal_log_alpha,
         "hmm_train_terminal_position": hmm_train_terminal_position,
+        "selected_hp": best_params,
+        "inner_cv_logloss": best_logloss,
+        "inner_cv_sharpe": best_sharpe,
     }
 
 
@@ -509,6 +850,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=5000,
         help="Rows per symbol in synthetic panel (dry-run).",
     )
+    ap.add_argument(
+        "--smoke",
+        action="store_true",
+        help=(
+            "CI-only override: reduce lgb_n_draws to "
+            f"{_SMOKE_LGB_N_DRAWS}, label-grid coverage to "
+            f"{_SMOKE_LABEL_GRID_LIMIT} cell (center), and inner-CV "
+            f"folds to {_SMOKE_INNER_N_FOLDS}. Production runs use "
+            "H050.yaml-bound n_draws=200 + the full 27-cell label grid + "
+            f"{_DEFAULT_INNER_N_FOLDS} inner folds."
+        ),
+    )
     return ap.parse_args(argv)
 
 
@@ -546,6 +899,575 @@ def _load_output_sha256(paths: Any) -> dict[str, str]:
     return {}
 
 
+def _build_label_grid(
+    cfg: RunConfig, *, smoke: bool
+) -> list[tuple[float, pd.Timedelta, int]]:
+    """Enumerate the pre-registered 27-cell label grid (or smoke subset).
+
+    design.md §4 binds:
+        pt_sl              ∈ {1.0, 1.5, 2.0}
+        vertical_barrier   ∈ {30m, 60m, 120m}
+        volatility_lookback ∈ {20, 60, 120}
+
+    Production walk-forward enumerates the full Cartesian product (27
+    cells); ``smoke`` reduces to the center cell only (Phase-A semantics)
+    so the CI fixture exercises the joint-CV plumbing without paying the
+    27× cost.
+    """
+    if smoke:
+        return [
+            (
+                cfg.pt_sl_grid[len(cfg.pt_sl_grid) // 2],
+                cfg.vertical_barrier_grid[len(cfg.vertical_barrier_grid) // 2],
+                cfg.volatility_lookback_grid[len(cfg.volatility_lookback_grid) // 2],
+            )
+        ]
+    grid: list[tuple[float, pd.Timedelta, int]] = []
+    for pt_sl in cfg.pt_sl_grid:
+        for vb in cfg.vertical_barrier_grid:
+            for vl in cfg.volatility_lookback_grid:
+                grid.append((float(pt_sl), vb, int(vl)))
+    return grid
+
+
+def _run_symbol_label_cfg(  # noqa: PLR0915
+    sym: str,
+    panel_for_symbol: pl.DataFrame,
+    feature_matrix: pl.DataFrame,
+    *,
+    cfg: RunConfig,
+    args: argparse.Namespace,
+    pt_sl: float,
+    vertical_barrier: pd.Timedelta,
+    volatility_lookback: int,
+    lgb_n_draws: int,
+    n_inner_folds: int,
+) -> dict[str, Any] | None:
+    """Run the engine for one symbol × one label cfg.
+
+    Returns a dict with keys ``result``, ``inner_cv_sharpe_mean``,
+    ``inner_cv_logloss_mean``, ``sym_frame``, ``X_full``, ``y_bin``,
+    ``r_bar``, ``ts_arr``, ``label_horizon``, ``embargo``,
+    ``warm_cold_diag``, ``initial_train``, ``test_size``, ``step_size``,
+    ``split_size_source``, ``test_window_bars``, ``label_cfg_summary``,
+    ``selected_hp_per_fold``, ``splitter_purge_window``.
+    Returns ``None`` when the symbol has insufficient rows to walk forward.
+
+    Purge-window discipline (Round-2 §F-2 fix).
+    -------------------------------------------
+    Both the OUTER walk-forward split and the INNER nested-CV split
+    use the SAME per-cfg ``label_horizon`` as the splitter
+    ``purge_window``. Per López de Prado 2018 *AFML* §7.4 ("Purging the
+    Training Set"), the purge window must equal the label horizon —
+    the maximum number of bars over which a label can be co-determined
+    by future training observations. Each label cfg has its OWN
+    horizon (derived from ``vertical_barrier`` per
+    ``TripleBarrierLabeler.label_horizon_bars``); using the GLOBAL
+    grid-max (Round-1's behaviour) inflated purge for all cfgs to
+    accommodate the longest horizon, breaking apples-to-apples across
+    cfgs because shorter-horizon cfgs paid for purge they did not need.
+    The fix is per-cfg: the outer-split purge equals THIS cfg's
+    horizon; the inner-split purge does the same. Outer fold geometry
+    therefore varies slightly per cfg, which is correct — each cfg has
+    its own causal-leak envelope and the splitter must reflect that.
+    A regression test ``test_outer_inner_purge_window_matches_per_cfg``
+    asserts the invariant.
+    """
+    label_cfg_obj = TripleBarrierConfig(
+        pt_sl=(pt_sl, pt_sl),
+        vertical_barrier=vertical_barrier,
+        volatility_lookback=volatility_lookback,
+    )
+    labeler = TripleBarrierLabeler(label_cfg_obj)
+    labeled = labeler.apply(panel_for_symbol, symbol_col="symbol", time_col="ts_event")
+    merged = labeled.join(feature_matrix, on=["symbol", "ts_event"], how="left").drop_nulls()
+    merged = merged.sort(["symbol", "ts_event"])
+    sym_frame = merged.filter(pl.col("symbol") == sym)
+    if not args.dry_run:
+        sym_frame = sym_frame.filter(
+            (pl.col("ts_event") >= cfg.train_start) & (pl.col("ts_event") <= cfg.test_end)
+        )
+    if sym_frame.shape[0] < 200:  # noqa: PLR2004
+        return None
+
+    feature_cols = list(cfg.feature_keys)
+    X_full = sym_frame.select(feature_cols).to_numpy().astype(np.float64)
+    y_full = sym_frame.get_column("label").to_numpy().astype(np.int64)
+    y_bin = (y_full > 0).astype(np.int64)
+    closes = sym_frame.get_column("close").to_numpy().astype(np.float64)
+    r_bar = np.zeros(len(closes), dtype=np.float64)
+    r_bar[1:] = np.diff(np.log(closes))
+
+    n = sym_frame.shape[0]
+    bar_duration = pd.Timedelta(minutes=1)
+    label_horizon = labeler.label_horizon_bars(bar_duration)
+
+    bl = choose_block_length(r_bar, bootstrap_type="stationary")
+    embargo = int(max(1, np.ceil(bl.block_length)))
+
+    if args.dry_run:
+        initial_train = max(200, n // 3)
+        test_size = max(50, n // 10)
+        step_size = test_size
+        split_size_source = "row_fraction"
+        test_window_bars = 0
+    else:
+        ts_event_pl = sym_frame.get_column("ts_event")
+        initial_train = int((ts_event_pl <= cfg.val_end).sum())
+        val_mask_pl = (ts_event_pl >= cfg.val_start) & (ts_event_pl <= cfg.val_end)
+        test_size = int(val_mask_pl.sum())
+        step_size = test_size
+        split_size_source = "calendar"
+        if initial_train <= 0 or test_size <= 0:
+            raise ValueError(
+                f"Pre-reg date-derived split sizes invalid for sym={sym}: "
+                f"initial_train={initial_train}, test_size={test_size}. "
+                f"Expected >0 bars in both [train.start, val.end] and "
+                f"[val.start, val.end] after filtering to "
+                f"[train.start={cfg.train_start.date()}, "
+                f"test.end={cfg.test_end.date()}]; verify panel coverage "
+                f"against H050.yaml §data."
+            )
+        test_window_bars = int(
+            ((ts_event_pl >= cfg.test_start) & (ts_event_pl <= cfg.test_end)).sum()
+        )
+        if test_window_bars <= 0:
+            raise ValueError(
+                f"Pre-reg test window [{cfg.test_start.date()}, "
+                f"{cfg.test_end.date()}] is empty in the filtered panel "
+                f"for sym={sym}; verify ingest snapshot covers "
+                f"H050.yaml §data.test."
+            )
+
+    # Round-2 §F-2 fix: outer purge == per-cfg label_horizon, matching
+    # the inner-CV purge in `_build_inner_folds`. AFML §7.4 mandates
+    # purge_window == label horizon to remove training labels that are
+    # co-determined by post-test observations.
+    split = walk_forward_split(
+        n_samples=n,
+        initial_train_size=initial_train,
+        test_size=test_size,
+        step_size=step_size,
+        label_horizon=label_horizon,
+        embargo=embargo,
+        mode="rolling",
+        purge_window=label_horizon,
+    )
+
+    engine = WalkForwardEngine(split)
+    ts_arr = (
+        sym_frame.get_column("ts_event").to_numpy().astype("datetime64[ns]").astype(np.int64)
+    )
+
+    if not args.dry_run and len(split.folds) > 0:
+        fold0_test = split.folds[0].test_indices()
+        if len(fold0_test) > 0:
+            first_oos_pos = int(fold0_test[0])
+            first_oos_ts_int = int(ts_arr[first_oos_pos])
+            test_start_ts_int = int(
+                np.datetime64(cfg.test_start.to_datetime64())
+                .astype("datetime64[ns]")
+                .astype(np.int64)
+            )
+            if first_oos_ts_int < test_start_ts_int:
+                raise ValueError(
+                    f"Fold-0 first OOS bar maps to "
+                    f"ts_int={first_oos_ts_int}, strictly less than "
+                    f"cfg.test_start ts_int={test_start_ts_int} — "
+                    f"calendar drift has put a pre-test_start bar into "
+                    f"OOS. Verify panel coverage in [val.start, val.end] "
+                    f"is contiguous, or land "
+                    f"P1-H050-CALENDAR-ANCHORED-SPLITTER."
+                )
+    warm_cold_diag = WarmColdDiagnostic()
+    result = engine.run(
+        fit_fn=_fit_fold,
+        predict_fn=_predict_fold,
+        feature_timestamps=ts_arr,
+        observation_timestamps=ts_arr,
+        fit_kwargs=dict(
+            X=X_full,
+            y=y_bin,
+            r=r_bar,
+            hmm_cov_types=cfg.hmm_cov_types,
+            lgb_grid=cfg.lgb_grid,
+            lgb_n_draws=lgb_n_draws,
+            lgb_seed=cfg.lgb_seed,
+            random_seed=cfg.random_seed,
+            label_horizon=label_horizon,
+            embargo=embargo,
+            n_inner_folds=n_inner_folds,
+        ),
+        predict_kwargs=dict(
+            X=X_full,
+            r=r_bar,
+            warm_cold_diagnostic=warm_cold_diag,
+        ),
+        keep_fitted=True,
+    )
+
+    inner_sharpes = [
+        f.get("inner_cv_sharpe", -np.inf)
+        for f in result.fitted_models
+        if isinstance(f, dict)
+    ]
+    finite_inner = [s for s in inner_sharpes if np.isfinite(s)]
+    inner_cv_sharpe_mean = float(np.mean(finite_inner)) if finite_inner else -np.inf
+
+    # Inner-CV log-loss mean is the deterministic tie-breaker on the
+    # ungated Sharpe metric used for label-grid selection (see
+    # `_run_symbol` docstring "Tie-breaker on the Sharpe metric").
+    # Lower is better; np.inf when no fold produced a valid logloss.
+    inner_loglosses = [
+        f.get("inner_cv_logloss", np.inf)
+        for f in result.fitted_models
+        if isinstance(f, dict)
+    ]
+    finite_logloss = [ll for ll in inner_loglosses if np.isfinite(ll)]
+    inner_cv_logloss_mean = float(np.mean(finite_logloss)) if finite_logloss else np.inf
+
+    selected_hp_per_fold = [
+        f.get("selected_hp") for f in result.fitted_models if isinstance(f, dict)
+    ]
+
+    return {
+        "result": result,
+        "split": split,
+        "splitter_purge_window": int(label_horizon),
+        "inner_cv_sharpe_mean": inner_cv_sharpe_mean,
+        "inner_cv_logloss_mean": inner_cv_logloss_mean,
+        "sym_frame": sym_frame,
+        "X_full": X_full,
+        "y_bin": y_bin,
+        "r_bar": r_bar,
+        "ts_arr": ts_arr,
+        "label_horizon": label_horizon,
+        "embargo": embargo,
+        "warm_cold_diag": warm_cold_diag,
+        "initial_train": initial_train,
+        "test_size": test_size,
+        "step_size": step_size,
+        "split_size_source": split_size_source,
+        "test_window_bars": test_window_bars,
+        "label_cfg_summary": {
+            "pt_sl": pt_sl,
+            "vertical_barrier_seconds": float(vertical_barrier.total_seconds()),
+            "volatility_lookback": volatility_lookback,
+        },
+        "selected_hp_per_fold": selected_hp_per_fold,
+    }
+
+
+def _run_symbol(  # noqa: PLR0912, PLR0915
+    sym: str,
+    panel_for_symbol: pl.DataFrame,
+    feature_matrix: pl.DataFrame,
+    *,
+    cfg: RunConfig,
+    args: argparse.Namespace,
+    run_id: str,
+    run_dir: Path,
+    paths: ProjectPaths,
+    ctx: RunContext,
+    feature_provenance: list[Any],
+    label_grid: list[tuple[float, pd.Timedelta, int]],
+    lgb_n_draws: int,
+    n_inner_folds: int,
+) -> dict[str, Any]:
+    """End-to-end per-symbol pipeline (label-grid CV → engine → gates).
+
+    P1-H050-LABEL-CV closure: enumerate the pre-reg 27-cell label
+    grid; for each cell run the walk-forward engine with nested
+    inner-CV HP selection (P1-H050-INNER-CV); pick the cell whose
+    mean inner-OOS Sharpe (UNGATED, via :func:`_strategy_sharpe_simple`
+    on the inner-test bars) across outer folds is highest. The
+    selected cell's engine result drives all downstream artifacts.
+    Inner-OOS Sharpe — not outer-OOS — is the selection criterion to
+    avoid using held-out test data for label selection.
+
+    Design choice: ungated label-CV metric (decoupled from the
+    production gated metric).
+    --------------------------------------------------------------
+    The production target ``T_H050 = SR_filtered_gated −
+    SR_filtered_unconditional`` (design.md §1) is a regime-conditioned
+    differential. The label-grid selection metric here is the UNGATED
+    classifier Sharpe (``np.sign(2p − 1) · r``) on inner-OOS bars,
+    NOT the gated differential. This decoupling is deliberate:
+
+    - Labels (López de Prado 2018 AFML §3.4 "The Triple-Barrier
+      Method") are a label-engineering hyperparameter — they govern
+      which directional signal the classifier is trained against;
+      AFML §3.4 frames labels as downstream of the trading rule's
+      P&L, not of any inference-time gate.
+    - The HMM regime gate is a separate inference-time conditioning
+      component (ADR-0005) applied AFTER classifier inference.
+    - Selecting labels on the GATED metric would entangle two
+      independent design components: the gate's regime sensitivity
+      would perturb label-grid selection in a way that is hard to
+      attribute back to either component.
+
+    Selecting labels on the ungated Sharpe optimises classifier signal
+    quality independent of the gate; the gate's marginal lift is then
+    measured cleanly at the outer-fold OOS evaluation as the
+    differential ``SR_gated − SR_unconditional``. An empirical
+    sensitivity study (gated vs ungated label-CV; whether the
+    selected cell flips when the metric changes) is tracked under
+    follow-up ``P1-H050-LABEL-CV-GATED-METRIC``. If the sensitivity
+    is non-trivial the design choice will be revisited via a
+    successor hypothesis ID per design.md §2 line 41
+    ("re-runs on extended windows require a successor hypothesis ID").
+
+    Tie-breaker on the Sharpe metric.
+    --------------------------------
+    When two label cells produce the same mean inner-OOS Sharpe (e.g.
+    on degenerate dry-run data where all cells produce identical
+    near-zero Sharpe), selection is broken by the SMALLEST mean
+    inner-CV log-loss across outer folds. Log-loss is the LightGBM
+    training objective (design.md §5) so the tie-breaker preserves
+    the design.md §5 hierarchy (training objective < gate-level
+    Sharpe). Determinism is required for reproducibility-log
+    stability; without a tie-breaker, Python's ``sorted(...)`` would
+    fall through to insertion order, producing run-to-run drift on
+    metric ties.
+    """
+    sym_dir = paths.ensure(run_dir / sym)
+    folds_dir = paths.ensure(sym_dir / "folds")
+    agg_dir = paths.ensure(sym_dir / "aggregate")
+
+    # Round-2 §F-2: per-cfg purge_window — both the outer and inner
+    # walk-forward splits use the cfg's `label_horizon` as the purge
+    # (AFML §7.4). The Round-1 grid-max (`ceil(max(vb)/60)`) is removed
+    # so each cfg pays only its own purge; the geometry varies slightly
+    # per cfg, which is correct.
+    candidate_runs: list[tuple[tuple[float, pd.Timedelta, int], dict[str, Any]]] = []
+    for pt_sl, vb, vl in label_grid:
+        candidate = _run_symbol_label_cfg(
+            sym,
+            panel_for_symbol,
+            feature_matrix,
+            cfg=cfg,
+            args=args,
+            pt_sl=pt_sl,
+            vertical_barrier=vb,
+            volatility_lookback=vl,
+            lgb_n_draws=lgb_n_draws,
+            n_inner_folds=n_inner_folds,
+        )
+        if candidate is None:
+            continue
+        candidate_runs.append(((pt_sl, vb, vl), candidate))
+
+    if not candidate_runs:
+        _write_aggregate(
+            agg_dir,
+            {"status": "insufficient_rows_all_label_cfgs", "symbol": sym},
+        )
+        return {"status": "insufficient_rows", "sym_dir": sym_dir}
+
+    # Sort: primary key = mean inner-OOS Sharpe (descending);
+    # tie-breaker = mean inner-CV log-loss (ascending; smaller is better).
+    # Python's `sorted` is stable, so we sort by the secondary key first
+    # and then by the primary key, yielding the lexicographic order
+    # (Sharpe desc, logloss asc).
+    candidate_runs.sort(key=lambda kv: kv[1]["inner_cv_logloss_mean"])
+    candidate_runs.sort(key=lambda kv: kv[1]["inner_cv_sharpe_mean"], reverse=True)
+    best_label_cfg, best_run = candidate_runs[0]
+
+    label_cv_log: list[dict[str, Any]] = []
+    for (pt_sl, vb, vl), candidate in candidate_runs:
+        label_cv_log.append(
+            {
+                "pt_sl": pt_sl,
+                "vertical_barrier_seconds": float(vb.total_seconds()),
+                "volatility_lookback": vl,
+                "inner_cv_sharpe_mean": candidate["inner_cv_sharpe_mean"],
+                "inner_cv_logloss_mean": candidate["inner_cv_logloss_mean"],
+                "n_folds": len(candidate["result"].fold_records),
+            }
+        )
+
+    sym_frame = best_run["sym_frame"]
+    r_bar = best_run["r_bar"]
+    result = best_run["result"]
+    split = best_run["split"]
+    warm_cold_diag = best_run["warm_cold_diag"]
+    initial_train = best_run["initial_train"]
+    test_size = best_run["test_size"]
+    step_size = best_run["step_size"]
+    split_size_source = best_run["split_size_source"]
+    test_window_bars = best_run["test_window_bars"]
+
+    if not args.dry_run:
+        ctx.add_dataset_checksum(
+            f"h050_pre_reg_filtered_{sym.lower()}",
+            frame_sha256(sym_frame, sort_cols=["symbol", "ts_event"]),
+        )
+
+    _MULTIPLIERS = {"ES": 50.0, "NQ": 20.0, "MES": 5.0, "MNQ": 2.0}
+    cost_model = NT8EsNqRthV1CostModel(sensitivity_mult=cfg.cost_sensitivity_mult)
+    sym_multiplier = _MULTIPLIERS.get(sym, 50.0)
+    per_side_cost = cost_model.round_trip_cost(sym, 1) / 2.0
+    closes_full = sym_frame.get_column("close").to_numpy().astype(np.float64)
+
+    gated_returns: list[float] = []
+    uncond_returns: list[float] = []
+    prev_uncond_pos = 0.0
+    prev_gated_pos = 0.0
+    for preds, tidx in zip(result.predictions, result.test_indices, strict=True):
+        p = preds[:, 0]
+        reg = preds[:, 1]
+        position = np.sign(2.0 * p - 1.0)
+        r_te = r_bar[tidx]
+        close_te = closes_full[tidx]
+
+        uncond_raw = position * r_te
+        uncond_sides = np.abs(
+            np.concatenate([[position[0] - prev_uncond_pos], np.diff(position)])
+        )
+        notional_uncond = close_te * sym_multiplier
+        notional_uncond = np.where(notional_uncond > 0, notional_uncond, 1.0)
+        uncond_cost = uncond_sides * per_side_cost / notional_uncond
+        uncond = uncond_raw - uncond_cost
+        prev_uncond_pos = float(position[-1])
+
+        gated_pos = position * reg
+        gated_raw = gated_pos * r_te
+        gated_sides = np.abs(
+            np.concatenate([[gated_pos[0] - prev_gated_pos], np.diff(gated_pos)])
+        )
+        notional_gated = close_te * sym_multiplier
+        notional_gated = np.where(notional_gated > 0, notional_gated, 1.0)
+        gated_cost = gated_sides * per_side_cost / notional_gated
+        gated = gated_raw - gated_cost
+        prev_gated_pos = float(gated_pos[-1])
+
+        uncond_returns.extend(uncond.tolist())
+        gated_returns.extend(gated.tolist())
+    gated_arr = np.asarray(gated_returns, dtype=np.float64)
+    uncond_arr = np.asarray(uncond_returns, dtype=np.float64)
+
+    sym_run_id = f"{run_id}_{sym}"
+    write_run_ledger(
+        result.fold_records,
+        ledger_path_for(sym_run_id, logs_reproducibility_dir=paths.logs_reproducibility),
+    )
+    for rec in result.fold_records:
+        (folds_dir / f"fold_{rec.fold_id:03d}.json").write_text(
+            json.dumps(dataclasses.asdict(rec), sort_keys=True, indent=2),
+            encoding="utf-8",
+        )
+
+    pl.DataFrame(
+        {"gated_return": gated_arr, "unconditional_return": uncond_arr}
+    ).write_parquet(sym_dir / "oos_returns.parquet")
+
+    metrics: dict[str, Any]
+    _gate_ok = (
+        gated_arr.size >= _MIN_OOS_FOR_CI and gated_arr.std() > 0 and uncond_arr.std() > 0
+    )
+    if not _gate_ok:
+        _LOG.warning(
+            "Gate skipped (sym=%s): n_returns=%d (need %d), gated_std=%.6f, "
+            "uncond_std=%.6f; Sharpe CI and SPA not computed.",
+            sym,
+            gated_arr.size,
+            _MIN_OOS_FOR_CI,
+            float(gated_arr.std()),
+            float(uncond_arr.std()),
+        )
+    if _gate_ok:
+        metrics = _sharpe_differential_stats(
+            gated=gated_arr,
+            unconditional=uncond_arr,
+            n_bootstrap=cfg.spa_n_bootstrap,
+            seed=cfg.random_seed,
+            omega_method=cfg.spa_omega_method,
+        )
+    else:
+        metrics = {
+            "status": "insufficient_oos_returns",
+            "n_returns": int(gated_arr.size),
+        }
+    metrics["symbol"] = sym
+    metrics["n_folds"] = len(result.fold_records)
+    metrics["n_features"] = len(cfg.feature_keys)
+    metrics["feature_keys"] = list(cfg.feature_keys)
+    metrics["feature_provenance"] = [pp.to_dict() for pp in feature_provenance]
+
+    metrics["selected_label_cfg"] = {
+        "pt_sl": best_label_cfg[0],
+        "vertical_barrier_seconds": float(best_label_cfg[1].total_seconds()),
+        "volatility_lookback": best_label_cfg[2],
+    }
+    metrics["label_cv_inner_sharpes"] = label_cv_log
+    metrics["label_grid_size_evaluated"] = len(label_cv_log)
+    metrics["lgb_n_draws_effective"] = lgb_n_draws
+    metrics["inner_n_folds"] = n_inner_folds
+    metrics["selected_hp_per_fold"] = best_run["selected_hp_per_fold"]
+
+    metrics["split_size_source"] = split_size_source
+    metrics["initial_train_size"] = int(initial_train)
+    metrics["test_size"] = int(test_size)
+    metrics["step_size"] = int(step_size)
+    if split_size_source == "calendar":
+        metrics["pre_reg_envelope"] = {
+            "train_start": cfg.train_start.isoformat(),
+            "train_end": cfg.train_end.isoformat(),
+            "val_start": cfg.val_start.isoformat(),
+            "val_end": cfg.val_end.isoformat(),
+            "test_start": cfg.test_start.isoformat(),
+            "test_end": cfg.test_end.isoformat(),
+        }
+        expected_n_folds = int(np.ceil(test_window_bars / step_size))
+        metrics["expected_n_folds"] = expected_n_folds
+        if metrics["n_folds"] != expected_n_folds:
+            _LOG.warning(
+                "Fold count drift (sym=%s): emitted %d, expected %d (calendar "
+                "drift across leap years; see follow-up "
+                "P1-H050-CALENDAR-ANCHORED-SPLITTER).",
+                sym,
+                metrics["n_folds"],
+                expected_n_folds,
+            )
+
+        ts_arr_ns = sym_frame.get_column("ts_event").to_numpy().astype("datetime64[ns]")
+        metrics["realized_envelope_per_fold"] = []
+        for fold in split.folds:
+            tr = fold.train_indices()
+            te = fold.test_indices()
+            metrics["realized_envelope_per_fold"].append(
+                {
+                    "fold_id": fold.fold_id,
+                    "train_ts_min": str(ts_arr_ns[tr[0]]) if tr else None,
+                    "train_ts_max": str(ts_arr_ns[tr[-1]]) if tr else None,
+                    "test_ts_min": str(ts_arr_ns[te[0]]) if te else None,
+                    "test_ts_max": str(ts_arr_ns[te[-1]]) if te else None,
+                }
+            )
+
+    _write_aggregate(agg_dir, metrics)
+
+    warm_cold_path = warm_cold_sidecar_path_for(
+        sym_run_id, logs_reproducibility_dir=paths.logs_reproducibility
+    )
+    _, warm_cold_sha = write_warm_cold_sidecar(warm_cold_diag, warm_cold_path)
+
+    rolled = roll_up_model_hashes(
+        [(r.fold_id, r.model_hash) for r in result.fold_records]
+    )
+    combined = hashlib.sha256(
+        f"ledger_rollup={rolled};warm_cold_diag={warm_cold_sha}".encode()
+    ).hexdigest()
+
+    return {
+        "status": "ok",
+        "sym_dir": sym_dir,
+        "n_folds": len(result.fold_records),
+        "model_hash_combined": combined,
+        "metrics": metrics,
+    }
+
+
 def run(argv: list[str] | None = None) -> Path:
     args = _parse_args(argv)
     cfg = load_config(args.config)
@@ -560,36 +1482,20 @@ def run(argv: list[str] | None = None) -> Path:
         dataset_checksums=dataset_checksums,
         config_resolved_sha256=cfg.config_resolved_sha256,
     ) as ctx:
-        # F-3-3 round-trip assert: confirm RunContext persisted the
-        # YAML hash onto ReproLog (not silently dropped on a kwarg-name
-        # change). Cheap, byte-identity check.
         assert (  # noqa: S101
             ctx.log is not None and ctx.log.config_resolved_sha256 == cfg.config_resolved_sha256
         ), "RunContext failed to persist config_resolved_sha256 onto ReproLog"
         run_id = ctx.log.run_id  # type: ignore[union-attr]
         run_dir = paths.artifacts_runs / cfg.hypothesis_id / run_id
         paths.ensure(run_dir)
-        folds_dir = paths.ensure(run_dir / "folds")
-        agg_dir = paths.ensure(run_dir / "aggregate")
         paths.ensure(paths.logs_reproducibility_features)
 
-        # 1. Panel.
         if args.dry_run:
             panel = make_synthetic_panel(n_per_symbol=args.smoke_n, seed=cfg.random_seed)
         else:
             parquet_dir = paths.root / "data" / "processed" / "vendor_legacy_1min_roll_adjusted"
             panel = pl.read_parquet(str(parquet_dir / "**" / "*.parquet"))
 
-        # 2. Feature assembly (now = last panel timestamp under PIT).
-        # Each feature module's rolling window is computed on the full panel;
-        # row i uses only bars ≤ i so no fold boundary leakage is introduced
-        # by computing features once on the full dataset. The walk-forward
-        # engine then slices positional indices per fold. The 'now' parameter
-        # controls the maximum timestamp included — using the global max means
-        # all bars are included and each module's PIT guard fires at bar-close
-        # time (not at fold boundary). This is correct for bar-level PIT.
-        # Follow-up P1-H050-FEATURE-PIT-ASSERT: add integration test asserting
-        # feature_matrix row i has no value derived from bars beyond row i.
         now_ts = pd.Timestamp(panel.select(pl.col("ts_event").max()).item())
         modules = [FEATURE_REGISTRY[k] for k in cfg.feature_keys]
         feature_matrix, prov = assemble_feature_matrix(
@@ -600,414 +1506,81 @@ def run(argv: list[str] | None = None) -> Path:
             features_dir=paths.logs_reproducibility_features,
         )
 
-        # 3. Labels (take the pre-reg center of the grid as Phase-A default).
-        # Phase-A uses the center-grid element; CV over label params is the
-        # evidence-bar standard. Follow-up P1-H050-LABEL-CV.
-        label_cfg = TripleBarrierConfig(
-            pt_sl=(cfg.pt_sl_grid[len(cfg.pt_sl_grid) // 2],) * 2,
-            vertical_barrier=cfg.vertical_barrier_grid[len(cfg.vertical_barrier_grid) // 2],
-            volatility_lookback=cfg.volatility_lookback_grid[
-                len(cfg.volatility_lookback_grid) // 2
-            ],
-        )
-        labeler = TripleBarrierLabeler(label_cfg)
-        labeled = labeler.apply(panel, symbol_col="symbol", time_col="ts_event")
-
-        # 4. Merge features + labels on (symbol, ts_event).
-        merged = labeled.join(feature_matrix, on=["symbol", "ts_event"], how="left").drop_nulls()
-
-        # Order by (symbol, ts_event) so positional indices are stable.
-        merged = merged.sort(["symbol", "ts_event"])
-
-        # 5. SplitSpec — per symbol we build one, then run engine per symbol
-        # (Cycle-6 Phase A: ES first-symbol only for the smoke run).
-        sym = "ES"
-        sym_frame = merged.filter(pl.col("symbol") == sym)
-        # Pre-reg date filter (P1-H050-SPLIT-PARAMS closure): on real runs,
-        # clip to the H050.yaml §data envelope [train.start, test.end] BEFORE
-        # deriving split sizes. Out-of-envelope rows (e.g. backfill that
-        # overshoots 2025-12-31) MUST NOT enter the walk-forward — keeping
-        # them would let the dataset's row count drive fold boundaries
-        # instead of the pre-registered calendar. End-inclusive semantics
-        # per _parse_window. The synthetic panel (n_per_symbol bars at
-        # 1-min freq) cannot span the 11-yr envelope, so dry-run skips the
-        # filter; engine composition is still exercised via row-fraction
-        # split sizes (follow-up P1-H050-SYNTHETIC-PANEL-PRE-REG-COVERAGE
-        # to extend make_synthetic_panel to span the envelope at a
-        # coarser frequency once needed for date-binding regression).
-        if not args.dry_run:
-            sym_frame = sym_frame.filter(
-                (pl.col("ts_event") >= cfg.train_start) & (pl.col("ts_event") <= cfg.test_end)
-            )
-        if sym_frame.shape[0] < 200:
-            # Not enough rows to walk forward; abort early.
-            _write_aggregate(
-                agg_dir,
-                {
-                    "status": "insufficient_rows",
-                    "n_rows": int(sym_frame.shape[0]),
-                },
-            )
-            return run_dir
-
-        feature_cols = list(cfg.feature_keys)
-        X_full = sym_frame.select(feature_cols).to_numpy().astype(np.float64)
-        y_full = sym_frame.get_column("label").to_numpy().astype(np.int64)
-        # Binary classification target: sign(label) with 0 → drop
-        # handled upstream via drop_nulls; treat label==0 as class 0.
-        y_bin = (y_full > 0).astype(np.int64)
-        # Per-bar log-returns for HMM + PnL.
-        closes = sym_frame.get_column("close").to_numpy().astype(np.float64)
-        r_bar = np.zeros(len(closes), dtype=np.float64)
-        r_bar[1:] = np.diff(np.log(closes))
-
-        n = sym_frame.shape[0]
-        bar_duration = pd.Timedelta(minutes=1)
-        label_horizon = labeler.label_horizon_bars(bar_duration)
-
-        # Data-driven embargo: Politis-White block length on returns.
-        bl = choose_block_length(r_bar, bootstrap_type="stationary")
-        embargo = int(max(1, np.ceil(bl.block_length)))
-
-        # Pre-reg-date-derived split sizes (P1-H050-SPLIT-PARAMS closure,
-        # F-3-3 of memo_h050-aggregation-rule_2026-04-24.md r4; Round-2
-        # F-1-2 fix: val window is part of the in-sample envelope, NOT an
-        # OOS fold):
-        #   initial_train_size = bars in [train.start, val.end]      (9 yr)
-        #     train (2015-2022) fits the model; val (2023) is consumed by the
-        #     in-fold inner CV used for HP selection (Varma & Simon 2006,
-        #     doi:10.1186/1471-2105-7-91; landing under follow-up
-        #     P1-H050-INNER-CV). Both are pre-registered as in-sample.
-        #   test_size          = bars in [val.start, val.end]        (~1 yr)
-        #     The val window is the smallest pre-registered granularity
-        #     available; using it as the fold cadence yields ~2 calendar-year
-        #     OOS folds across the test window.
-        #   step_size          = test_size  (rolling, non-overlapping OOS)
-        #
-        # With mode="rolling" + step_size = val-bars, expected OOS fold count
-        # = 2 (test_y1=2024, test_y2=2025), each trained on the prior rolling
-        # 9-yr in-sample window. Bar-count cadence drifts ~1 trading day vs
-        # leap-year calendar boundaries; absolute calendar anchoring is
-        # tracked under follow-up P1-H050-CALENDAR-ANCHORED-SPLITTER (Bailey
-        # & López de Prado 2014 doi:10.3905/jpm.2014.40.5.094 anti-HARK
-        # selection-bias guidance; AFML §11.2). Walk-forward methodology
-        # itself: Pesaran & Timmermann 1995 doi:10.1111/j.1540-6261.1995.tb04055.x;
-        # Bergmeir, Hyndman & Koo 2018 doi:10.1016/j.csda.2017.11.003;
-        # AFML §12.2.
-        # Dry-run uses row-fraction sizes because the sparse synthetic panel
-        # cannot span the pre-reg envelope (see P1-H050-SYNTHETIC-PANEL-
-        # PRE-REG-COVERAGE follow-up).
-        if args.dry_run:
-            initial_train = max(200, n // 3)
-            test_size = max(50, n // 10)
-            step_size = test_size
-            split_size_source = "row_fraction"
-        else:
-            ts_event_pl = sym_frame.get_column("ts_event")
-            initial_train = int((ts_event_pl <= cfg.val_end).sum())
-            val_mask_pl = (ts_event_pl >= cfg.val_start) & (ts_event_pl <= cfg.val_end)
-            test_size = int(val_mask_pl.sum())
-            step_size = test_size
-            split_size_source = "calendar"
-            if initial_train <= 0 or test_size <= 0:
-                raise ValueError(
-                    f"Pre-reg date-derived split sizes invalid: "
-                    f"initial_train={initial_train}, test_size={test_size}. "
-                    f"Expected >0 bars in both [train.start, val.end] and "
-                    f"[val.start, val.end] after filtering to "
-                    f"[train.start={cfg.train_start.date()}, "
-                    f"test.end={cfg.test_end.date()}]; verify panel coverage "
-                    f"against H050.yaml §data."
-                )
-            test_window_bars = int(
-                ((ts_event_pl >= cfg.test_start) & (ts_event_pl <= cfg.test_end)).sum()
-            )
-            if test_window_bars <= 0:
-                raise ValueError(
-                    f"Pre-reg test window [{cfg.test_start.date()}, "
-                    f"{cfg.test_end.date()}] is empty in the filtered panel; "
-                    f"verify ingest snapshot covers H050.yaml §data.test."
-                )
-
-        # Post-filter, post-symbol-restriction frame hash. R-4: the pre-filter
-        # roll-adjusted output_frame_sha256 cannot distinguish two snapshots
-        # that share envelope content but differ outside it. Bind the bytes
-        # that actually drove (initial_train, test_size). The mutation
-        # survives the later `with_model_hash` call because `with_model_hash`
-        # is `dataclasses.replace(log, model_hash=...)` (verified at
-        # src/skie_ninja/utils/reproducibility.py:232) which preserves the
-        # current `dataset_checksums` dict on `ctx.log`.
-        if not args.dry_run:
-            ctx.add_dataset_checksum(
-                "h050_pre_reg_filtered_es",
-                frame_sha256(sym_frame, sort_cols=["symbol", "ts_event"]),
-            )
-        split = walk_forward_split(
-            n_samples=n,
-            initial_train_size=initial_train,
-            test_size=test_size,
-            step_size=step_size,
-            label_horizon=label_horizon,
-            embargo=embargo,
-            mode="rolling",
-            purge_window=label_horizon,
-        )
-
-        # 6. Engine.
-        engine = WalkForwardEngine(split)
-        ts_arr = (
-            sym_frame.get_column("ts_event").to_numpy().astype("datetime64[ns]").astype(np.int64)
-        )
-
-        # F-3-1 calendar-anchor guard: the positional initial_train was
-        # derived from `(ts ≤ val.end).sum()`, but mode="rolling" with
-        # bar-count cadence does not enforce that fold-0's first OOS bar
-        # lands strictly AFTER cfg.test_start. If holidays/halts compressed
-        # val_bars or the panel has gaps within [val.start, val.end], the
-        # first OOS bar can drift before cfg.test_start, re-introducing
-        # val/test conflation. The cheapest binding is a calendar
-        # post-condition on the engine's first test slice. Dry-run does not
-        # honour the pre-reg envelope, so the guard is real-data only.
-        if not args.dry_run and len(split.folds) > 0:
-            fold0_test = split.folds[0].test_indices()
-            if len(fold0_test) > 0:
-                first_oos_pos = int(fold0_test[0])
-                first_oos_ts_int = int(ts_arr[first_oos_pos])
-                test_start_ts_int = int(
-                    np.datetime64(cfg.test_start.to_datetime64())
-                    .astype("datetime64[ns]")
-                    .astype(np.int64)
-                )
-                if first_oos_ts_int < test_start_ts_int:
-                    raise ValueError(
-                        f"Fold-0 first OOS bar maps to "
-                        f"ts_int={first_oos_ts_int}, strictly less than "
-                        f"cfg.test_start ts_int={test_start_ts_int} — "
-                        f"calendar drift has put a pre-test_start bar into "
-                        f"OOS. Verify panel coverage in [val.start, val.end] "
-                        f"is contiguous, or land "
-                        f"P1-H050-CALENDAR-ANCHORED-SPLITTER."
-                    )
-        # P1-HMM-WARM-COLD-DIAGNOSTIC: passive per-fold collector for
-        # warm-vs-cold filter divergence. Hellinger + total-variation
-        # statistics are recorded; the production path remains warm-start.
-        # Sidecar serialised below; SHA256 rolled into ReproLog.model_hash
-        # via the multi-sidecar combiner so a future warm-start regression
-        # will surface as a model_hash change.
-        # P1-WF-ENGINE-FOLD-ID-PASSTHROUGH closure: the engine now injects
-        # ``fold_id`` directly into ``_predict_fold`` (when the signature
-        # accepts it), so the prior closure-mutated counter list is gone —
-        # the diagnostic's fold_id matches WalkForwardResult.fold_records[*].fold_id
-        # by construction (engine sources both from the same Fold).
-        warm_cold_diag = WarmColdDiagnostic()
-        result = engine.run(
-            fit_fn=_fit_fold,
-            predict_fn=_predict_fold,
-            feature_timestamps=ts_arr,
-            observation_timestamps=ts_arr,
-            fit_kwargs=dict(
-                X=X_full,
-                y=y_bin,
-                r=r_bar,
-                hmm_cov_types=cfg.hmm_cov_types,
-                lgb_grid=cfg.lgb_grid,
-                lgb_n_draws=cfg.lgb_n_draws,
-                lgb_seed=cfg.lgb_seed,
-                random_seed=cfg.random_seed,
-            ),
-            predict_kwargs=dict(
-                X=X_full,
-                r=r_bar,
-                warm_cold_diagnostic=warm_cold_diag,
-            ),
-        )
-
-        # Cost model: instantiate once per run; cost deduction per side per
-        # contract at every position change (entry, exit, reversal).
-        # n_sides = abs(pos[t] - pos[t-1]): 1 for open/close, 2 for reversal.
-        # Per-side cost deducted as a return fraction: cost_usd / notional_usd.
-        # Notional_usd = close_price × multiplier (ES=50, NQ=20).
-        _MULTIPLIERS = {"ES": 50.0, "NQ": 20.0, "MES": 5.0, "MNQ": 2.0}
-        cost_model = NT8EsNqRthV1CostModel(sensitivity_mult=cfg.cost_sensitivity_mult)
-        sym_multiplier = _MULTIPLIERS.get(sym, 50.0)
-        per_side_cost = cost_model.round_trip_cost(sym, 1) / 2.0
-        closes_full = sym_frame.get_column("close").to_numpy().astype(np.float64)
-
-        # 7. OOS returns. Simple long/short/flat PnL: position =
-        # sign(2·p - 1) in the unconditional variant; the gated
-        # variant zeros the position outside the high-mean regime.
-        # Net-of-cost returns deduct one per-side cost at each position
-        # change (trade_sides = abs(pos[t] − pos[t−1])).
-        gated_returns: list[float] = []
-        uncond_returns: list[float] = []
-        prev_uncond_pos = 0.0
-        prev_gated_pos = 0.0
-        for preds, tidx in zip(result.predictions, result.test_indices, strict=True):
-            p = preds[:, 0]
-            reg = preds[:, 1]
-            position = np.sign(2.0 * p - 1.0)
-            r_te = r_bar[tidx]
-            close_te = closes_full[tidx]
-
-            # Unconditional net-of-cost.
-            uncond_raw = position * r_te
-            uncond_sides = np.abs(
-                np.concatenate([[position[0] - prev_uncond_pos], np.diff(position)])
-            )
-            notional_uncond = close_te * sym_multiplier
-            notional_uncond = np.where(notional_uncond > 0, notional_uncond, 1.0)
-            uncond_cost = uncond_sides * per_side_cost / notional_uncond
-            uncond = uncond_raw - uncond_cost
-            prev_uncond_pos = float(position[-1])
-
-            # Gated net-of-cost.
-            gated_pos = position * reg
-            gated_raw = gated_pos * r_te
-            gated_sides = np.abs(
-                np.concatenate([[gated_pos[0] - prev_gated_pos], np.diff(gated_pos)])
-            )
-            notional_gated = close_te * sym_multiplier
-            notional_gated = np.where(notional_gated > 0, notional_gated, 1.0)
-            gated_cost = gated_sides * per_side_cost / notional_gated
-            gated = gated_raw - gated_cost
-            prev_gated_pos = float(gated_pos[-1])
-
-            uncond_returns.extend(uncond.tolist())
-            gated_returns.extend(gated.tolist())
-        gated_arr = np.asarray(gated_returns, dtype=np.float64)
-        uncond_arr = np.asarray(uncond_returns, dtype=np.float64)
-
-        # 8. Persist per-fold ledger + aggregate summary.
-        write_run_ledger(
-            result.fold_records,
-            ledger_path_for(run_id, logs_reproducibility_dir=paths.logs_reproducibility),
-        )
-        # Write per-fold records as JSON too for quick inspection.
-        for rec in result.fold_records:
-            (folds_dir / f"fold_{rec.fold_id:03d}.json").write_text(
-                json.dumps(dataclasses.asdict(rec), sort_keys=True, indent=2),
-                encoding="utf-8",
+        universe = [str(s) for s in cfg.raw.get("universe", ["ES"])]
+        if not universe:
+            raise ValueError(
+                f"H050.yaml universe must be non-empty; got {universe!r}."
             )
 
-        # Raw OOS returns parquet.
-        pl.DataFrame({"gated_return": gated_arr, "unconditional_return": uncond_arr}).write_parquet(
-            run_dir / "oos_returns.parquet"
-        )
+        label_grid = _build_label_grid(cfg, smoke=args.smoke)
+        lgb_n_draws = _SMOKE_LGB_N_DRAWS if args.smoke else int(cfg.lgb_n_draws)
+        n_inner_folds = _SMOKE_INNER_N_FOLDS if args.smoke else _DEFAULT_INNER_N_FOLDS
 
-        # 9. Gates (only if we have enough returns).
-        metrics: dict[str, Any]
-        _gate_ok = (
-            gated_arr.size >= _MIN_OOS_FOR_CI and gated_arr.std() > 0 and uncond_arr.std() > 0
-        )
-        if not _gate_ok:
-            _LOG.warning(
-                "Gate skipped: n_returns=%d (need %d), gated_std=%.6f, "
-                "uncond_std=%.6f — Sharpe CI and SPA not computed.",
-                gated_arr.size,
-                _MIN_OOS_FOR_CI,
-                float(gated_arr.std()),
-                float(uncond_arr.std()),
-            )
-        if _gate_ok:
-            metrics = _sharpe_differential_stats(
-                gated=gated_arr,
-                unconditional=uncond_arr,
-                n_bootstrap=cfg.spa_n_bootstrap,
-                seed=cfg.random_seed,
-                omega_method=cfg.spa_omega_method,
-            )
-        else:
-            metrics = {
-                "status": "insufficient_oos_returns",
-                "n_returns": int(gated_arr.size),
-            }
-        metrics["n_folds"] = len(result.fold_records)
-        metrics["n_features"] = len(cfg.feature_keys)
-        metrics["feature_keys"] = list(cfg.feature_keys)
-        metrics["feature_provenance"] = [p.to_dict() for p in prov]
-
-        # Split-geometry audit trail (R-3 / F-1-5 closure). Records the
-        # method by which (initial_train, test_size, step_size) were
-        # derived plus the pre-reg envelope so artifact readers can
-        # verify split fidelity without re-running. Calendar-anchoring
-        # drift is surfaced via fold-count expectation: with mode="rolling"
-        # + step_size = val-bars across [val.end, test.end], the engine
-        # is expected to emit ~2 OOS folds; a deviation is logged.
-        metrics["split_size_source"] = split_size_source
-        metrics["initial_train_size"] = int(initial_train)
-        metrics["test_size"] = int(test_size)
-        metrics["step_size"] = int(step_size)
-        if split_size_source == "calendar":
-            metrics["pre_reg_envelope"] = {
-                "train_start": cfg.train_start.isoformat(),
-                "train_end": cfg.train_end.isoformat(),
-                "val_start": cfg.val_start.isoformat(),
-                "val_end": cfg.val_end.isoformat(),
-                "test_start": cfg.test_start.isoformat(),
-                "test_end": cfg.test_end.isoformat(),
-            }
-            # Expected OOS fold count = ceil(test_window_bars / step_size).
-            # Pre-reg test window is 2 yr, step = 1 yr-bars → expect ~2.
-            # No defensive clamps: step_size > 0 and test_window_bars > 0
-            # are pre-conditions raised earlier in this branch (F-3-4).
-            expected_n_folds = int(np.ceil(test_window_bars / step_size))
-            metrics["expected_n_folds"] = expected_n_folds
-            if metrics["n_folds"] != expected_n_folds:
+        per_symbol_results: dict[str, dict[str, Any]] = {}
+        per_symbol_combined_hashes: list[tuple[int, str]] = []
+        for sym_idx, sym in enumerate(universe):
+            panel_sym = panel.filter(pl.col("symbol") == sym)
+            if panel_sym.shape[0] == 0:
                 _LOG.warning(
-                    "Fold count drift: emitted %d, expected %d (calendar "
-                    "drift across leap years; see follow-up "
-                    "P1-H050-CALENDAR-ANCHORED-SPLITTER).",
-                    metrics["n_folds"],
-                    expected_n_folds,
+                    "Symbol %s absent from panel; skipping. Per design.md "
+                    "the substrate must cover [2015-01-01, 2025-12-31]; NQ "
+                    "currently truncates to 2020-2024 (P1-H050-DATA-COVERAGE).",
+                    sym,
+                )
+                per_symbol_results[sym] = {
+                    "status": "absent_from_panel",
+                    "n_folds": 0,
+                }
+                continue
+            sym_outcome = _run_symbol(
+                sym,
+                panel_sym,
+                feature_matrix,
+                cfg=cfg,
+                args=args,
+                run_id=run_id,
+                run_dir=run_dir,
+                paths=paths,
+                ctx=ctx,
+                feature_provenance=prov,
+                label_grid=label_grid,
+                lgb_n_draws=lgb_n_draws,
+                n_inner_folds=n_inner_folds,
+            )
+            per_symbol_results[sym] = sym_outcome
+            if sym_outcome.get("status") == "ok":
+                per_symbol_combined_hashes.append(
+                    (sym_idx, sym_outcome["model_hash_combined"])
                 )
 
-            # F-3-6: per-fold realized envelope (actual ts_event min/max
-            # of train + test indices). Configured pre_reg_envelope is
-            # the calendar contract; realized_envelope is what the engine
-            # actually used. A reader can compute drift = realized − configured
-            # without re-running.
-            ts_arr_ns = sym_frame.get_column("ts_event").to_numpy().astype("datetime64[ns]")
-            metrics["realized_envelope_per_fold"] = []
-            for fold in split.folds:
-                tr = fold.train_indices()
-                te = fold.test_indices()
-                metrics["realized_envelope_per_fold"].append(
-                    {
-                        "fold_id": fold.fold_id,
-                        "train_ts_min": str(ts_arr_ns[tr[0]]) if tr else None,
-                        "train_ts_max": str(ts_arr_ns[tr[-1]]) if tr else None,
-                        "test_ts_min": str(ts_arr_ns[te[0]]) if te else None,
-                        "test_ts_max": str(ts_arr_ns[te[-1]]) if te else None,
-                    }
-                )
+        if per_symbol_combined_hashes:
+            combined_universe = roll_up_model_hashes(per_symbol_combined_hashes)
+        else:
+            combined_universe = "no-symbol-ran"
 
-        _write_aggregate(agg_dir, metrics)
-
-        # P1-HMM-WARM-COLD-DIAGNOSTIC: write the warm-vs-cold sidecar
-        # and hash it into ReproLog.model_hash alongside the per-fold
-        # ledger roll-up. The combined model_hash is the SHA256 over
-        # the canonical concatenation
-        #   "ledger_rollup={H1};warm_cold_diag={H2}"
-        # so a regression in either source flips the run-level hash.
-        # This matches the ADR-0005 sidecar pattern at
-        # src/skie_ninja/models/regime/serialization.py.
-        warm_cold_path = warm_cold_sidecar_path_for(
-            run_id, logs_reproducibility_dir=paths.logs_reproducibility
-        )
-        _, warm_cold_sha = write_warm_cold_sidecar(warm_cold_diag, warm_cold_path)
-
-        # 10. Model hash into ReproLog.
-        rolled = roll_up_model_hashes([(r.fold_id, r.model_hash) for r in result.fold_records])
-        combined = hashlib.sha256(
-            f"ledger_rollup={rolled};warm_cold_diag={warm_cold_sha}".encode()
-        ).hexdigest()
-        new_log = with_model_hash(ctx.log, combined)  # type: ignore[arg-type]
+        new_log = with_model_hash(ctx.log, combined_universe)  # type: ignore[arg-type]
         ctx.log = new_log
 
-        # 11. Copy ReproLog into the run artifact dir alongside the
-        # canonical location (for easy browsing of artifacts).
         (run_dir / "reprolog.json").write_text(
             json.dumps(ctx.log.to_dict(), sort_keys=True, indent=2),
+            encoding="utf-8",
+        )
+
+        run_summary = {
+            "hypothesis_id": cfg.hypothesis_id,
+            "run_id": run_id,
+            "universe": universe,
+            "label_grid_size": len(label_grid),
+            "lgb_n_draws_effective": lgb_n_draws,
+            "inner_n_folds": n_inner_folds,
+            "smoke": bool(args.smoke),
+            "per_symbol_status": {
+                k: {"status": v.get("status"), "n_folds": v.get("n_folds", 0)}
+                for k, v in per_symbol_results.items()
+            },
+        }
+        (run_dir / "run_summary.json").write_text(
+            json.dumps(run_summary, sort_keys=True, indent=2, default=str),
             encoding="utf-8",
         )
 

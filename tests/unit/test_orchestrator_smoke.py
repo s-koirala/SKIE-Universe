@@ -15,10 +15,12 @@ if str(_SCRIPTS) not in sys.path:
 
 
 def test_orchestrator_dry_run_produces_artifacts(tmp_path: Path) -> None:
-    """--dry-run --smoke-n 2000 composes the full pipeline end-to-end
-    and lands the expected artifact tree. We do not assert on specific
-    Sharpe values (stochastic), only on artifact existence + finite
-    numeric summary.
+    """``--dry-run --smoke-n 2000 --smoke`` composes the full pipeline
+    end-to-end and lands the expected per-symbol artifact tree. The
+    ``--smoke`` flag reduces ``lgb_n_draws`` to a CI-friendly value
+    (production runs use the H050.yaml-bound 200 per Bergstra & Bengio
+    2012, JMLR 13:281-305). We do not assert on specific Sharpe values
+    (stochastic), only on artifact existence + finite numeric summary.
     """
     # Import lazily so baseline test collection is not affected by
     # lightgbm import cost.
@@ -32,7 +34,7 @@ def test_orchestrator_dry_run_produces_artifacts(tmp_path: Path) -> None:
 
     # Deliberately tiny smoke-n so the test runs fast. 2000 bars per
     # symbol is enough for the walk-forward engine to produce >= 1
-    # fold with the default sizing.
+    # fold with the default sizing. --smoke caps inner-CV cost.
     out = run_walk_forward.run(
         [
             "--hypothesis",
@@ -42,6 +44,7 @@ def test_orchestrator_dry_run_produces_artifacts(tmp_path: Path) -> None:
             "--dry-run",
             "--smoke-n",
             "2000",
+            "--smoke",
         ]
     )
     try:
@@ -51,18 +54,39 @@ def test_orchestrator_dry_run_produces_artifacts(tmp_path: Path) -> None:
         repro = json.loads((out / "reprolog.json").read_text(encoding="utf-8"))
         assert repro["hypothesis_id"] == "H050"
         assert repro["rng_seed"] == 2026
-        assert (out / "aggregate" / "metrics_summary.json").is_file()
-        metrics = json.loads(
-            (out / "aggregate" / "metrics_summary.json").read_text(encoding="utf-8")
+        # Universe is iterated per H050.yaml line 3 = [ES, NQ].
+        # P1-H050-UNIVERSE-ES-ONLY closure: NQ MUST be present.
+        run_summary = json.loads((out / "run_summary.json").read_text(encoding="utf-8"))
+        assert run_summary["universe"] == ["ES", "NQ"], (
+            f"Universe iteration failed: {run_summary['universe']!r}"
         )
-        # n_folds is always present regardless of which branch the
-        # aggregate took.
-        assert "n_folds" in metrics
-        # OOS returns parquet lands regardless of whether gates ran.
-        assert (out / "oos_returns.parquet").is_file()
-        # Per-feature provenance written.
+        assert run_summary["smoke"] is True
+        for sym in ("ES", "NQ"):
+            sym_dir = out / sym
+            assert sym_dir.is_dir(), f"{sym}/ not created"
+            assert (sym_dir / "aggregate" / "metrics_summary.json").is_file()
+            assert (sym_dir / "oos_returns.parquet").is_file()
+            metrics = json.loads(
+                (sym_dir / "aggregate" / "metrics_summary.json").read_text(encoding="utf-8")
+            )
+            assert "n_folds" in metrics
+            assert metrics["symbol"] == sym
+            # P1-H050-INNER-CV closure: per-fold HP is selected by inner CV.
+            assert "selected_hp_per_fold" in metrics
+            assert "lgb_n_draws_effective" in metrics
+            assert "inner_n_folds" in metrics
+            # P1-H050-LABEL-CV closure: label_cv_inner_sharpes records the
+            # joint-CV trace (one entry per evaluated grid cell).
+            assert "label_cv_inner_sharpes" in metrics
+            assert "selected_label_cfg" in metrics
+            # If gates ran, check Sharpe values are finite.
+            if "sharpe_gated" in metrics:
+                import math
+
+                assert math.isfinite(metrics["sharpe_gated"])
+                assert math.isfinite(metrics["sharpe_unconditional"])
+        # Per-feature provenance written (one set of files per run_id).
         prov_dir = paths.logs_reproducibility_features
-        # At least four provenance files for this run_id.
         run_id = out.name
         n_prov = sum(
             1
@@ -70,12 +94,6 @@ def test_orchestrator_dry_run_produces_artifacts(tmp_path: Path) -> None:
             if p.is_file()
         )
         assert n_prov >= 4
-        # If gates ran, check Sharpe values are finite.
-        if "sharpe_gated" in metrics:
-            import math
-
-            assert math.isfinite(metrics["sharpe_gated"])
-            assert math.isfinite(metrics["sharpe_unconditional"])
     finally:
         # Clean up artifacts produced by the smoke run so the test is
         # idempotent. ReproLog and ledger land under logs/ — leave
