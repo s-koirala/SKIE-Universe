@@ -97,6 +97,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default=42,
         help="RNG seed for RunContext (default: 42).",
     )
+    p.add_argument(
+        "--sources-yaml",
+        type=Path,
+        default=None,
+        help=(
+            "Optional YAML manifest of extra source files to append to the "
+            "vendor_legacy_1min canonical list (used for Cell-I-style "
+            "backfills). Schema documented in "
+            "skie_ninja.data.ingest.vendor_legacy_1min.load_sources_yaml. "
+            "Only honoured when --dataset is vendor_legacy_1min."
+        ),
+    )
     return p
 
 
@@ -202,7 +214,7 @@ def _post_write_validate(dataset: str, output_path: Path) -> None:
     _log.info("Post-write distribution check complete.")
 
 
-def run(argv: list[str] | None = None) -> int:  # noqa: PLR0911
+def run(argv: list[str] | None = None) -> int:  # noqa: PLR0911, PLR0912, PLR0915
     """CLI entry point. Returns POSIX exit code."""
     args = _build_parser().parse_args(argv)
 
@@ -215,9 +227,18 @@ def run(argv: list[str] | None = None) -> int:  # noqa: PLR0911
     dry_run: bool = args.dry_run
     force: bool = args.force
     seed: int = args.seed
+    sources_yaml: Path | None = args.sources_yaml
 
     if start > end:
         _log.error("--start (%s) is after --end (%s).", start, end)
+        return 1
+
+    if sources_yaml is not None and dataset != "vendor_legacy_1min":
+        _log.error(
+            "--sources-yaml is only valid for --dataset vendor_legacy_1min "
+            "(got %r).",
+            dataset,
+        )
         return 1
 
     if dataset not in INGEST_REGISTRY:
@@ -228,6 +249,27 @@ def run(argv: list[str] | None = None) -> int:  # noqa: PLR0911
             ", ".join(sorted(INGEST_REGISTRY)) or "(none)",
         )
         return 1
+
+    if sources_yaml is not None:
+        from skie_ninja.data.ingest.vendor_legacy_1min import (  # noqa: PLC0415
+            _CANONICAL_SOURCES,
+            VendorLegacy1minIngestJob,
+            load_sources_yaml,
+            merge_sources,
+        )
+        try:
+            extra = load_sources_yaml(sources_yaml)
+        except (FileNotFoundError, ValueError) as exc:
+            _log.error("Failed to load --sources-yaml: %s", exc)
+            return 1
+        merged = merge_sources(_CANONICAL_SOURCES, extra)
+        INGEST_REGISTRY[dataset] = VendorLegacy1minIngestJob(sources=merged)
+        _log.info(
+            "Loaded %d extra source(s) from %s; total canonical sources=%d.",
+            len(extra),
+            sources_yaml,
+            len(merged),
+        )
 
     job = INGEST_REGISTRY[dataset]
     paths = ProjectPaths.discover(_SCRIPT_DIR)

@@ -30,8 +30,8 @@ a successor hypothesis ID.
 
 | Field | Value |
 |---|---|
-| ES date range | 2020-01-01 → 2025-12-03 UTC (last bar ts_event) |
-| NQ date range | 2020-01-01 → 2024-12-31 UTC (last bar ts_event) |
+| ES date range | 2020-01-01 → 2025-12-03 UTC (last bar ts_event; ES_2025 file mtime 2024-12-04) |
+| NQ date range | 2020-01-01 → 2024-12-19 UTC (last bar ts_event; corrected 2026-04-25 from prior "2024-12-31" — sibling `download_historical_years` Z-window terminates at 12-20 by construction) |
 | Total rows (combined) | 3,703,359 |
 | Roll events (roll_flag=True bars) | 58,465 |
 | ES rows | 1,882,800 (approx; see per-file checksums) |
@@ -93,6 +93,89 @@ These are the binding dataset checksums for H050 reproducibility.
 | `symbol=NQ/year=2022/part-0000.parquet` | `faf8cf2acad31e5beb3a64466bc6962b758180d26193d62870679494d0913558` |
 | `symbol=NQ/year=2023/part-0000.parquet` | `fa58a0bea546b6563ee2dcfb8a27125d891cbc8403887bdff80db4418dc65ed3` |
 | `symbol=NQ/year=2024/part-0000.parquet` | `1e7b7c32b27d80d89f1b1c1d62b5554f6516163db8a4631934c0f4df08189952` |
+
+## Pending Cell I backfill (status: prepared 2026-04-24, awaiting paid Databento API call)
+
+User-accepted Cell I per [docs/research_notes/memo_option-b-data-coverage_2026-04-24.md](../../../docs/research_notes/memo_option-b-data-coverage_2026-04-24.md) §6: backfill ES + NQ 2015-2019 + NQ 2025 from Databento GLBX.MDP3 to close the design.md §2 substrate gap.
+
+**Authorization status**: not yet executed. Runbook at [docs/research_notes/runbook_h050-cell-i-databento-backfill_2026-04-24.md](../../../docs/research_notes/runbook_h050-cell-i-databento-backfill_2026-04-24.md). Cost estimate at [docs/research_notes/memo_h050-cell-i-cost-estimate_2026-04-24.md](../../../docs/research_notes/memo_h050-cell-i-cost-estimate_2026-04-24.md).
+
+The checksum tables in §"Source CSV (raw tier)" and §"Processed parquet (roll-adjusted tier)" above are **frozen against the current pre-Cell-I substrate** and bind any H050 walk-forward run executed against that substrate. They will be **superseded** in a single commit after the Cell I run completes; the pre-Cell-I tables will be retained under a new section "Pre-Cell-I checksums (superseded YYYY-MM-DD)" for audit.
+
+### Expected new source CSVs (post-Cell I)
+
+The 11 new CSVs below are loaded into the ingest job via the YAML-injectable `--sources-yaml config/cell_i_sources.yaml` flag (per runbook §7.1) — no source-file edit to `_CANONICAL_SOURCES` is required. Schema enforced by [load_sources_yaml](../../../src/skie_ninja/data/ingest/vendor_legacy_1min.py); regression-tested in [tests/unit/test_ingest_vendor_legacy_sources.py](../../../tests/unit/test_ingest_vendor_legacy_sources.py).
+
+| File | Symbol | Year | SHA256 |
+|---|---|---|---|
+| `ES_2015_1min_databento.csv` | ES | 2015 | TBD at Stage A run |
+| `ES_2016_1min_databento.csv` | ES | 2016 | TBD at Stage A run |
+| `ES_2017_1min_databento.csv` | ES | 2017 | TBD at Stage A run |
+| `ES_2018_1min_databento.csv` | ES | 2018 | TBD at Stage A run |
+| `ES_2019_1min_databento.csv` | ES | 2019 | TBD at Stage A run |
+| `NQ_2015_1min_databento.csv` | NQ | 2015 | TBD at Stage A run |
+| `NQ_2016_1min_databento.csv` | NQ | 2016 | TBD at Stage A run |
+| `NQ_2017_1min_databento.csv` | NQ | 2017 | TBD at Stage A run |
+| `NQ_2018_1min_databento.csv` | NQ | 2018 | TBD at Stage A run |
+| `NQ_2019_1min_databento.csv` | NQ | 2019 | TBD at Stage A run |
+| `NQ_2025_1min_databento.csv` | NQ | 2025 | TBD at Stage A run |
+
+### Expected new processed-parquet partitions (post-Cell I)
+
+`vendor_legacy_1min` (raw front-month concatenation):
+
+| Partition | SHA256 |
+|---|---|
+| `symbol=ES/year=2015/part-0000.parquet` | TBD |
+| `symbol=ES/year=2016/part-0000.parquet` | TBD |
+| `symbol=ES/year=2017/part-0000.parquet` | TBD |
+| `symbol=ES/year=2018/part-0000.parquet` | TBD |
+| `symbol=ES/year=2019/part-0000.parquet` | TBD |
+| `symbol=NQ/year=2015/part-0000.parquet` | TBD |
+| `symbol=NQ/year=2016/part-0000.parquet` | TBD |
+| `symbol=NQ/year=2017/part-0000.parquet` | TBD |
+| `symbol=NQ/year=2018/part-0000.parquet` | TBD |
+| `symbol=NQ/year=2019/part-0000.parquet` | TBD |
+| `symbol=NQ/year=2025/part-0000.parquet` | TBD |
+
+`vendor_legacy_1min_roll_adjusted` (full re-derivation; **all 22 partitions change** due to full-sample multiplicative-ratio rescaling per [src/skie_ninja/data/ingest/vendor_legacy_1min_roll_adjusted.py](../../../src/skie_ninja/data/ingest/vendor_legacy_1min_roll_adjusted.py) §"Point-in-time caveat"):
+
+| Partition | Pre-Cell-I SHA256 | Post-Cell-I SHA256 |
+|---|---|---|
+| `symbol=ES/year=2015/part-0000.parquet` | (absent) | TBD |
+| `symbol=ES/year=2016/part-0000.parquet` | (absent) | TBD |
+| `symbol=ES/year=2017/part-0000.parquet` | (absent) | TBD |
+| `symbol=ES/year=2018/part-0000.parquet` | (absent) | TBD |
+| `symbol=ES/year=2019/part-0000.parquet` | (absent) | TBD |
+| `symbol=ES/year=2020/part-0000.parquet` | `24c6a6bf88d90c8aaf950b56d453f79fba5ddc83fee8afd1f93b3cf435a352ef` | TBD |
+| `symbol=ES/year=2021/part-0000.parquet` | `af7e75bbd9dd53f4845d8133d5e1130330a950bef1e180e4d0eaed3c4614276c` | TBD |
+| `symbol=ES/year=2022/part-0000.parquet` | `17e2fca486e9802713f86be015956f315f0d06f2c1a5cedb2e351d815ca4cca4` | TBD |
+| `symbol=ES/year=2023/part-0000.parquet` | `87f9bc734740069cb6ad997d7292526f4cac7d4910841204097a9b6b10233af7` | TBD |
+| `symbol=ES/year=2024/part-0000.parquet` | `ca14cece2bff82b1a64b48ddef6f5b802aacc8e29b193b4245b2f1f61799e134` | TBD |
+| `symbol=ES/year=2025/part-0000.parquet` | `0dc679b5010a5013c34aa6f723b6f4dd76d6b07fa39bf11660097cc38f79bbd1` | TBD |
+| `symbol=NQ/year=2015/part-0000.parquet` | (absent) | TBD |
+| `symbol=NQ/year=2016/part-0000.parquet` | (absent) | TBD |
+| `symbol=NQ/year=2017/part-0000.parquet` | (absent) | TBD |
+| `symbol=NQ/year=2018/part-0000.parquet` | (absent) | TBD |
+| `symbol=NQ/year=2019/part-0000.parquet` | (absent) | TBD |
+| `symbol=NQ/year=2020/part-0000.parquet` | `143c62e39d62ee2953a8c64c5b1437c8b7600a53c7adb7253677297d858b3ab4` | TBD |
+| `symbol=NQ/year=2021/part-0000.parquet` | `b9d3dd90cda5aadbf7db24c3339d36445123e148a82d2bd1be0218aef21c7518` | TBD |
+| `symbol=NQ/year=2022/part-0000.parquet` | `faf8cf2acad31e5beb3a64466bc6962b758180d26193d62870679494d0913558` | TBD |
+| `symbol=NQ/year=2023/part-0000.parquet` | `fa58a0bea546b6563ee2dcfb8a27125d891cbc8403887bdff80db4418dc65ed3` | TBD |
+| `symbol=NQ/year=2024/part-0000.parquet` | `1e7b7c32b27d80d89f1b1c1d62b5554f6516163db8a4631934c0f4df08189952` | TBD |
+| `symbol=NQ/year=2025/part-0000.parquet` | (absent) | TBD |
+
+Combined frame SHA256 (pre-Cell-I): `d2c4aa4e70c6badcb294d9bec64ee3fc5093ba9085082495f5031743943b9a2d` — also superseded.
+
+### Expected Coverage update (post-Cell I)
+
+Note on Dec 21-31 calendar-edge gap: the sibling `download_historical_years` Z-contract window is `('Z', '09-15', '12-20')` per [databento_downloader.py:245](file:///C:/Users/skoir/Documents/SKIE%20Enterprises/SKIE-Ninja/SKIE-Ninja-Project/SKIE_Ninja/src/python/data_collection/databento_downloader.py). All year-end timestamps therefore terminate ~Dec 16-20, **not** Dec 31. This is intrinsic to the contract-month tuple, applies symmetrically to existing 2020-2024 substrate and the new 2015-2019 + NQ 2025 backfill, and is not introduced by Cell I. Tracked as new follow-up `P1-DATABENTO-DEC21-EXTENSION` for an optional Z-window extension to capture the brief no-front-month tail.
+
+| Field | Pre-Cell-I value | Expected post-Cell-I value |
+|---|---|---|
+| ES date range | 2020-01-01 → 2025-12-03 UTC | 2015-01-01 → 2025-12-03 UTC (or further forward if §6.4 ES 2025 refresh runs; bound by ~current-year-12-20) |
+| NQ date range | 2020-01-01 → 2024-12-19 UTC | 2015-01-01 → ~2025-12-20 UTC (Z-window-bounded; verify against `metadata.get_cost` and post-Stage-A row count) |
+| Total rows (combined) | 3,703,359 | ~7,440,000 (= 3,703,359 + ~3,740,000 Cell I expected, anchored on empirical 340k/yr ES and NQ; binding figure is the post-Stage-B verified row count) |
 
 ## OFI dependency note
 

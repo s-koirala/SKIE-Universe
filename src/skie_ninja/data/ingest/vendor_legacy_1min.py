@@ -33,8 +33,10 @@ import shutil
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 
 import polars as pl
+import yaml
 
 from skie_ninja.data.ingest._registry import register
 from skie_ninja.data.validation.schema import VendorLegacy1minSchema
@@ -79,6 +81,116 @@ _CANONICAL_SOURCES: tuple[_SourceFile, ...] = (
     _SourceFile("NQ", "oos_2022", "NQ_2022_1min_databento.csv"),
     _SourceFile("NQ", "in_sample_2023_2024", "NQ_1min_databento.csv"),
 )
+
+
+_VALID_SYMBOLS: frozenset[str] = frozenset({"ES", "NQ", "MES", "MNQ"})
+
+
+def load_sources_yaml(yaml_path: Path) -> tuple[_SourceFile, ...]:
+    """Load extra ``_SourceFile`` entries from a YAML manifest.
+
+    Used by the ``--sources-yaml`` CLI flag to add Cell-I-style backfill
+    files without editing ``_CANONICAL_SOURCES`` in source. The returned
+    tuple is appended to ``_CANONICAL_SOURCES`` (existing files take
+    precedence on filename collision).
+
+    YAML schema (top-level ``sources`` list, each entry a 3-key map):
+
+    .. code-block:: yaml
+
+        sources:
+          - symbol: ES          # ES, NQ, MES, MNQ
+            coverage: backfill_2015
+            filename: ES_2015_1min_databento.csv
+          - symbol: NQ
+            coverage: backfill_2015
+            filename: NQ_2015_1min_databento.csv
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``yaml_path`` does not exist.
+    ValueError
+        If the top-level key ``sources`` is missing, not a list, or any
+        entry violates the schema (missing keys, unknown symbol, empty
+        filename, duplicate filename within the YAML).
+    """
+    if not yaml_path.is_file():
+        raise FileNotFoundError(f"Sources YAML not found: {yaml_path}")
+
+    with yaml_path.open(encoding="utf-8") as fh:
+        payload: Any = yaml.safe_load(fh)
+
+    if not isinstance(payload, dict) or "sources" not in payload:
+        raise ValueError(
+            f"Sources YAML {yaml_path} must have top-level key 'sources'."
+        )
+    raw_entries = payload["sources"]
+    if not isinstance(raw_entries, list):
+        raise ValueError(
+            f"Sources YAML {yaml_path} 'sources' must be a list."
+        )
+
+    out: list[_SourceFile] = []
+    seen_filenames: set[str] = set()
+    required_keys = {"symbol", "coverage", "filename"}
+    for i, entry in enumerate(raw_entries):
+        if not isinstance(entry, dict):
+            raise ValueError(
+                f"Sources YAML {yaml_path} entry {i} must be a mapping."
+            )
+        missing = required_keys - set(entry.keys())
+        if missing:
+            raise ValueError(
+                f"Sources YAML {yaml_path} entry {i} missing keys: "
+                f"{sorted(missing)}"
+            )
+        symbol = str(entry["symbol"])
+        coverage = str(entry["coverage"])
+        filename = str(entry["filename"])
+        if symbol not in _VALID_SYMBOLS:
+            raise ValueError(
+                f"Sources YAML {yaml_path} entry {i} symbol={symbol!r} "
+                f"not in {sorted(_VALID_SYMBOLS)}."
+            )
+        if not filename or not filename.endswith(".csv"):
+            raise ValueError(
+                f"Sources YAML {yaml_path} entry {i} filename={filename!r} "
+                "must be a non-empty .csv name."
+            )
+        if filename in seen_filenames:
+            raise ValueError(
+                f"Sources YAML {yaml_path} duplicate filename={filename!r} "
+                f"at entry {i}."
+            )
+        seen_filenames.add(filename)
+        out.append(_SourceFile(symbol=symbol, coverage=coverage, filename=filename))
+
+    return tuple(out)
+
+
+def merge_sources(
+    canonical: tuple[_SourceFile, ...],
+    extra: tuple[_SourceFile, ...],
+) -> tuple[_SourceFile, ...]:
+    """Append ``extra`` to ``canonical``, dropping filename collisions.
+
+    Filename is the unique key. ``canonical`` entries take precedence;
+    any ``extra`` entry whose filename already appears in ``canonical``
+    is logged-and-dropped (idempotent re-runs of the same YAML do not
+    duplicate sources).
+    """
+    canonical_files = {s.filename for s in canonical}
+    deduped: list[_SourceFile] = list(canonical)
+    for s in extra:
+        if s.filename in canonical_files:
+            _log.info(
+                "Sources YAML entry shadowed by canonical: %s", s.filename
+            )
+            continue
+        deduped.append(s)
+        canonical_files.add(s.filename)
+    return tuple(deduped)
 
 
 class VendorLegacy1minIngestJob:
