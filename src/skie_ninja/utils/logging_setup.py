@@ -81,6 +81,15 @@ def setup_logging(level: int = logging.INFO, *, force: bool = False) -> logging.
     """Configure stdlib logging.
 
     - Machine stream (stdout) emits one JSON object per line.
+    - Stdout is reconfigured to ``line_buffering=True`` so each JSON
+      record reaches the consumer immediately even in non-TTY (headless)
+      contexts. Without this, Python's default block-buffering can
+      delay log emission by minutes — the load-bearing failure mode
+      that left the 2026-04-26 prod-run-1 with 0 bytes of stdout when
+      it was killed at +180 min (P1-ORCHESTRATOR-PROGRESS-LOGGING +
+      Round-1 audit-remediate Q-1-3 / R-3). The reconfigure is
+      best-effort: a non-TextIOWrapper stdout (e.g. a captured
+      pytest stream) silently skips this setup.
     - If stderr is a TTY and `rich` is importable, a pretty handler
       is attached for developer ergonomics. Absence of `rich` or a
       non-TTY context silently skips the pretty handler.
@@ -95,6 +104,12 @@ def setup_logging(level: int = logging.INFO, *, force: bool = False) -> logging.
         json_handler.setFormatter(JsonFormatter())
         json_handler.addFilter(_ContextFilter())
         root.addHandler(json_handler)
+
+        if hasattr(sys.stdout, "reconfigure"):
+            try:
+                sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
+            except (AttributeError, ValueError, OSError):
+                pass
 
         if sys.stderr.isatty():
             try:

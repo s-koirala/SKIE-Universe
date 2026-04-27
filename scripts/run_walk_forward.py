@@ -77,11 +77,136 @@ import json
 import logging
 import sys
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 _LOG = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Progress logging (P1-ORCHESTRATOR-PROGRESS-LOGGING)
+# ---------------------------------------------------------------------------
+#
+# Background. The 2026-04-26 production H050 walk-forward run-1 was
+# killed at +180 min with zero per-fold or aggregate artifacts written
+# and 0 bytes of stdout flushed; diagnosing the bottleneck required an
+# external py-spy dump (see
+# docs/audits/audit_trail_2026-04-26_h050-prod-run-1-diagnosis.md).
+# This helper emits matched start/done INFO markers around the
+# orchestrator's load-bearing phases so a future multi-hour run is
+# observable from the JSON log stream alone.
+#
+# Stdout buffering. ``setup_logging()`` reconfigures stdout to
+# ``line_buffering=True`` (Round-2 audit-remediate Q-1-3 / R-3) so
+# each JSON record reaches the consumer immediately even in non-TTY
+# headless runs. The canonical headless invocation is therefore:
+#     OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+#         uv run python scripts/run_walk_forward.py ...
+# ``python -u`` remains an optional belt-and-braces if the script is
+# invoked outside the ``__main__`` block (skipping ``setup_logging``).
+class _ProgressLog:
+    """INFO-level structured progress logger for the walk-forward
+    orchestrator.
+
+    Public message contract:
+      ``"PROGRESS <phase> start | <kv-context>"``
+      ``"PROGRESS <phase> done elapsed=<s>s | <kv-context>"``  (clean exit)
+      ``"PROGRESS <phase> failed elapsed=<s>s exc=<type> | <kv-context>"``  (exception)
+
+    Phases are short string names (``"run"``, ``"symbol"``,
+    ``"label-cfg"``, ``"label-cfg-loop-step"``, ``"fold-fit"``,
+    ``"hmm-fit"``, ``"inner-cv-lgb"``).
+
+    Coverage by phase:
+      - ``fold-fit``, ``hmm-fit``, ``inner-cv-lgb``,
+        ``label-cfg-loop-step`` — wrapped in :meth:`phase` context
+        manager (auto-emits ``failed`` on exception).
+      - ``run``, ``symbol``, ``label-cfg`` — wrapped in explicit
+        ``try/except`` at function entry (semantically identical to
+        the context manager; uses raw :meth:`start` / :meth:`failed`
+        because the function bodies were too large to refactor into
+        a single :meth:`phase` block without massive indentation).
+
+    Both patterns emit ``failed`` on any caught exception so a hung
+    process and a crashed process are distinguishable in the log
+    stream (Round-1 audit-remediate finding Q-1-1). ``KeyboardInterrupt``
+    and ``SystemExit`` propagate without producing a ``failed`` marker
+    (Round-2 audit-remediate finding Q-2-3).
+    """
+
+    def __init__(self, log: logging.Logger) -> None:
+        self._log = log
+        self._t0: dict[str, float] = {}
+
+    def start(self, phase: str, **ctx: Any) -> None:
+        self._t0[phase] = time.perf_counter()
+        self._log.info("PROGRESS %s start | %s", phase, _kv(ctx))
+
+    def done(self, phase: str, **ctx: Any) -> float:
+        t0 = self._t0.pop(phase, time.perf_counter())
+        elapsed = time.perf_counter() - t0
+        self._log.info(
+            "PROGRESS %s done elapsed=%.3fs | %s", phase, elapsed, _kv(ctx)
+        )
+        return elapsed
+
+    def failed(self, phase: str, exc_type: str, **ctx: Any) -> float:
+        t0 = self._t0.pop(phase, time.perf_counter())
+        elapsed = time.perf_counter() - t0
+        self._log.info(
+            "PROGRESS %s failed elapsed=%.3fs exc=%s | %s",
+            phase,
+            elapsed,
+            exc_type,
+            _kv(ctx),
+        )
+        return elapsed
+
+    @contextmanager
+    def phase(self, phase: str, **start_ctx: Any) -> Iterator[dict[str, Any]]:
+        """Context-managed phase: emits start on enter, done on clean
+        exit, failed on exception. Always pops the phase t0 so the
+        module-singleton _t0 dict cannot leak orphan entries (Round-1
+        audit-remediate finding Q-1-2).
+
+        Yields a mutable ``done_ctx`` dict; callers can append
+        exit-time fields (e.g. ``ctx["n_folds"] = N``) before the
+        block exits. On clean exit those fields are merged with the
+        start kwargs and emitted in the done line; on exception the
+        merged ctx is emitted in the failed line.
+        """
+        self.start(phase, **start_ctx)
+        done_ctx: dict[str, Any] = {}
+        try:
+            yield done_ctx
+        except Exception as exc:  # KeyboardInterrupt/SystemExit propagate (Q-2-3)
+            merged = {**start_ctx, **done_ctx}
+            self.failed(phase, exc_type=type(exc).__name__, **merged)
+            raise
+        else:
+            merged = {**start_ctx, **done_ctx}
+            self.done(phase, **merged)
+
+
+def _kv(ctx: dict[str, Any]) -> str:
+    """Render a kv-context dict as a whitespace-delimited key=value
+    string. Values containing whitespace are JSON-encoded (Round-1
+    audit-remediate finding Q-1-4) so a downstream `key=value`
+    parser can round-trip them.
+    """
+    out: list[str] = []
+    for k, v in ctx.items():
+        s = str(v)
+        if any(ch.isspace() for ch in s):
+            s = json.dumps(s)
+        out.append(f"{k}={s}")
+    return " ".join(out)
+
+
+_PROGRESS = _ProgressLog(_LOG)
 
 # Minimum OOS return observations required to compute Sharpe CI and SPA.
 # 30 is a conservative lower bound: Lo 2002 iid Sharpe CLT requires n → ∞;
@@ -713,6 +838,96 @@ def _fit_fold(  # noqa: PLR0912, PLR0915
     The HMM is fit on all train-fold rows (no inner CV — model
     selection happens via BIC over covariance types per ADR-0005).
     """
+    return _fit_fold_with_progress(
+        train_idx,
+        X=X, y=y, r=r,
+        hmm_cov_types=hmm_cov_types,
+        lgb_grid=lgb_grid,
+        lgb_n_draws=lgb_n_draws,
+        lgb_seed=lgb_seed,
+        random_seed=random_seed,
+        label_horizon=label_horizon,
+        embargo=embargo,
+        n_inner_folds=n_inner_folds,
+        fold_id=fold_id,
+        symbol=symbol,
+        hmm_cache=hmm_cache,
+        hmm_cache_stats=hmm_cache_stats,
+    )
+
+
+def _fit_fold_with_progress(  # noqa: PLR0912, PLR0915
+    train_idx: np.ndarray,
+    *,
+    X: np.ndarray,
+    y: np.ndarray,
+    r: np.ndarray,
+    hmm_cov_types: tuple[str, ...],
+    lgb_grid: dict[str, tuple[Any, ...]],
+    lgb_n_draws: int,
+    lgb_seed: int,
+    random_seed: int,
+    label_horizon: int,
+    embargo: int,
+    n_inner_folds: int,
+    fold_id: int | None = None,
+    symbol: str | None = None,
+    hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = None,
+    hmm_cache_stats: _HmmCacheStats | None = None,
+) -> dict[str, Any]:
+    """Body of _fit_fold; wrapped by the public _fit_fold entry to
+    emit the PROGRESS fold-fit start/done/failed markers via the
+    _ProgressLog context manager (Round-1 audit-remediate finding
+    Q-1-1 — exception path must emit a failed marker rather than
+    leaking an orphan start)."""
+    with _PROGRESS.phase(
+        "fold-fit",
+        sym=symbol,
+        fold_id=fold_id,
+        train_size=len(train_idx),
+        label_horizon=label_horizon,
+    ) as _fold_done_ctx:
+        return _fit_fold_body(
+            train_idx,
+            X=X, y=y, r=r,
+            hmm_cov_types=hmm_cov_types,
+            lgb_grid=lgb_grid,
+            lgb_n_draws=lgb_n_draws,
+            lgb_seed=lgb_seed,
+            random_seed=random_seed,
+            label_horizon=label_horizon,
+            embargo=embargo,
+            n_inner_folds=n_inner_folds,
+            fold_id=fold_id,
+            symbol=symbol,
+            hmm_cache=hmm_cache,
+            hmm_cache_stats=hmm_cache_stats,
+            _fold_done_ctx=_fold_done_ctx,
+        )
+
+
+def _fit_fold_body(  # noqa: PLR0912, PLR0915
+    train_idx: np.ndarray,
+    *,
+    X: np.ndarray,
+    y: np.ndarray,
+    r: np.ndarray,
+    hmm_cov_types: tuple[str, ...],
+    lgb_grid: dict[str, tuple[Any, ...]],
+    lgb_n_draws: int,
+    lgb_seed: int,
+    random_seed: int,
+    label_horizon: int,
+    embargo: int,
+    n_inner_folds: int,
+    fold_id: int | None,
+    symbol: str | None,
+    hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None,
+    hmm_cache_stats: _HmmCacheStats | None,
+    _fold_done_ctx: dict[str, Any],
+) -> dict[str, Any]:
+    """Inner body — original _fit_fold logic, no instrumentation
+    other than mutating ``_fold_done_ctx`` for exit-time fields."""
     X_tr = X[train_idx]
     y_tr = y[train_idx]
     r_tr = r[train_idx]
@@ -784,24 +999,33 @@ def _fit_fold(  # noqa: PLR0912, PLR0915
         if hmm_cache_stats is not None:
             hmm_cache_stats.n_hits += 1
     else:
-        _t_fit_0 = time.perf_counter()
-        hmm_selection = select_gaussian_hmm(
-            r_tr.reshape(-1, 1),
-            n_states_grid=(2,),
-            covariance_types=hmm_cov_types,
-            seed=int(random_seed),
-            min_restarts=5,
-            max_restarts=10,
-        )
-        hmm = hmm_selection.best_model
-        if hmm_cache_stats is not None:
-            hmm_cache_stats.total_hmm_fit_time_s += time.perf_counter() - _t_fit_0
-            hmm_cache_stats.n_misses += 1
-            if cache_key is not None:
-                hmm_cache_stats.unique_keys.add(cache_key)
-        hmm_terminal_log_alpha_cached = None
-        hmm_train_terminal_position_cached = None
-        regime_high_mean_cached = None
+        with _PROGRESS.phase(
+            "hmm-fit",
+            sym=symbol,
+            fold_id=fold_id,
+            train_size=len(train_idx),
+            cov_grid=",".join(hmm_cov_types),
+        ) as _hmm_done_ctx:
+            _t_fit_0 = time.perf_counter()
+            hmm_selection = select_gaussian_hmm(
+                r_tr.reshape(-1, 1),
+                n_states_grid=(2,),
+                covariance_types=hmm_cov_types,
+                seed=int(random_seed),
+                min_restarts=5,
+                max_restarts=10,
+            )
+            hmm = hmm_selection.best_model
+            if hmm_cache_stats is not None:
+                hmm_cache_stats.total_hmm_fit_time_s += time.perf_counter() - _t_fit_0
+                hmm_cache_stats.n_misses += 1
+                if cache_key is not None:
+                    hmm_cache_stats.unique_keys.add(cache_key)
+            hmm_terminal_log_alpha_cached = None
+            hmm_train_terminal_position_cached = None
+            regime_high_mean_cached = None
+            _hmm_done_ctx["best_cov"] = hmm_selection.best_covariance_type
+            _hmm_done_ctx["best_n_states"] = hmm_selection.best_n_states
 
     # P1-H050-INNER-CV: nested walk-forward CV per Varma & Simon 2006
     # (doi:10.1186/1471-2105-7-91). model.score(X_tr, y_tr) is REMOVED;
@@ -838,6 +1062,7 @@ def _fit_fold(  # noqa: PLR0912, PLR0915
                 train_idx_first=int(train_idx[0]),
                 train_idx_last=int(train_idx[-1]),
             )
+        _fold_done_ctx["classifier"] = "skipped-degenerate-y"
         return {
             "classifier": None,
             "hmm": hmm,
@@ -849,18 +1074,27 @@ def _fit_fold(  # noqa: PLR0912, PLR0915
             "inner_cv_sharpe": -np.inf,
         }
 
-    best_params, best_logloss, best_sharpe = _inner_cv_select_hp(
-        X_train_outer=X_tr,
-        y_train_outer=y_tr,
-        r_train_outer=r_tr,
-        lgb_grid=lgb_grid,
-        lgb_n_draws=lgb_n_draws,
-        lgb_seed=lgb_seed,
-        random_seed=random_seed,
-        label_horizon=label_horizon,
-        embargo=embargo,
+    with _PROGRESS.phase(
+        "inner-cv-lgb",
+        sym=symbol,
+        fold_id=fold_id,
+        n_draws=lgb_n_draws,
         n_inner_folds=n_inner_folds,
-    )
+    ) as _inner_cv_done_ctx:
+        best_params, best_logloss, best_sharpe = _inner_cv_select_hp(
+            X_train_outer=X_tr,
+            y_train_outer=y_tr,
+            r_train_outer=r_tr,
+            lgb_grid=lgb_grid,
+            lgb_n_draws=lgb_n_draws,
+            lgb_seed=lgb_seed,
+            random_seed=random_seed,
+            label_horizon=label_horizon,
+            embargo=embargo,
+            n_inner_folds=n_inner_folds,
+        )
+        _inner_cv_done_ctx["best_logloss"] = f"{best_logloss:.4g}"
+        _inner_cv_done_ctx["best_sharpe"] = f"{best_sharpe:.4g}"
 
     # Refit the selected HP on the FULL outer-train block. Inner CV
     # used disjoint inner-test blocks for selection only; the
@@ -920,6 +1154,7 @@ def _fit_fold(  # noqa: PLR0912, PLR0915
             train_idx_last=int(train_idx[-1]),
         )
 
+    _fold_done_ctx["regime_high_mean"] = regime_high_mean
     return {
         "classifier": final_model,
         "hmm": hmm,
@@ -1226,6 +1461,58 @@ def _run_symbol_label_cfg(  # noqa: PLR0915
     A regression test ``test_outer_inner_purge_window_matches_per_cfg``
     asserts the invariant.
     """
+    # Round-2 audit-remediate Q-2-2: explicit try/except so an
+    # exception inside the body emits PROGRESS label-cfg failed
+    # rather than silently leaking the start marker.
+    _label_cfg_phase_ctx = {
+        "sym": sym,
+        "pt_sl": pt_sl,
+        "vb": str(vertical_barrier),
+        "vl": volatility_lookback,
+    }
+    _PROGRESS.start("label-cfg", **_label_cfg_phase_ctx)
+    try:
+        return _run_symbol_label_cfg_body(
+            sym,
+            panel_for_symbol,
+            feature_matrix,
+            cfg=cfg,
+            args=args,
+            pt_sl=pt_sl,
+            vertical_barrier=vertical_barrier,
+            volatility_lookback=volatility_lookback,
+            lgb_n_draws=lgb_n_draws,
+            n_inner_folds=n_inner_folds,
+            hmm_cache=hmm_cache,
+            hmm_cache_stats=hmm_cache_stats,
+        )
+    except Exception as exc:
+        _PROGRESS.failed(
+            "label-cfg",
+            exc_type=type(exc).__name__,
+            **_label_cfg_phase_ctx,
+        )
+        raise
+
+
+def _run_symbol_label_cfg_body(  # noqa: PLR0915
+    sym: str,
+    panel_for_symbol: pl.DataFrame,
+    feature_matrix: pl.DataFrame,
+    *,
+    cfg: RunConfig,
+    args: argparse.Namespace,
+    pt_sl: float,
+    vertical_barrier: pd.Timedelta,
+    volatility_lookback: int,
+    lgb_n_draws: int,
+    n_inner_folds: int,
+    hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = None,
+    hmm_cache_stats: _HmmCacheStats | None = None,
+) -> dict[str, Any] | None:
+    """Inner body of `_run_symbol_label_cfg`. The thin wrapper above
+    handles the start/failed PROGRESS markers; this function emits
+    the success-path `done` markers explicitly before each return."""
     label_cfg_obj = TripleBarrierConfig(
         pt_sl=(pt_sl, pt_sl),
         vertical_barrier=vertical_barrier,
@@ -1241,6 +1528,12 @@ def _run_symbol_label_cfg(  # noqa: PLR0915
             (pl.col("ts_event") >= cfg.train_start) & (pl.col("ts_event") <= cfg.test_end)
         )
     if sym_frame.shape[0] < 200:  # noqa: PLR2004
+        _PROGRESS.done(
+            "label-cfg",
+            sym=sym,
+            status="skipped-insufficient-rows",
+            n_rows=sym_frame.shape[0],
+        )
         return None
 
     feature_cols = list(cfg.feature_keys)
@@ -1386,6 +1679,13 @@ def _run_symbol_label_cfg(  # noqa: PLR0915
         f.get("selected_hp") for f in result.fitted_models if isinstance(f, dict)
     ]
 
+    _PROGRESS.done(
+        "label-cfg",
+        sym=sym,
+        n_folds=len(result.fold_records),
+        inner_cv_sharpe=f"{inner_cv_sharpe_mean:.4g}",
+        inner_cv_logloss=f"{inner_cv_logloss_mean:.4g}",
+    )
     return {
         "result": result,
         "split": split,
@@ -1486,6 +1786,58 @@ def _run_symbol(  # noqa: PLR0912, PLR0915
     fall through to insertion order, producing run-to-run drift on
     metric ties.
     """
+    # Round-2 audit-remediate Q-2-2: explicit try/except so an
+    # exception inside the body emits PROGRESS symbol failed rather
+    # than silently leaking the start marker.
+    _symbol_phase_ctx = {
+        "sym": sym,
+        "n_label_cfgs": len(label_grid),
+        "lgb_n_draws": lgb_n_draws,
+        "n_inner_folds": n_inner_folds,
+    }
+    _PROGRESS.start("symbol", **_symbol_phase_ctx)
+    try:
+        return _run_symbol_body(
+            sym,
+            panel_for_symbol,
+            feature_matrix,
+            cfg=cfg,
+            args=args,
+            run_id=run_id,
+            run_dir=run_dir,
+            paths=paths,
+            ctx=ctx,
+            feature_provenance=feature_provenance,
+            label_grid=label_grid,
+            lgb_n_draws=lgb_n_draws,
+            n_inner_folds=n_inner_folds,
+        )
+    except Exception as exc:
+        _PROGRESS.failed(
+            "symbol", exc_type=type(exc).__name__, **_symbol_phase_ctx
+        )
+        raise
+
+
+def _run_symbol_body(  # noqa: PLR0912, PLR0915
+    sym: str,
+    panel_for_symbol: pl.DataFrame,
+    feature_matrix: pl.DataFrame,
+    *,
+    cfg: RunConfig,
+    args: argparse.Namespace,
+    run_id: str,
+    run_dir: Path,
+    paths: ProjectPaths,
+    ctx: RunContext,
+    feature_provenance: list[Any],
+    label_grid: list[tuple[float, pd.Timedelta, int]],
+    lgb_n_draws: int,
+    n_inner_folds: int,
+) -> dict[str, Any]:
+    """Inner body of `_run_symbol`. The thin wrapper above handles
+    the start/failed PROGRESS markers; this function emits the
+    success-path `done` markers explicitly before each return."""
     sym_dir = paths.ensure(run_dir / sym)
     folds_dir = paths.ensure(sym_dir / "folds")
     agg_dir = paths.ensure(sym_dir / "aggregate")
@@ -1515,21 +1867,37 @@ def _run_symbol(  # noqa: PLR0912, PLR0915
     )
     hmm_cache_stats = _HmmCacheStats()
     candidate_runs: list[tuple[tuple[float, pd.Timedelta, int], dict[str, Any]]] = []
-    for pt_sl, vb, vl in label_grid:
-        candidate = _run_symbol_label_cfg(
-            sym,
-            panel_for_symbol,
-            feature_matrix,
-            cfg=cfg,
-            args=args,
+    for cfg_idx, (pt_sl, vb, vl) in enumerate(label_grid, start=1):
+        # Round-2 audit-remediate Q-2-1 fix: wrap the actual cell
+        # execution so `elapsed` reflects per-cell wall-clock (the
+        # earlier back-to-back start/done emitted elapsed=0 and
+        # defeated the operator-visibility intent).
+        with _PROGRESS.phase(
+            "label-cfg-loop-step",
+            sym=sym,
+            cfg_idx=cfg_idx,
+            n_cfgs=len(label_grid),
             pt_sl=pt_sl,
-            vertical_barrier=vb,
-            volatility_lookback=vl,
-            lgb_n_draws=lgb_n_draws,
-            n_inner_folds=n_inner_folds,
-            hmm_cache=hmm_cache,
-            hmm_cache_stats=hmm_cache_stats,
-        )
+            vb=str(vb),
+            vl=vl,
+        ) as _step_done_ctx:
+            candidate = _run_symbol_label_cfg(
+                sym,
+                panel_for_symbol,
+                feature_matrix,
+                cfg=cfg,
+                args=args,
+                pt_sl=pt_sl,
+                vertical_barrier=vb,
+                volatility_lookback=vl,
+                lgb_n_draws=lgb_n_draws,
+                n_inner_folds=n_inner_folds,
+                hmm_cache=hmm_cache,
+                hmm_cache_stats=hmm_cache_stats,
+            )
+            _step_done_ctx["status"] = (
+                "ok" if candidate is not None else "skipped"
+            )
         if candidate is None:
             continue
         candidate_runs.append(((pt_sl, vb, vl), candidate))
@@ -1539,6 +1907,7 @@ def _run_symbol(  # noqa: PLR0912, PLR0915
             agg_dir,
             {"status": "insufficient_rows_all_label_cfgs", "symbol": sym},
         )
+        _PROGRESS.done("symbol", sym=sym, status="insufficient_rows")
         return {"status": "insufficient_rows", "sym_dir": sym_dir}
 
     # Sort: primary key = mean inner-OOS Sharpe (descending);
@@ -1752,6 +2121,14 @@ def _run_symbol(  # noqa: PLR0912, PLR0915
         hmm_cache is not None,
     )
 
+    _PROGRESS.done(
+        "symbol",
+        sym=sym,
+        n_folds=len(result.fold_records),
+        best_label_cfg=str(best_label_cfg),
+        hmm_cache_hits=hmm_cache_stats.n_hits,
+        hmm_cache_misses=hmm_cache_stats.n_misses,
+    )
     return {
         "status": "ok",
         "sym_dir": sym_dir,
@@ -1764,9 +2141,34 @@ def _run_symbol(  # noqa: PLR0912, PLR0915
 
 
 def run(argv: list[str] | None = None) -> Path:
+    """Top-level orchestrator entrypoint.
+
+    Wrapped in try/except so any unhandled exception emits a
+    ``PROGRESS run failed`` marker (Round-1 audit-remediate finding
+    Q-1-1) — distinguishes a crashed run from a hung run in the
+    JSON log stream. The exception is re-raised so the caller's
+    error handling is unchanged.
+    """
     args = _parse_args(argv)
     cfg = load_config(args.config)
     paths = ProjectPaths.discover()
+    _run_start_ctx = {
+        "config": str(args.config),
+        "smoke": bool(args.smoke),
+        "dry_run": bool(args.dry_run),
+        "no_hmm_cache": bool(getattr(args, "no_hmm_cache", False)),
+    }
+    _PROGRESS.start("run", **_run_start_ctx)
+    try:
+        return _run_inner(args, cfg, paths)
+    except BaseException as exc:
+        _PROGRESS.failed(
+            "run", exc_type=type(exc).__name__, **_run_start_ctx
+        )
+        raise
+
+
+def _run_inner(args: argparse.Namespace, cfg: RunConfig, paths: ProjectPaths) -> Path:
 
     dataset_checksums = _load_output_sha256(paths) if not args.dry_run else {}
 
@@ -1884,6 +2286,15 @@ def run(argv: list[str] | None = None) -> Path:
             encoding="utf-8",
         )
 
+    _PROGRESS.done(
+        "run",
+        run_id=run_id,
+        run_dir=str(run_dir),
+        n_symbols_ok=sum(
+            1 for v in per_symbol_results.values() if v.get("status") == "ok"
+        ),
+        n_symbols_total=len(per_symbol_results),
+    )
     return run_dir
 
 
@@ -1895,5 +2306,12 @@ def _write_aggregate(agg_dir: Path, metrics: dict[str, Any]) -> None:
 
 
 if __name__ == "__main__":
+    # P1-ORCHESTRATOR-PROGRESS-LOGGING: attach the project's JSON
+    # handler so PROGRESS log lines surface on stdout. setup_logging
+    # also reconfigures stdout to line_buffering=True so headless
+    # runs flush per-line without `python -u` (Round-2 Q-1-3 / R-3).
+    from skie_ninja.utils.logging_setup import setup_logging
+
+    setup_logging()
     out = run(sys.argv[1:])
     print(out)
