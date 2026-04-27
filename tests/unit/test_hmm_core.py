@@ -124,6 +124,40 @@ class TestLogEmissionMatrix:
         log_B_full = log_emission_matrix(x, means, full_covars, "full")
         np.testing.assert_allclose(log_B_diag, log_B_full, atol=1e-10)
 
+    def test_d1_full_equals_diag_bit_exact(self) -> None:
+        """P1-HMM-FULL-COV-1DIM-REDUNDANT regression.
+
+        At d=1, the `full` and `diag` paths must produce *bit-exact*
+        identical log-densities (not merely up to round-off). This is
+        the load-bearing claim of the model-class deduplication
+        in select_gaussian_hmm; future drift in either code path
+        would silently invalidate the optimisation.
+        """
+        rng = np.random.default_rng(2026)
+        for t_len, n_states in [(50, 2), (500, 3), (5_000, 2)]:
+            x = rng.standard_normal((t_len, 1)).astype(np.float64)
+            means = rng.standard_normal((n_states, 1)).astype(np.float64) * 0.1
+            var = np.full((n_states, 1), 1.0, dtype=np.float64)
+            cov_full = var.reshape(n_states, 1, 1).copy()
+            log_B_diag = log_emission_matrix(x, means, var, "diag")
+            log_B_full = log_emission_matrix(x, means, cov_full, "full")
+            assert np.array_equal(log_B_diag, log_B_full), (
+                f"d=1 full/diag log-density not bit-exact at "
+                f"(T={t_len}, N={n_states}): max-abs-diff="
+                f"{np.max(np.abs(log_B_diag - log_B_full))}"
+            )
+
+    def test_d1_spherical_equals_diag_bit_exact(self) -> None:
+        """At d=1, `spherical` and `diag` are also model-class equivalent."""
+        rng = np.random.default_rng(2026)
+        x = rng.standard_normal((500, 1)).astype(np.float64)
+        means = rng.standard_normal((3, 1)).astype(np.float64) * 0.1
+        var = np.array([[0.5], [1.0], [2.0]], dtype=np.float64)
+        sph = var.reshape(-1).copy()  # (N,)
+        log_B_diag = log_emission_matrix(x, means, var, "diag")
+        log_B_sph = log_emission_matrix(x, means, sph, "spherical")
+        assert np.array_equal(log_B_diag, log_B_sph)
+
     def test_tied_matches_full_when_states_share_covar(self) -> None:
         x = np.random.default_rng(2).normal(size=(10, 2))
         means = np.array([[0.0, 0.0], [1.0, 1.0]])
@@ -398,3 +432,33 @@ class TestBIC:
         k = count_free_parameters(3, 2, "diag")
         expected = -2.0 * ll + k * np.log(t)
         assert got == pytest.approx(expected, abs=1e-12)
+
+    def test_d1_param_count_equivalence_class(self) -> None:
+        """P1-HMM-FULL-COV-1DIM-REDUNDANT regression.
+
+        At d=1: spherical = N, diag = N*1 = N, full = N*1*(1+1)/2 = N.
+        Only `tied` differs (1*(1+1)/2 = 1). The model-class
+        deduplication in select_gaussian_hmm depends on this identity.
+        """
+        for n in (2, 3, 4, 5):
+            k_sph = count_free_parameters(n, 1, "spherical")
+            k_diag = count_free_parameters(n, 1, "diag")
+            k_full = count_free_parameters(n, 1, "full")
+            k_tied = count_free_parameters(n, 1, "tied")
+            assert k_sph == k_diag == k_full, (
+                f"d=1 cov-type k mismatch at N={n}: "
+                f"spherical={k_sph}, diag={k_diag}, full={k_full}"
+            )
+            # tied at d=1 has fewer parameters (single shared scalar).
+            assert k_tied < k_diag
+
+    def test_d1_bic_equivalence_class(self) -> None:
+        """At d=1, BIC must be identical across {spherical, diag, full}
+        for any matching log-likelihood and T."""
+        ll = -2500.0
+        t_len = 5000
+        for n in (2, 3):
+            b_sph = bic(ll, n_states=n, dim=1, covariance_type="spherical", t_len=t_len)
+            b_diag = bic(ll, n_states=n, dim=1, covariance_type="diag", t_len=t_len)
+            b_full = bic(ll, n_states=n, dim=1, covariance_type="full", t_len=t_len)
+            assert b_sph == b_diag == b_full

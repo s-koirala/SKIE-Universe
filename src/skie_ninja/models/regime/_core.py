@@ -833,9 +833,12 @@ def bic(
     """Bayesian Information Criterion (Schwarz 1978).
 
     BIC = -2 log L + k log T. Lower is better; the minimiser over a
-    model grid is the BIC-selected model. Sign convention matches
-    Schwarz 1978 eq. 3; hmmlearn and most textbook presentations use
-    this form.
+    model grid is the BIC-selected model. This is the modern
+    convention; equivalent up to the factor -2 and a sign-of-
+    optimisation flip to Schwarz 1978's original criterion
+    ``log L - (1/2) k log n`` (Annals of Statistics 6(2):461, p. 461
+    display sentence; the paper has no numbered equations). hmmlearn
+    and most modern textbook presentations use the -2 form.
     """
     if t_len < 1:
         raise ValueError("t_len must be >= 1.")

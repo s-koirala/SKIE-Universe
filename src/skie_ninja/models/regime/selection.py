@@ -7,6 +7,30 @@ is tracked as ``P1-HMM-WFCV``. Until Cycle 4 lands, the selector
 falls back to BIC-only — ADR-0005 explicitly calls BIC the primary
 criterion with CV as a secondary tiebreaker.
 
+P1-HMM-FULL-COV-1DIM-REDUNDANT (2026-04-26)
+-------------------------------------------
+
+When ``x.shape[1] == 1`` (single-feature emission dimension), the
+covariance parameterisations ``{spherical, diag, full}`` are
+**model-class equivalent**: each encodes one positive scalar variance
+per state, identical likelihood, identical BIC parameter count
+(``k_covar = N``). Only ``tied`` is materially different at d=1
+(single shared scalar across states; ``k_covar = 1``). See the
+addendum at
+``research/01_hypothesis_register/H050/hmm_covariance_d1_equivalence_addendum_2026-04-26.md``
+for the formal proof and the in-house Tier-5 microbench evidence.
+
+To preserve pre-registered grid fidelity (design.md may bind
+``covariance_type ∈ {diag, full}`` literally) while removing
+redundant computation, ``select_gaussian_hmm`` performs **deduplication
+by model-class signature** at d=1: when the grid contains multiple
+``{spherical, diag, full}`` entries for the same ``n_states``, only
+the first is fit; subsequent equivalent entries reuse the fit's
+log-likelihood and BIC, recorded as aliased ``SelectionCandidate``
+entries with ``n_restarts_used = 0`` to mark the alias. The pre-reg
+grid is preserved on the audit trail (every entry produces a
+candidate); only the redundant compute is skipped.
+
 References
 ----------
 
@@ -114,6 +138,10 @@ def select_gaussian_hmm(
     if x_arr.ndim == 1:
         x_arr = x_arr.reshape(-1, 1)
 
+    if not n_states_grid:
+        raise ValueError("n_states_grid must be non-empty.")
+    if not covariance_types:
+        raise ValueError("covariance_types must be non-empty.")
     for n in n_states_grid:
         if n < 2:
             raise ValueError(
@@ -133,11 +161,61 @@ def select_gaussian_hmm(
     best_n: int = -1
     best_cov: CovarianceType = covariance_types[0]
 
+    # Per (n_states, model_class_signature) → (log_likelihood, fitted_model).
+    # At d=1, {spherical, diag, full} all collapse to the same model class
+    # (one positive scalar variance per state; identical likelihood and k).
+    # `tied` remains a separate class (single shared scalar across states).
+    # See module docstring §"P1-HMM-FULL-COV-1DIM-REDUNDANT".
+    dim = x_arr.shape[1]
+    fit_cache: dict[tuple[int, str], tuple[float, GaussianHMM]] = {}
+
+    def _model_class_signature(cov: CovarianceType) -> str:
+        if dim == 1 and cov in ("spherical", "diag", "full"):
+            return "d1_per_state_scalar"
+        return cov
+
     idx = 0
     for n in n_states_grid:
         for cov in covariance_types:
             seed_i = int(sub_seeds[idx].generate_state(1)[0])
             idx += 1
+            sig = (n, _model_class_signature(cov))
+            if sig in fit_cache:
+                # Model-class duplicate: reuse the prior fit's likelihood.
+                # BIC is recomputed under the requested cov_type label so
+                # the count_free_parameters identity at d=1 is exercised
+                # (and any future drift would surface as a BIC mismatch in
+                # tests/unit/test_hmm_core.py::test_d1_param_count_equivalence_class).
+                # The strict `<` cache-hit promotion is unreachable today
+                # (BIC is identical within the equivalence class; see
+                # test_d1_bic_equivalence_class) but is kept as defensive
+                # logic so that any future drift cannot silently desynchronise
+                # `best_model` from `best_cov` — the cached fitted model is
+                # promoted alongside the cov label.
+                ll, cached_model = fit_cache[sig]
+                bic_score = bic(
+                    log_likelihood=ll,
+                    n_states=n,
+                    dim=dim,
+                    covariance_type=cov,
+                    t_len=x_arr.shape[0],
+                )
+                candidates.append(
+                    SelectionCandidate(
+                        n_states=n,
+                        covariance_type=cov,
+                        log_likelihood=ll,
+                        bic=bic_score,
+                        n_restarts_used=0,  # alias marker
+                    )
+                )
+                if bic_score < best_bic:
+                    best_bic = bic_score
+                    best_model = cached_model
+                    best_n = n
+                    best_cov = cov
+                continue
+
             model = GaussianHMM(
                 n_states=n,
                 covariance_type=cov,
@@ -156,10 +234,11 @@ def select_gaussian_hmm(
             bic_score = bic(
                 log_likelihood=ll,
                 n_states=n,
-                dim=x_arr.shape[1],
+                dim=dim,
                 covariance_type=cov,
                 t_len=x_arr.shape[0],
             )
+            fit_cache[sig] = (ll, model)
             candidates.append(
                 SelectionCandidate(
                     n_states=n,

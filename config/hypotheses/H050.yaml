@@ -1,3 +1,16 @@
+# H050 hypothesis configuration.
+#
+# Cross-symbol return aggregation rule (sub-rule 2a + 3.3a + Path A):
+#   research/01_hypothesis_register/H050/aggregation_rule_addendum_2026-04-24.md
+#
+# HMM covariance grid (d=1 model-class deduplication implemented in
+# select_gaussian_hmm; YAML grid preserved per design.md §5):
+#   research/01_hypothesis_register/H050/hmm_covariance_d1_equivalence_addendum_2026-04-26.md
+#   The grid is `[diag, full]` per pre-reg; at d=1 `full` is model-class
+#   equivalent to `diag` (same likelihood, same k for BIC) and the
+#   selector skips the redundant fit, aliasing the `full` candidate to
+#   the `diag` fit. Pre-reg fidelity preserved; redundant compute removed.
+#   `tied` is NOT equivalent (shared variance across states).
 hypothesis_id: H050
 test_statistic: "SR_filtered_gated - SR_filtered_unconditional"
 universe: [ES, NQ]  # front-month roll-adjusted
@@ -21,7 +34,7 @@ classifier:
     min_data_in_leaf: [20, 50]
   search: {method: random, n_draws: 200, seed: 2026}
 hmm:
-  covariance_type: [diag, full]
+  covariance_type: [diag, full]  # pre-reg per design.md §5; d=1 dedup at fit time per top-of-file addendum pointer
   selection: bic_plus_cv_ll
   inference: filter_states  # ADR-0005 anti-look-ahead
 splitter:

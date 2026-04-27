@@ -59,12 +59,27 @@ with proper subagent isolation per [SKILL.md](../../.claude/skills/audit-remedia
 
 ## 1-dim emission redundancy of `full` covariance
 
-H050 binds emissions to **single-feature returns** (`r_tr.reshape(-1, 1)`, dim=1). For d=1, `full` and `diag` covariance encode the SAME object: a single positive scalar per state. BIC selection between them is degenerate (identical likelihood, identical effective parameter count = 1 variance per state). But the IMPLEMENTATION paths differ structurally:
+H050 binds emissions to **single-feature returns** (`r_tr.reshape(-1, 1)`, dim=1). For d=1, `full` and `diag` covariance encode the SAME object: a single positive scalar per state. BIC selection between them is degenerate (identical likelihood, identical effective parameter count `k = N` for both, per `count_free_parameters` at [_core.py:780-823](../../src/skie_ninja/models/regime/_core.py); in fact `spherical = diag = full = N` at d=1 and only `tied = 1` differs). The IMPLEMENTATION paths differ structurally:
 
-- **`diag` path** ([_core.py:200-211](../../src/skie_ninja/models/regime/_core.py)): 3 vectorised ufuncs (`diff ** 2 / covars`, `log(covars)`, sum) on a T-length array. ~10M numpy ops on T=3M.
-- **`full` path** ([_core.py:232-250](../../src/skie_ninja/models/regime/_core.py)): per-state-per-iteration `np.linalg.cholesky` (1×1 matrix → trivial mathematically but invokes LAPACK) + `np.linalg.solve` (triangular, T-length) + `np.einsum`. LAPACK dispatch overhead × 2 states × ~50 EM iter × 5–10 restarts on T=3M observations.
+- **`diag` path** ([_core.py:200-211](../../src/skie_ninja/models/regime/_core.py)): 3 vectorised ufuncs (`diff ** 2 / covars`, `log(covars)`, sum) on a T-length array.
+- **`full` path** ([_core.py:232-250](../../src/skie_ninja/models/regime/_core.py)): per-state-per-iteration `np.linalg.cholesky` (1×1 matrix → trivial mathematically but invokes LAPACK) + `np.linalg.solve` (triangular, T-length) + `np.einsum`.
 
-For 1-dim emissions, fitting `full` does **redundant** work — produces an identical likelihood at ~10× the cost. This is not an algorithmic optimisation; it is removal of computation that has no effect on the model.
+**Constant-factor amendment (2026-04-26).** This audit trail's original text estimated the `full` overhead at "~10×" without an in-run measurement. That estimate was wrong. A subsequent in-house Tier-5 microbench (BLAS pinned to 1 thread per ADR-0009; source [scripts/bench/bench_hmm_cov_d1.py](../../scripts/bench/bench_hmm_cov_d1.py); raw JSON [logs/bench_hmm_cov_d1_2026-04-26.json](../../logs/bench_hmm_cov_d1_2026-04-26.json); console transcript [logs/bench_hmm_cov_d1_2026-04-26.log](../../logs/bench_hmm_cov_d1_2026-04-26.log)) measured the per-E-step `full/diag` ratio with 95% percentile-bootstrap CI (2000 resamples) at unit variance:
+
+| T (rows) | diag (ms) | full (ms) | ratio | 95% CI | max-abs-diff |
+|---|---|---|---|---|---|
+| 10,000     | 0.051  | 0.130   | **2.569×** | [2.531, 2.630] | 0.0 (bit-exact) |
+| 100,000    | 2.140  | 2.340   | **1.093×** | [1.034, 1.166] | 0.0 (bit-exact) |
+| 1,000,000  | 27.787 | 33.989  | **1.223×** | [1.184, 1.256] | 0.0 (bit-exact) |
+| 3,000,000  | 89.724 | 104.731 | **1.167×** | [1.140, 1.193] | 0.0 (bit-exact) |
+
+At production-realistic σ²=1e-8 (1-min log-return scale), the ratios are 1.250× / 1.171× / 1.206× at T = (100k, 1M, 3M) with `max_abs_diff ≈ 5×10⁻¹⁵` (floating-point round-off; algebraic equivalence holds to ε_machine precision).
+
+At the production fold size (T~3M), `full` is **1.17-1.21× per-E-step**, not 10×. The `~10×` was off by ~7-8×. Tier-5 single-host hand measurement; magnitude is hardware + BLAS-vendor-conditional (see `numpy_show_config` key in JSON manifest).
+
+**Mechanism note:** the original Recommended-fix paragraph below proposed dropping `full` from H050.yaml. After the Round-1 audit-remediate-loop, the implementation was changed to model-class deduplication inside `select_gaussian_hmm` ([src/skie_ninja/models/regime/selection.py](../../src/skie_ninja/models/regime/selection.py)) — pre-reg fidelity preserved (the `[diag, full]` grid in H050.yaml and design.md is unchanged); the second EM trajectory is short-circuited via aliased `SelectionCandidate(n_restarts_used=0)`. See [research/01_hypothesis_register/H050/hmm_covariance_d1_equivalence_addendum_2026-04-26.md](../../research/01_hypothesis_register/H050/hmm_covariance_d1_equivalence_addendum_2026-04-26.md) for the formal addendum and [docs/research_notes/memo_hmm-full-cov-d1-redundant_2026-04-26.md](../research_notes/memo_hmm-full-cov-d1-redundant_2026-04-26.md) for the reconciling proposal memo. Audit-remediate-loop trail: [docs/audits/audit_trail_2026-04-26_hmm-full-cov-d1-redundant.md](audit_trail_2026-04-26_hmm-full-cov-d1-redundant.md).
+
+For 1-dim emissions, fitting `full` does **redundant** work — it produces an identical likelihood at the per-E-step ratio above. This is not an algorithmic optimisation; it is removal of computation that has no effect on the model.
 
 ## Substrate verification
 
@@ -88,12 +103,14 @@ Combined SHA256 reproduces exactly. **The substrate is not the cause of the hang
 
 ## Recommended fix
 
-**Patch**: drop `full` from `config/hypotheses/H050.yaml` `hmm.covariance_type` list. Document the d=1 mathematical equivalence in an addendum r3 (or in the existing addendum r2 as a §6 entry). This is **not a method change** — it removes redundant computation that has no model-class consequence on 1-dimensional emissions.
+**Patch (final, after Round-1 audit-remediate-loop)**: model-class deduplication inside `select_gaussian_hmm` ([src/skie_ninja/models/regime/selection.py](../../src/skie_ninja/models/regime/selection.py)). The H050.yaml `[diag, full]` grid and design.md §5 binding are preserved verbatim; the redundant second EM trajectory is short-circuited at fit time via aliased `SelectionCandidate(n_restarts_used=0)`. Both candidates still appear in `SelectionResult.candidates` for audit fidelity. This is **not a method change** — it removes redundant computation that has no model-class consequence on 1-dimensional emissions.
 
-Estimated impact:
-- Removes the dominant cost path entirely (only `diag` runs).
-- Per-fold HMM cold-fit: ~1–4 hr → ~10–30 min.
-- Total run wall-clock: ~24–48 hr (revised pre-fix estimate) → **~3–6 hr** (post-fix estimate).
+The original "~drop `full` from H050.yaml + new addendum + Schwarz docstring fix" proposal (the literal text removed from this section) was rescinded after Round-1 quant-auditor finding Q-1-4 confirmed [research/01_hypothesis_register/H050/design.md](../../research/01_hypothesis_register/H050/design.md) §5 line 62 binds `covariance_type ∈ {diag, full}` as a 2-element grid. Editing the YAML grid would have been a contestable pre-reg edit. The deduplication path (auditor's recommended fix (c)) preserves pre-reg fidelity exactly.
+
+Estimated impact (revised 2026-04-26 after microbench in §"Constant-factor amendment"):
+- Removes the redundant compute (only one EM trajectory runs per stratum-fold-symbol-equivalence-class); the second `(n, "full")` candidate is recorded in `SelectionResult.candidates` with `n_restarts_used = 0` as the alias marker.
+- Per-fold HMM cold-fit: roughly the previous `(diag + full)` time × `1/(1 + 1.18) ≈ 0.46` (per-E-step ratio at production-realistic σ²).
+- Total run wall-clock: ~24–48 hr (pre-fix estimate) → **~12–22 hr** (post-fix estimate, including non-HMM floor of ~2-3 hr from TripleBarrierLabeler and other components unaffected by this patch). The original "~3–6 hr" estimate in this audit trail was based on the unattributed ~10× figure and is rescinded.
 - Cache amortisation unchanged (still 9× within stratum-fold).
 
 Alternative fixes (deferred unless needed):
@@ -107,8 +124,8 @@ Alternative fixes (deferred unless needed):
 
 ## New follow-ups logged
 
-- `P1-HMM-FULL-COV-1DIM-REDUNDANT` *(perf, blocking next walk-forward run)* — patch H050.yaml `hmm.covariance_type: [diag]`. Document the d=1 mathematical equivalence in an addendum. Skip the `full` code path on 1-dim emissions.
-- `P1-ORCHESTRATOR-PROGRESS-LOGGING` *(operational)* — add INFO-level progress log lines at `_fit_fold` start/end + per-cfg start/end so a future multi-hour run is observable without `py-spy` dump. Should not require any logging-config change beyond the existing structured-JSON logger.
+- `P1-HMM-FULL-COV-1DIM-REDUNDANT` *(perf, blocking next walk-forward run — closed in same patch)* — implement model-class deduplication inside `select_gaussian_hmm` ([src/skie_ninja/models/regime/selection.py](../../src/skie_ninja/models/regime/selection.py)) so the redundant `full`-cov fit at d=1 is short-circuited via aliased `SelectionCandidate(n_restarts_used=0)`. The pre-registered `[diag, full]` grid in [config/hypotheses/H050.yaml](../../config/hypotheses/H050.yaml) and [research/01_hypothesis_register/H050/design.md](../../research/01_hypothesis_register/H050/design.md) §5 is preserved verbatim. The original "patch H050.yaml" recommendation in this audit trail's first iteration was rescinded after Round-1 audit-remediate finding Q-1-4 confirmed the YAML edit would have been a contestable pre-reg edit. Formal addendum: [research/01_hypothesis_register/H050/hmm_covariance_d1_equivalence_addendum_2026-04-26.md](../../research/01_hypothesis_register/H050/hmm_covariance_d1_equivalence_addendum_2026-04-26.md). Audit-remediate-loop trail: [docs/audits/audit_trail_2026-04-26_hmm-full-cov-d1-redundant.md](audit_trail_2026-04-26_hmm-full-cov-d1-redundant.md).
+- `P1-ORCHESTRATOR-PROGRESS-LOGGING` *(operational, open)* — add INFO-level progress log lines at `_fit_fold` start/end + per-cfg start/end so a future multi-hour run is observable without `py-spy` dump. Should not require any logging-config change beyond the existing structured-JSON logger.
 
 ## References
 
