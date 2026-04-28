@@ -40,6 +40,7 @@ dev = [
     "ipykernel>=6.29",
     "jupyterlab>=4.2",
     "pandera[polars]>=0.20",
+    "psutil>=5.9,<7",       # supervised_run.py telemetry (ADR-0010 Layer 4); upper bound per Round-2 R-9 — psutil 6.x has cross-platform process-introspection breakage history
 ]
 phase2 = [
     "tick>=0.7",            # Hawkes process — no cp311 wheel as of 2026-04; defer to Phase-2

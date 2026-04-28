@@ -1348,7 +1348,34 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "verification."
         ),
     )
-    return ap.parse_args(argv)
+    ap.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        metavar="RUN_ID",
+        help=(
+            "P1-WIN-UPDATE-AUTO-REBOOT (ADR-0010 Layer 3): RESERVED "
+            "FOR FUTURE USE. Parse currently rejects this flag at "
+            "argparse time (Round-2 audit-remediate Q-1-12) so the "
+            "operator gets an immediate, unambiguous error rather "
+            "than a silent fresh run after config validation. "
+            "Implementation tracked under follow-up "
+            "P1-PER-SYMBOL-RESUME."
+        ),
+    )
+    parsed = ap.parse_args(argv)
+    if parsed.resume is not None:
+        # Round-2 Q-1-12: reject at argparse time so this rejection
+        # cannot be masked by a config-load error or any other
+        # downstream argument validation.
+        ap.error(
+            "--resume is parsed but not yet implemented "
+            "(P1-PER-SYMBOL-RESUME / ADR-0010 Layer 3). The wake-lock "
+            "(Layer 1) is the primary protection against the "
+            "Windows-Update auto-reboot failure mode; relaunch without "
+            "--resume."
+        )
+    return parsed
 
 
 def _load_output_sha256(paths: Any) -> dict[str, str]:
@@ -2169,6 +2196,10 @@ def run(argv: list[str] | None = None) -> Path:
 
 
 def _run_inner(args: argparse.Namespace, cfg: RunConfig, paths: ProjectPaths) -> Path:
+    # Round-2 Q-1-12: the --resume rejection moved to _parse_args
+    # (argparse-time error) so the operator cannot get past arg
+    # parsing with --resume set. This function trusts that args.resume
+    # is None.
 
     dataset_checksums = _load_output_sha256(paths) if not args.dry_run else {}
 
@@ -2311,7 +2342,14 @@ if __name__ == "__main__":
     # also reconfigures stdout to line_buffering=True so headless
     # runs flush per-line without `python -u` (Round-2 Q-1-3 / R-3).
     from skie_ninja.utils.logging_setup import setup_logging
+    # P1-WIN-UPDATE-AUTO-REBOOT: register this process as
+    # system-required so the Windows power manager defers idle-driven
+    # reboots / sleep for the lifetime of the run (ADR-0010 Layer 1).
+    # No-op on non-Windows hosts. Released automatically on process
+    # exit by the context manager.
+    from skie_ninja.utils.process_protection import system_required_wakelock
 
     setup_logging()
-    out = run(sys.argv[1:])
+    with system_required_wakelock():
+        out = run(sys.argv[1:])
     print(out)

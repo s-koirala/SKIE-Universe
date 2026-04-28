@@ -33,6 +33,14 @@ artifacts/models/**
 !artifacts/models/.gitkeep
 logs/**
 !logs/**/.gitkeep
+# Load-bearing audit evidence: keep crash-evidence dumps versioned
+# (R-1 from ADR-0010 Round-1 audit + R-1-RESIDUAL from Round-2).
+# These are one-time captures from Windows event logs; the original
+# event-log entries roll out over time. NOTE: per git-scm.com/docs/gitignore
+# we must un-ignore the directory itself BEFORE its contents — git
+# refuses to re-include children of an excluded parent directory.
+!logs/crash_evidence/
+!logs/crash_evidence/**
 
 # NinjaTrader build output
 ninjascript/**/bin/

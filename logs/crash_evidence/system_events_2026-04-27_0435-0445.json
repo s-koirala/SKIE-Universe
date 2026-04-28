@@ -1,0 +1,1367 @@
+[
+    {
+        "TimeCreated":  "\/Date(1777282750227)\/",
+        "Id":  2,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Trustlet Id 0 and Pid 0 stopped with status STATUS_SUCCESS."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282752337)\/",
+        "Id":  7002,
+        "ProviderName":  "Microsoft-Windows-Winlogon",
+        "LevelDisplayName":  "Information",
+        "Message":  "User Logoff Notification for Customer Experience Improvement Program"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282752567)\/",
+        "Id":  16,
+        "ProviderName":  "Killer Network Service",
+        "LevelDisplayName":  "Information",
+        "Message":  "Service Stopping"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282752570)\/",
+        "Id":  16,
+        "ProviderName":  "Killer Analytics Service",
+        "LevelDisplayName":  null,
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282752589)\/",
+        "Id":  0,
+        "ProviderName":  "Killer Analytics Service",
+        "LevelDisplayName":  null,
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282752691)\/",
+        "Id":  2,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Trustlet Id 6 and Pid 5328 stopped with status STATUS_SUCCESS."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282753673)\/",
+        "Id":  0,
+        "ProviderName":  "Killer Network Service",
+        "LevelDisplayName":  "Information",
+        "Message":  "Service stopped"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758731)\/",
+        "Id":  24,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The time zone information was refreshed with exit reason 0. Current time zone bias is 300."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758734)\/",
+        "Id":  50104,
+        "ProviderName":  "Microsoft-Windows-Dhcp-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv4 client received shutdown notification"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758734)\/",
+        "Id":  1,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The system time has changed to ?2026?-?04?-?27T09:39:18.731124300Z from ?2026?-?04?-?27T09:39:18.720388200Z.\r\nTime Delta: 10 ms\r\n\r\nChange Reason: An application or system component changed the time.\r\nProcess: \u0027\\Device\\HarddiskVolume3\\Windows\\System32\\svchost.exe\u0027 (PID 11756).\r\n\r\nRTC time: ?2026?-?04?-?27T04:39:18.731124300Z\r\nCurrent time zone bias: 300\r\nRTC time is in UTC: false\r\nSystem time was based on RTC time: false"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758735)\/",
+        "Id":  50105,
+        "ProviderName":  "Microsoft-Windows-Dhcp-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv4 client ProcessDHCPRequestForever received TERMINATE_EVENT"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758740)\/",
+        "Id":  51047,
+        "ProviderName":  "Microsoft-Windows-DHCPv6-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv6 client service is stopped. ShutDown Flag value is 1"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758740)\/",
+        "Id":  51057,
+        "ProviderName":  "Microsoft-Windows-DHCPv6-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv6 client service stop is almost done.DHCP Context Ref count is 1"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758741)\/",
+        "Id":  50106,
+        "ProviderName":  "Microsoft-Windows-Dhcp-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv4 is waiting on DHCPv6 service to stop"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758743)\/",
+        "Id":  50037,
+        "ProviderName":  "Microsoft-Windows-Dhcp-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv4 client service is stopped. ShutDown Flag value is 1"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282758767)\/",
+        "Id":  6006,
+        "ProviderName":  "EventLog",
+        "LevelDisplayName":  "Information",
+        "Message":  "The Event log service was stopped."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282759535)\/",
+        "Id":  10002,
+        "ProviderName":  "Microsoft-Windows-WLAN-AutoConfig",
+        "LevelDisplayName":  "Warning",
+        "Message":  "WLAN Extensibility Module has stopped.\r\n\r\nModule Path: C:\\Windows\\System32\\DriverStore\\FileRepository\\netwtw6e.inf_amd64_d488480304e1f365\\IntelIHVRouter14.dll\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282759673)\/",
+        "Id":  4001,
+        "ProviderName":  "Microsoft-Windows-WLAN-AutoConfig",
+        "LevelDisplayName":  "Information",
+        "Message":  "WLAN AutoConfig service has successfully stopped.\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282760249)\/",
+        "Id":  109,
+        "ProviderName":  "Microsoft-Windows-Kernel-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "The kernel power manager has initiated a shutdown transition.\r\n\r\nAction: Power Action Reboot \r\nEvent Code: 0x0 \r\nReason: Kernel API"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282760873)\/",
+        "Id":  577,
+        "ProviderName":  "Microsoft-Windows-Kernel-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "The system has prepared for a system initiated reboot from Active."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282760968)\/",
+        "Id":  13,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The operating system is shutting down at system time ?2026?-?04?-?27T09:39:20.968221300Z."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770215)\/",
+        "Id":  12,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The operating system started at system time ?2026?-?04?-?27T09:39:29.500000000Z."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770215)\/",
+        "Id":  25,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The system time was initialized to ?2026?-?04?-?27T09:39:29.500000000Z. \r\n\r\nLoader time: ?2026?-?04?-?27T09:39:28.000000000Z\r\nInternal boot flags: 0x2\r\nHAL RTC error code: 0x0\r\nRTC time is in UTC: false\r\nSoft boot: false\r\nSuccess: true\r\nPhase: 0"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770215)\/",
+        "Id":  153,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "Virtualization-based security (policies: VBS Enabled,VSM Required,Hvci,Boot Chain Signer Soft Enforced) is enabled due to VBS registry configuration."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770215)\/",
+        "Id":  18,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "There are 0x1 boot options on this system."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770215)\/",
+        "Id":  32,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "The bootmgr spent 0 ms waiting for user input."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770216)\/",
+        "Id":  20,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "The last shutdown\u0027s success status was true. The last boot\u0027s success status was true."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770216)\/",
+        "Id":  247,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "Unable to load Pluton-Windows firmware. StatusCode: STATUS_SUCCESS, Reason: Failed to apply firmware."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770216)\/",
+        "Id":  238,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "EFI time zone bias: 2047. Daylight flags: 0. Firmware time: ?2026?-?04?-?27T04:39:28.000000000Z."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770216)\/",
+        "Id":  25,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "The boot menu policy was 0x1."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770216)\/",
+        "Id":  27,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "The boot type was 0x0."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770220)\/",
+        "Id":  1,
+        "ProviderName":  "Microsoft-Windows-Hyper-V-Hypervisor",
+        "LevelDisplayName":  "Information",
+        "Message":  "Hypervisor successfully started."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770220)\/",
+        "Id":  2,
+        "ProviderName":  "Microsoft-Windows-Hyper-V-Hypervisor",
+        "LevelDisplayName":  "Information",
+        "Message":  "Hypervisor scheduler type is 0x4."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770220)\/",
+        "Id":  129,
+        "ProviderName":  "Microsoft-Windows-Hyper-V-Hypervisor",
+        "LevelDisplayName":  "Information",
+        "Message":  "Hypervisor initialized I/O remapping.\r\n\r\nHardware present: true\r\nHardware enabled: true\r\nPolicy: 0x0\r\nEnabled features: 0x43\r\nInternal information: 0x0\r\nProblems: 0x0\r\nAdditional information: 0x0"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770220)\/",
+        "Id":  156,
+        "ProviderName":  "Microsoft-Windows-Hyper-V-Hypervisor",
+        "LevelDisplayName":  "Information",
+        "Message":  "Hypervisor configured mitigations for CVE-2018-3646 for virtual machines.\r\n\r\nProcessor not affected: true\r\nProcessor family not affected: false\r\nProcessor supports cache flush: true\r\nHyperThreading enabled: false\r\nParent hypervisor applies mitigations: false\r\nMitigations disabled by bcdedit: false\r\nMitigations enabled: true\r\nCache flush needed: false\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770220)\/",
+        "Id":  165,
+        "ProviderName":  "Microsoft-Windows-Hyper-V-Hypervisor",
+        "LevelDisplayName":  "Information",
+        "Message":  "Hypervisor configured mitigations for CVE-2019-11091, CVE-2018-12126, CVE-2018-12127, CVE-2018-12130 for virtual machines.\r\n\r\nProcessor not affected: true\r\nProcessor family not affected: false\r\nProcessor supports microarchitectural buffer flush: true\r\nBuffer flush needed: true\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770220)\/",
+        "Id":  167,
+        "ProviderName":  "Microsoft-Windows-Hyper-V-Hypervisor",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The hypervisor did not enable mitigations for side channel vulnerabilities for virtual machines because HyperThreading is enabled. To enable mitigations for virtual machines, disable HyperThreading."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770222)\/",
+        "Id":  3,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Kernel started with status STATUS_SUCCESS and flags HvciEnabled,HvciStrictMode."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770222)\/",
+        "Id":  30,
+        "ProviderName":  "Microsoft-Windows-Kernel-Boot",
+        "LevelDisplayName":  "Information",
+        "Message":  "The firmware reported boot metrics."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770222)\/",
+        "Id":  20,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The leap second configuration has been updated.\r\nReason: Leap second data initialized from registry during boot\r\nLeap seconds enabled: true\r\nNew leap second count: 0\r\nOld leap second count: 0"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282770247)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-HAL",
+        "LevelDisplayName":  "Information",
+        "Message":  "IOMMU fault reporting has been initialized."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282771226)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027FileInfo\u0027 (10.0, ?2093?-?04?-?01T20:29:43.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282771227)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027Wof\u0027 (10.0, ?2089?-?07?-?14T21:58:05.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282771228)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027WdFilter\u0027 (10.0, ?2036?-?01?-?26T04:33:35.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282771267)\/",
+        "Id":  24711,
+        "ProviderName":  "Microsoft-Windows-BitLocker-Driver",
+        "LevelDisplayName":  "Information",
+        "Message":  "A V2 TPM protector was used to start Windows.\r\nBinding ID: {e0f3b476-a73e-4425-805b-0c939f260e04}."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282771267)\/",
+        "Id":  24709,
+        "ProviderName":  "Microsoft-Windows-BitLocker-Driver",
+        "LevelDisplayName":  "Information",
+        "Message":  "This event contains the boot-time final TPM PCR values and TCG log data."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282772091)\/",
+        "Id":  98,
+        "ProviderName":  "Microsoft-Windows-Ntfs",
+        "LevelDisplayName":  "Information",
+        "Message":  "Volume C: (\\Device\\HarddiskVolume3) is healthy.  No action is needed."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777324)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027FileCrypt\u0027 (10.0, ?2075?-?08?-?31T17:07:07.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777336)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027UCPD\u0027 (10.0, ?2061?-?11?-?20T02:48:12.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777603)\/",
+        "Id":  7036,
+        "ProviderName":  "VfpExt",
+        "LevelDisplayName":  "Information",
+        "Message":  "The  service entered the Driver load complete state."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777603)\/",
+        "Id":  7036,
+        "ProviderName":  "VfpExt",
+        "LevelDisplayName":  "Information",
+        "Message":  "The  service entered the Driver load start state."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777763)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027npsvctrig\u0027 (10.0, ?1978?-?05?-?14T04:13:30.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777850)\/",
+        "Id":  125,
+        "ProviderName":  "Microsoft-Windows-Kernel-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "ACPI thermal zone \\_TZ.TZ00 has been enumerated.             \r\n_PSV = 0K             \r\n_TC1 = 0             \r\n_TC2 = 0             \r\n_TSP = 0ms             \r\n_AC0 = 353K             \r\n_AC1 = 328K             \r\n_AC2 = 323K             \r\n_AC3 = 318K             \r\n_AC4 = 313K             \r\n_AC5 = 0K             \r\n_AC6 = 0K             \r\n_AC7 = 0K             \r\n_AC8 = 0K             \r\n_AC9 = 0K             \r\n_CRT = 378K             \r\n_HOT = 0K             \r\nminimum throttle = 0             \r\n_CR3 = 0K"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777851)\/",
+        "Id":  578,
+        "ProviderName":  "Microsoft-Windows-Kernel-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "The system has detected a system initiated reboot from Active."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777851)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\SystemRoot\\System32\\Config\\SECURITY was cleared updating 97 keys and creating 5 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777851)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\SystemRoot\\System32\\Config\\SAM was cleared updating 62 keys and creating 6 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282777855)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\SystemRoot\\System32\\Config\\DEFAULT was cleared updating 1012 keys and creating 120 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282778981)\/",
+        "Id":  98,
+        "ProviderName":  "Microsoft-Windows-Ntfs",
+        "LevelDisplayName":  "Information",
+        "Message":  "Volume \\\\?\\Volume{e86ec8bd-beee-4c71-8571-5f54482a66e0} (\\Device\\HarddiskVolume5) is healthy.  No action is needed."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282779026)\/",
+        "Id":  98,
+        "ProviderName":  "Microsoft-Windows-Ntfs",
+        "LevelDisplayName":  "Information",
+        "Message":  "Volume \\\\?\\Volume{461de8ee-84f2-4de5-afea-ec8368ac32e3} (\\Device\\HarddiskVolume6) is healthy.  No action is needed."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282779051)\/",
+        "Id":  98,
+        "ProviderName":  "Microsoft-Windows-Ntfs",
+        "LevelDisplayName":  "Information",
+        "Message":  "Volume \\\\?\\Volume{f674a2d1-0c64-4664-b198-54cfbeb1de40} (\\Device\\HarddiskVolume4) is healthy.  No action is needed."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282779142)\/",
+        "Id":  10118,
+        "ProviderName":  "Microsoft-Windows-DriverFrameworks-UserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "UMDF reflector is unable to connect to service control manager (SCM). This is expected during boot, when SCM has not started yet. Will retry when it starts."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282779143)\/",
+        "Id":  219,
+        "ProviderName":  "Microsoft-Windows-Kernel-PnP",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The driver \\Driver\\WUDFRd failed to load.\r\nDevice: PCI\\VEN_8086\u0026DEV_A71D\u0026SUBSYS_0CD21028\u0026REV_01\\3\u002611583659\u00260\u002620\r\nStatus: 0xC0000365"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282779416)\/",
+        "Id":  15,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "Hive \\SystemRoot\\System32\\Config\\SOFTWARE was reorganized with a starting size of 160477184 bytes and an ending size of 140922880 bytes."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282779438)\/",
+        "Id":  24,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The time zone information was refreshed with exit reason 0. Current time zone bias is 300."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780897)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 0 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 42\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780925)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 1 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780926)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 2 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780928)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 3 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780929)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 4 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780931)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 5 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 69\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780932)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 6 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780933)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 7 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780935)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 8 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 265\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780936)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 9 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 265\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780937)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 10 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 265\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780939)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 11 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 265\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780941)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 12 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780943)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 13 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780945)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 14 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780947)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 15 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 261\r\nMinimum performance percentage: 76\r\nMinimum throttle percentage: 3"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780949)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 16 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780951)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 17 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780953)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 18 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780955)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 19 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780958)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 20 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780960)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 21 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780962)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 22 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780964)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 23 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780967)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 24 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780969)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 25 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780971)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 26 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282780980)\/",
+        "Id":  55,
+        "ProviderName":  "Microsoft-Windows-Kernel-Processor-Power",
+        "LevelDisplayName":  "Information",
+        "Message":  "Processor 27 in group 0 exposes the following power management capabilities:\r\n\r\nIdle state type: Micro Power Engine Plugin (11 state(s))\r\n\r\nPerformance state type: ACPI Collaborative Processor Performance Control\r\nNominal Frequency (MHz): 2100\r\nMaximum performance percentage: 280\r\nMinimum performance percentage: 100\r\nMinimum throttle percentage: 6"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781203)\/",
+        "Id":  7029,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781203)\/",
+        "Id":  7036,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  "The \\Device\\NDMP2 service entered the Intel(R) Wi-Fi 6E AX210 160MHz state."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781203)\/",
+        "Id":  2,
+        "ProviderName":  "MEIx64",
+        "LevelDisplayName":  "Information",
+        "Message":  "Intel(R) Management Engine Interface driver has started successfully."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781219)\/",
+        "Id":  7027,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781251)\/",
+        "Id":  7002,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781251)\/",
+        "Id":  7005,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781334)\/",
+        "Id":  7010,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781505)\/",
+        "Id":  7018,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282781505)\/",
+        "Id":  7017,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282784499)\/",
+        "Id":  18,
+        "ProviderName":  "BTHUSB",
+        "LevelDisplayName":  "Information",
+        "Message":  "Windows cannot store Bluetooth authentication codes (link keys) on the local adapter. Bluetooth keyboards might not work in the system BIOS during startup."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786372)\/",
+        "Id":  19,
+        "ProviderName":  "Microsoft-Windows-Wininit",
+        "LevelDisplayName":  "Information",
+        "Message":  "Virtualization Based Security new timer creation status\r\n\r\nHRESULT: The operation completed successfully.\r\nNew latch timer needed: false\r\nNew latch timer waiting for system update completion: false\r\nPrevious latch timer exists but disabled by registry: false\r\nPolicy file exists: false\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786372)\/",
+        "Id":  24,
+        "ProviderName":  "Microsoft-Windows-Wininit",
+        "LevelDisplayName":  "Information",
+        "Message":  "Boot App Anti-Rollback: Timer start completed with status:\r\n\r\nWin32Error: 0\r\nStart time: ?2026?-?04?-?15T22:18:21.215559600Z\r\nGrace period: 51840000000000\r\nDue time: ?2026?-?06?-?14T22:18:21.215559600Z\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786372)\/",
+        "Id":  25,
+        "ProviderName":  "Microsoft-Windows-Wininit",
+        "LevelDisplayName":  "Information",
+        "Message":  "Boot App Anti-Rollback: Previous timer resumed with status:\r\n\r\nHRESULT: The operation completed successfully.\r\nPrevious timer present: true\r\nStart time: ?2026?-?04?-?15T22:18:21.215559600Z\r\nGrace period: 51840000000000\r\nAttempted recovery enforcement succeeded: false\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786373)\/",
+        "Id":  23,
+        "ProviderName":  "Microsoft-Windows-Wininit",
+        "LevelDisplayName":  "Information",
+        "Message":  "Boot App Anti-Rollback: Initialize Completed with status:\r\nHRESULT: The operation completed successfully.\r\nNew timer needed: false\r\nNew timer waiting for system update completion: false\r\nPrevious latch timer exists but disabled by registry: false\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786517)\/",
+        "Id":  14,
+        "ProviderName":  "Microsoft-Windows-Wininit",
+        "LevelDisplayName":  "Information",
+        "Message":  "Credential Guard configuration:\r\n\r\nRegistry Configuration: 0x0\r\nTest Configuration: 0\r\nAuto Enablement: 0"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786519)\/",
+        "Id":  5,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Trustlet NULL Id 0 and Pid 0 started with status STATUS_SUCCESS."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786520)\/",
+        "Id":  1,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Trustlet \\??\\C:\\Windows\\system32\\lsaiso.exe Id 1 and Pid 1724 started with status STATUS_SUCCESS."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786520)\/",
+        "Id":  18,
+        "ProviderName":  "Microsoft-Windows-Wininit",
+        "LevelDisplayName":  "Information",
+        "Message":  "VBS Key Isolation was started and will protect VSM-isolated keys."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786520)\/",
+        "Id":  12,
+        "ProviderName":  "Microsoft-Windows-Wininit",
+        "LevelDisplayName":  "Information",
+        "Message":  "LSASS.exe was started as a protected process with level: 4."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786567)\/",
+        "Id":  6156,
+        "ProviderName":  "LsaSrv",
+        "LevelDisplayName":  "Information",
+        "Message":  "Credential Guard auto enablement status.\r\n\r\nHardware Requirements for Virtualization Based Security:\t1\r\nDomain Joined:\t0\r\nAzure AD Joined:\t0\r\n Licensed for Credential Guard:\t0\r\nDomain Controller:\t0"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786643)\/",
+        "Id":  5,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Trustlet NULL Id 0 and Pid 0 started with status STATUS_SUCCESS."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786665)\/",
+        "Id":  16962,
+        "ProviderName":  "Microsoft-Windows-Directory-Services-SAM",
+        "LevelDisplayName":  "Information",
+        "Message":  "Remote calls to the SAM database are being restricted using the default security descriptor: O:SYG:SYD:(A;;RC;;;BA).\r\nFor more information please see http://go.microsoft.com/fwlink/?LinkId=787651."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786670)\/",
+        "Id":  16977,
+        "ProviderName":  "Microsoft-Windows-Directory-Services-SAM",
+        "LevelDisplayName":  "Information",
+        "Message":  "The domain is configured with the following minimum password length-related settings.\r\n\r\nMinimumPasswordLength: 0\r\n\r\nRelaxMinimumPasswordLengthLimits: 0\r\n\r\nMinimumPasswordLengthAudit: -1\r\n\r\nFor more information see https://go.microsoft.com/fwlink/?LinkId=2097191.\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786670)\/",
+        "Id":  16983,
+        "ProviderName":  "Microsoft-Windows-Directory-Services-SAM",
+        "LevelDisplayName":  "Information",
+        "Message":  "The security account manager is now logging periodic summary events for remote clients that call legacy password change or set RPC methods.\r\n\r\nFor more information please see https://go.microsoft.com/fwlink/?linkid=2150956.\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786716)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\??\\C:\\Windows\\ServiceProfiles\\NetworkService\\NTUSER.DAT was cleared updating 247 keys and creating 24 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786738)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\??\\C:\\Windows\\ServiceProfiles\\LocalService\\NTUSER.DAT was cleared updating 260 keys and creating 24 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786855)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\SystemRoot\\System32\\Config\\BBI was cleared updating 426 keys and creating 113 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786925)\/",
+        "Id":  50036,
+        "ProviderName":  "Microsoft-Windows-Dhcp-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv4 client service is started"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786925)\/",
+        "Id":  50103,
+        "ProviderName":  "Microsoft-Windows-Dhcp-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv4 client registered for shutdown notification"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786925)\/",
+        "Id":  50036,
+        "ProviderName":  "Microsoft-Windows-Dhcp-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv4 client service is started"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786931)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027bfs\u0027 (10.0, ?2026?-?06?-?10T01:28:18.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786934)\/",
+        "Id":  51046,
+        "ProviderName":  "Microsoft-Windows-DHCPv6-Client",
+        "LevelDisplayName":  "Information",
+        "Message":  "DHCPv6 client service is started"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786966)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027luafv\u0027 (10.0, ?2039?-?03?-?08T01:05:33.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282786967)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027wcifs\u0027 (10.0, ?2099?-?04?-?10T09:23:15.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787019)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027CldFlt\u0027 (10.0, ?2027?-?12?-?19T16:35:20.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787019)\/",
+        "Id":  1,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027CldFlt\u0027 (Version 10.0, ?2027?-?12?-?19T16:35:20.000000000Z) unloaded successfully."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787019)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027CldFlt\u0027 (10.0, ?2027?-?12?-?19T16:35:20.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787046)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027UnionFS\u0027 (10.0, ?2042?-?03?-?13T20:41:09.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787056)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027storqosflt\u0027 (10.0, ?2016?-?04?-?28T17:00:23.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787070)\/",
+        "Id":  6,
+        "ProviderName":  "Microsoft-Windows-FilterManager",
+        "LevelDisplayName":  "Information",
+        "Message":  "File System Filter \u0027bindflt\u0027 (10.0, ?2081?-?10?-?17T16:34:26.000000000Z) has successfully loaded and registered with Filter Manager."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787107)\/",
+        "Id":  6009,
+        "ProviderName":  "EventLog",
+        "LevelDisplayName":  "Information",
+        "Message":  "Microsoft (R) Windows (R) 10.00. 26200  Multiprocessor Free."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787107)\/",
+        "Id":  6005,
+        "ProviderName":  "EventLog",
+        "LevelDisplayName":  "Information",
+        "Message":  "The Event log service was started."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787107)\/",
+        "Id":  6013,
+        "ProviderName":  "EventLog",
+        "LevelDisplayName":  "Information",
+        "Message":  "The system uptime is 17 seconds."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787356)\/",
+        "Id":  277,
+        "ProviderName":  "Microsoft-Windows-Hyper-V-VmSwitch",
+        "LevelDisplayName":  "Information",
+        "Message":  "vmswitch.sys build 26100.amd64.ge_release_svc_prod1, debug false, official true, 1 1"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787594)\/",
+        "Id":  7001,
+        "ProviderName":  "Microsoft-Windows-Winlogon",
+        "LevelDisplayName":  "Information",
+        "Message":  "User Logon Notification for Customer Experience Improvement Program"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://*:5357/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://+:80/Temporary_Listen_Addresses/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL https://*:5358/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://*:2869/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL https://+:5986/wsman/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://+:47001/wsman/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://+:5985/wsman/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://127.0.0.1:8886:127.0.0.1/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL https://+:10245/WMPNSSv4/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://+:10243/WMPNSSv4/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://127.0.0.1:8883:127.0.0.1/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL https://+:3392/rdp/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL https://+:443/sra_{BA195980-CD49-458b-9E23-C84EE0ADCD75}/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://+:10247/apps/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://+:10246/MDEServer/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787606)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://127.0.0.1:8884:127.0.0.1/. Status 0x0. Process Id 0x4 Executable path , User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787725)\/",
+        "Id":  15,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "Hive \\??\\C:\\Users\\skoir\\ntuser.dat was reorganized with a starting size of 23826432 bytes and an ending size of 23093248 bytes."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787739)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\??\\C:\\Users\\skoir\\AppData\\Local\\Microsoft\\Windows\\UsrClass.dat was cleared updating 4008 keys and creating 485 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787846)\/",
+        "Id":  16,
+        "ProviderName":  "Killer Analytics Service",
+        "LevelDisplayName":  null,
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787846)\/",
+        "Id":  0,
+        "ProviderName":  "Killer Analytics Service",
+        "LevelDisplayName":  null,
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787880)\/",
+        "Id":  27,
+        "ProviderName":  "RST Middleware",
+        "LevelDisplayName":  "Information",
+        "Message":  "Found passthru disk: SCSI Port: 0, SCSI Bus: 4, SCSI Target: 0, PCIe SSD, 1024209543168 bytes, BG6 KIOXIA 1024GB                       "
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787933)\/",
+        "Id":  16,
+        "ProviderName":  "Killer Network Service",
+        "LevelDisplayName":  "Information",
+        "Message":  "Service Starting"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282787968)\/",
+        "Id":  0,
+        "ProviderName":  "Killer Network Service",
+        "LevelDisplayName":  "Information",
+        "Message":  "Service started/resumed"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282788208)\/",
+        "Id":  12,
+        "ProviderName":  "Microsoft-Windows-UserModePowerService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Process C:\\Windows\\System32\\DriverStore\\FileRepository\\ipf_cpu.inf_amd64_3ef1d4bc8e8d81f0\\ipf_uf.exe (process ID:6384) reset policy scheme from {6338f74c-710e-4363-98bc-a21dab15ba88} to {6338f74c-710e-4363-98bc-a21dab15ba88}"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282788366)\/",
+        "Id":  1041,
+        "ProviderName":  "Microsoft-Windows-TPM-WMI",
+        "LevelDisplayName":  "Information",
+        "Message":  "Pre-attestation health check detailed information: {\"Version\":1,\"HealthStatus\":\"Attestable\",\"Required\":[{\"Field\":\"TpmPresent\",\"Value\":true,\"DesiredValue\":true},{\"Field\":\"TpmMeetsMinimumVersion\",\"Value\":true,\"DesiredValue\":true},{\"Field\":\"TpmIsResponsive\",\"Value\":true,\"DesiredValue\":true},{\"Field\":\"EkCertIsAvailable\",\"Value\":true,\"DesiredValue\":true},{\"Field\":\"TcgLogFound\",\"Value\":true,\"DesiredValue\":true}],\"Expected\":[{\"Field\":\"PcrsMatchTcgLog\",\"Value\":true,\"DesiredValue\":true}],\"Informational\":[{\"Field\":\"SecureBootEnabled\",\"ValueFromComputer\":true,\"ValueFromTcgLog\":true,\"DesiredValue\":true,\"TcgValueIsVerifiable\":true},{\"Field\":\"VirtualSecureMemory\",\"ValueFromComputer\":false,\"ValueFromTcgLog\":false,\"DesiredValue\":true,\"TcgValueIsVerifiable\":true},{\"Field\":\"SecureCorePCCompliant\",\"ValueFromComputer\":false,\"ValueFromTcgLog\":false,\"DesiredValue\":true,\"TcgValueIsVerifiable\":true}{\"Field\":\"BootTcgLogFoundInFileSystem\",\"Value\":true,\"DesiredValue\":true},{\"Field\":\"CurrentTcgLogFoundInFileSystem\",\"Value\":true,\"DesiredValue\":true}]}"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282788366)\/",
+        "Id":  1038,
+        "ProviderName":  "Microsoft-Windows-TPM-WMI",
+        "LevelDisplayName":  "Information",
+        "Message":  "Pre-attestation health checks confirm that the device is expected to pass attestation.\r\n Please see C:\\Windows\\Logs\\MeasuredBoot\\0000000221-0000000000.json for detailed information on what checks were made."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282788425)\/",
+        "Id":  12,
+        "ProviderName":  "Microsoft-Windows-UserModePowerService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Process C:\\Windows\\System32\\DriverStore\\FileRepository\\ipf_cpu.inf_amd64_3ef1d4bc8e8d81f0\\ipf_uf.exe (process ID:6384) reset policy scheme from {6338f74c-710e-4363-98bc-a21dab15ba88} to {6338f74c-710e-4363-98bc-a21dab15ba88}"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282789718)\/",
+        "Id":  4000,
+        "ProviderName":  "Microsoft-Windows-WLAN-AutoConfig",
+        "LevelDisplayName":  "Information",
+        "Message":  "WLAN AutoConfig service has successfully started.\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282789753)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\??\\C:\\Windows\\AppCompat\\Programs\\Amcache.hve was cleared updating 5576 keys and creating 1853 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282789848)\/",
+        "Id":  10001,
+        "ProviderName":  "Microsoft-Windows-WLAN-AutoConfig",
+        "LevelDisplayName":  "Information",
+        "Message":  "WLAN Extensibility Module has successfully started.\r\n\r\nModule Path: C:\\Windows\\System32\\DriverStore\\FileRepository\\netwtw6e.inf_amd64_d488480304e1f365\\IntelIHVRouter14.dll\r\n"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282789949)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID \r\n{6B3B8D23-FA8D-40B9-8DBD-B950333E2C52}\r\n and APPID \r\n{4839DDB7-58C2-48F5-8283-E1D1807D0D7D}\r\n to the user NT AUTHORITY\\LOCAL SERVICE SID (S-1-5-19) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282789953)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID \r\n{6B3B8D23-FA8D-40B9-8DBD-B950333E2C52}\r\n and APPID \r\n{4839DDB7-58C2-48F5-8283-E1D1807D0D7D}\r\n to the user NT AUTHORITY\\LOCAL SERVICE SID (S-1-5-19) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282790801)\/",
+        "Id":  5,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Trustlet NULL Id 0 and Pid 0 started with status STATUS_SUCCESS."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282790802)\/",
+        "Id":  1,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Trustlet \\??\\C:\\Windows\\System32\\NgcIso.exe Id 6 and Pid 15724 started with status STATUS_SUCCESS."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282790809)\/",
+        "Id":  18,
+        "ProviderName":  "TPM",
+        "LevelDisplayName":  "Information",
+        "Message":  "This event triggers the Trusted Platform Module (TPM) provisioning/status check to run."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282793518)\/",
+        "Id":  7021,
+        "ProviderName":  "Netwtw14",
+        "LevelDisplayName":  "Information",
+        "Message":  null
+    },
+    {
+        "TimeCreated":  "\/Date(1777282799488)\/",
+        "Id":  1537,
+        "ProviderName":  "Microsoft-Windows-TPM-WMI",
+        "LevelDisplayName":  "Information",
+        "Message":  "The Device Health Certificate was successfully provisioned from has.spserv.microsoft.com."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282799496)\/",
+        "Id":  1282,
+        "ProviderName":  "Microsoft-Windows-TPM-WMI",
+        "LevelDisplayName":  "Information",
+        "Message":  "The TBS device identifier has been generated."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282799614)\/",
+        "Id":  1025,
+        "ProviderName":  "Microsoft-Windows-TPM-WMI",
+        "LevelDisplayName":  "Information",
+        "Message":  "The TPM was successfully provisioned and is now ready for use."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282799752)\/",
+        "Id":  1046,
+        "ProviderName":  "Microsoft-Windows-TPM-WMI",
+        "LevelDisplayName":  "Information",
+        "Message":  "Measured boot files deleted successfully. The following 4 files were deleted: "
+    },
+    {
+        "TimeCreated":  "\/Date(1777282813669)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Launch permission for the COM Server application with CLSID \r\nWindows.SecurityCenter.WscCloudBackupProvider\r\n and APPID \r\nUnavailable\r\n to the user SajanStation2\\skoir SID (S-1-5-21-4022151911-500715980-2403481343-1001) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282813988)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Launch permission for the COM Server application with CLSID \r\nWindows.SecurityCenter.WscCloudBackupProvider\r\n and APPID \r\nUnavailable\r\n to the user SajanStation2\\skoir SID (S-1-5-21-4022151911-500715980-2403481343-1001) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282820724)\/",
+        "Id":  5,
+        "ProviderName":  "Microsoft-Windows-IsolatedUserMode",
+        "LevelDisplayName":  "Information",
+        "Message":  "Secure Trustlet NULL Id 0 and Pid 0 started with status STATUS_SUCCESS."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282836676)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID \r\n{2593F8B9-4EAF-457C-B68A-50F6B8EA6B54}\r\n and APPID \r\n{15C20B67-12E7-4BB6-92BB-7AFF07997402}\r\n to the user SajanStation2\\skoir SID (S-1-5-21-4022151911-500715980-2403481343-1001) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282860031)\/",
+        "Id":  3,
+        "ProviderName":  "BTHUSB",
+        "LevelDisplayName":  "Warning",
+        "Message":  "A command sent to the adapter has timed out. The adapter did not respond."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282911467)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Activation permission for the COM Server application with CLSID \r\n{9EA82395-E31B-41CA-8DF7-EC1CEE7194DF}\r\n and APPID \r\n{2ED83BAA-B2FD-43B1-99BF-E6149C622692}\r\n to the user NT AUTHORITY\\NETWORK SERVICE SID (S-1-5-20) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282911487)\/",
+        "Id":  16,
+        "ProviderName":  "Microsoft-Windows-Kernel-General",
+        "LevelDisplayName":  "Information",
+        "Message":  "The access history in hive \\??\\C:\\Windows\\ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization\\State\\dosvcState.dat was cleared updating 40 keys and creating 13 modified pages."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282913739)\/",
+        "Id":  158,
+        "ProviderName":  "Microsoft-Windows-Time-Service",
+        "LevelDisplayName":  "Information",
+        "Message":  "The time provider \u0027VMICTimeProvider\u0027 has indicated that the current hardware and operating environment is not supported and has stopped. This behavior is expected for VMICTimeProvider on non-HyperV-guest environments. This may be the expected behavior for the current provider in the current operating environment as well."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282913998)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Launch permission for the COM Server application with CLSID \r\nWindows.SecurityCenter.WscDataProtection\r\n and APPID \r\nUnavailable\r\n to the user NT AUTHORITY\\SYSTEM SID (S-1-5-18) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282913998)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Launch permission for the COM Server application with CLSID \r\nWindows.SecurityCenter.WscBrokerManager\r\n and APPID \r\nUnavailable\r\n to the user NT AUTHORITY\\SYSTEM SID (S-1-5-18) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282913998)\/",
+        "Id":  10016,
+        "ProviderName":  "Microsoft-Windows-DistributedCOM",
+        "LevelDisplayName":  "Warning",
+        "Message":  "The application-specific permission settings do not grant Local Launch permission for the COM Server application with CLSID \r\nWindows.SecurityCenter.SecurityAppBroker\r\n and APPID \r\nUnavailable\r\n to the user NT AUTHORITY\\SYSTEM SID (S-1-5-18) from address LocalHost (Using LRPC) running in the application container Unavailable SID (Unavailable). This security permission can be modified using the Component Services administrative tool."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282917483)\/",
+        "Id":  15008,
+        "ProviderName":  "Microsoft-Windows-HttpEvent",
+        "LevelDisplayName":  "Information",
+        "Message":  "Reservation for namespace identified by URL prefix http://127.0.0.1:8884:127.0.0.1/ was successfully deleted."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282917483)\/",
+        "Id":  15007,
+        "ProviderName":  "Microsoft-Windows-HttpEvent",
+        "LevelDisplayName":  "Information",
+        "Message":  "Reservation for namespace identified by URL prefix http://127.0.0.1:8884:127.0.0.1/ was successfully added."
+    },
+    {
+        "TimeCreated":  "\/Date(1777282917491)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://127.0.0.1:8884:127.0.0.1/. Status 0xC0000035. Process Id 0x769C Executable path \\Device\\HarddiskVolume3\\Program Files\\Dell\\SupportAssistAgent\\bin\\SupportAssistAgent.exe, User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282917491)\/",
+        "Id":  112,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to reserve URL http://127.0.0.1:8884:127.0.0.1/. Status 0x0. Process Id 0x769C Executable path \\Device\\HarddiskVolume3\\Program Files\\Dell\\SupportAssistAgent\\bin\\SupportAssistAgent.exe, User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282917495)\/",
+        "Id":  111,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Create URL group 0xFE00001520000001. Status 0x0. Process Id 0x769C Executable path \\Device\\HarddiskVolume3\\Program Files\\Dell\\SupportAssistAgent\\bin\\SupportAssistAgent.exe, User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777282917496)\/",
+        "Id":  113,
+        "ProviderName":  "Microsoft-Windows-HttpService",
+        "LevelDisplayName":  "Information",
+        "Message":  "Attempted to add URL (http://127.0.0.1:8884:127.0.0.1/) to URL group (0xFE00001520000001). Status: 0x0. Process Id 0x769C Executable path \\Device\\HarddiskVolume3\\Program Files\\Dell\\SupportAssistAgent\\bin\\SupportAssistAgent.exe, User S-1-5-18"
+    },
+    {
+        "TimeCreated":  "\/Date(1777283089046)\/",
+        "Id":  1808,
+        "ProviderName":  "Microsoft-Windows-TPM-WMI",
+        "LevelDisplayName":  "Information",
+        "Message":  "This device has updated Secure Boot CA/keys. This device signature information is included here.\r\nDeviceAttributes: BaseBoardManufacturer:Alienware;FirmwareManufacturer:Alienware;FirmwareVersion:2.13.0;OEMModelNumber:Alienware Aurora R16;OEMModelBaseBoard:0RF96M;OEMModelSystemFamily:Alienware;OEMManufacturerName:Alienware;OEMModelSKU:0CD2;OSArchitecture:amd64;\r\nBucketId: 0fa5eceba08a3fdc8bdbdde96292ad56d94d0624eb34ce9c4de19b8b11829216\r\nBucketConfidenceLevel: Under Observation - More Data Needed\r\nUpdateType: Windows UEFI CA 2023 (DB), Option ROM CA 2023 (DB), 3P UEFI CA 2023 (DB), KEK 2023, Boot Manager (2023)\r\nFor more information, please see https://go.microsoft.com/fwlink/?linkid=2301018."
+    }
+]
