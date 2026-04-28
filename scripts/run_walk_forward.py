@@ -75,6 +75,7 @@ import dataclasses
 import hashlib
 import json
 import logging
+import pickle
 import sys
 import time
 from collections.abc import Iterator
@@ -244,6 +245,7 @@ from skie_ninja.models.regime import (
     warm_cold_sidecar_path_for,
     write_warm_cold_sidecar,
 )
+from skie_ninja.models.regime import hmm_fit_cache as _hmm_fit_cache
 from skie_ninja.utils.hashing import frame_sha256
 from skie_ninja.utils.paths import ProjectPaths
 from skie_ninja.utils.reproducibility import with_model_hash
@@ -808,6 +810,197 @@ def _label_panel_for_cfg(
     return X, y_bin, r_bar, ts_int, merged
 
 
+# ---------------------------------------------------------------------------
+# P1-HMM-FIT-CACHE-PERSIST helpers
+# ---------------------------------------------------------------------------
+
+
+def _persist_hmm_fit_to_disk(
+    *,
+    hmm_cache_run_dir: Path | None,
+    sym: str | None,
+    fold_id: int | None,
+    label_horizon: int,
+    hmm: GaussianHMM,
+    regime_high_mean: int,
+    hmm_terminal_log_alpha: np.ndarray,
+    hmm_train_terminal_position: int,
+    train_idx: np.ndarray,
+    producing_run_id: str | None = None,
+) -> bool:
+    """Atomic disk persist of an HMM cold-fit result.
+
+    Returns True on successful persist, False otherwise (so callers
+    can choose to skip the in-memory cache write per Round-1 F-1-10
+    "disk first" semantics).
+
+    Best-effort scope (Round-1 F-1-9): only OS-level transient errors
+    are swallowed (OSError / PermissionError / pickle.PicklingError /
+    pickle.PickleError). Programmer errors (e.g. a future numpy array
+    that pickle cannot handle, AttributeError on a missing field)
+    propagate so they are caught at test time, not silently masked
+    in production.
+    """
+    if hmm_cache_run_dir is None or sym is None or fold_id is None:
+        return False
+    # Derive producing_run_id from the cache dir path if not explicit:
+    # run_dir is `<artifacts_root>/<hypothesis_id>/<run_id>` so
+    # `hmm_cache_run_dir.name` is the run_id by construction.
+    if producing_run_id is None:
+        producing_run_id = hmm_cache_run_dir.name
+    try:
+        path = _hmm_fit_cache.save_fit(
+            run_dir=hmm_cache_run_dir,
+            sym=str(sym),
+            fold_id=int(fold_id),
+            label_horizon=int(label_horizon),
+            hmm=hmm,
+            regime_high_mean=int(regime_high_mean),
+            hmm_terminal_log_alpha=hmm_terminal_log_alpha,
+            hmm_train_terminal_position=int(hmm_train_terminal_position),
+            train_idx_len=int(len(train_idx)),
+            train_idx_first=int(train_idx[0]),
+            train_idx_last=int(train_idx[-1]),
+            producing_run_id=producing_run_id,
+        )
+        _LOG.info(
+            "hmm-fit-cache persisted: sym=%s fold_id=%d label_horizon=%d path=%s",
+            sym, fold_id, label_horizon, path,
+        )
+        return True
+    except (OSError, PermissionError, pickle.PickleError) as exc:
+        _LOG.warning(
+            "hmm-fit-cache persist FAILED (transient; orchestrator continues): "
+            "sym=%s fold_id=%s label_horizon=%s exc=%r",
+            sym, fold_id, label_horizon, exc,
+        )
+        return False
+
+
+def _load_hmm_fits_from_prior_run(
+    *,
+    paths: ProjectPaths,
+    hypothesis_id: str,
+    prior_run_id: str,
+    sym: str,
+    hmm_cache: dict[tuple[str, int, int], _CachedHmmFit],
+    current_dataset_checksums: dict[str, str] | None = None,
+    allow_substrate_drift: bool = False,
+    allow_empty: bool = False,
+) -> int:
+    """Pre-populate ``hmm_cache`` from a prior run_id's persisted
+    pickles. Returns the number of fits loaded.
+
+    Round-1 F-1-11: a non-existent prior run_id raises
+    ``FileNotFoundError`` rather than silently falling through to a
+    fresh recompute. Operator can pass ``--allow-empty-resume`` to
+    accept the empty-prior-dir case.
+
+    Round-1 F-1-6: when ``current_dataset_checksums`` is provided, the
+    prior run's persisted ReproLog ``dataset_checksums`` field is read
+    and compared to the current run's. A mismatch raises
+    ``ValueError`` unless ``allow_substrate_drift=True`` (operator's
+    explicit acceptance that fits computed on a different substrate
+    are being injected into the current pipeline).
+
+    Round-1 F-1-9: per-pickle skipping is narrowed to schema-version
+    mismatches and OS-level transient errors. Programmer errors
+    propagate.
+    """
+    prior_run_dir = paths.artifacts_runs / hypothesis_id / prior_run_id
+    if not prior_run_dir.exists():
+        if allow_empty:
+            _LOG.warning(
+                "--resume-hmm-cache prior run_id %s does not exist at %s; "
+                "--allow-empty-resume set, continuing with empty cache",
+                prior_run_id, prior_run_dir,
+            )
+            return 0
+        raise FileNotFoundError(
+            f"--resume-hmm-cache prior run_id {prior_run_id!r} does not exist "
+            f"at {prior_run_dir}. Verify the run_id or pass "
+            f"--allow-empty-resume to accept an empty prior cache."
+        )
+
+    # F-1-6: dataset-checksum drift guard. Read the prior run's
+    # ReproLog and compare its dataset_checksums to the current run's.
+    if current_dataset_checksums is not None:
+        prior_reprolog_path = prior_run_dir / "reprolog.json"
+        if prior_reprolog_path.exists():
+            try:
+                prior_reprolog = json.loads(prior_reprolog_path.read_text(encoding="utf-8"))
+                prior_checksums = prior_reprolog.get("dataset_checksums", {})
+            except (OSError, json.JSONDecodeError) as exc:
+                _LOG.warning(
+                    "Could not read prior run's reprolog at %s: %r; "
+                    "skipping substrate-drift check",
+                    prior_reprolog_path, exc,
+                )
+                prior_checksums = None
+            if prior_checksums is not None and prior_checksums != current_dataset_checksums:
+                if not allow_substrate_drift:
+                    raise ValueError(
+                        f"--resume-hmm-cache: prior run {prior_run_id!r}'s "
+                        f"dataset_checksums differ from the current run's. "
+                        f"Loading cached fits computed on a different substrate "
+                        f"into the current pipeline would silently inject wrong "
+                        f"HMM params. Pass --allow-substrate-drift to override "
+                        f"(operator accepts the leakage risk).\n"
+                        f"  prior: {prior_checksums}\n"
+                        f"  current: {current_dataset_checksums}"
+                    )
+                _LOG.warning(
+                    "--resume-hmm-cache: substrate-drift override active. "
+                    "prior_checksums=%s current_checksums=%s",
+                    prior_checksums, current_dataset_checksums,
+                )
+
+    paths_to_load = _hmm_fit_cache.discover_cached_fits(prior_run_dir, sym)
+    n_loaded = 0
+    n_skipped = 0
+    n_provenance_mismatch = 0
+    for cached_path in paths_to_load:
+        try:
+            rec = _hmm_fit_cache.load_and_reconstruct(cached_path)
+        except (OSError, PermissionError, pickle.PickleError, ValueError) as exc:
+            # ValueError caught here covers schema-version mismatches.
+            _LOG.warning(
+                "hmm-fit-cache resume: skipping %s (load failed: %r)",
+                cached_path, exc,
+            )
+            n_skipped += 1
+            continue
+        # Provenance check (F-1-1 / R-1): WARN-but-load on env drift.
+        try:
+            payload = _hmm_fit_cache.load_fit(cached_path)
+            mismatches = _hmm_fit_cache.check_provenance(payload)
+        except (OSError, ValueError):
+            mismatches = []
+        if mismatches:
+            n_provenance_mismatch += 1
+            _LOG.warning(
+                "hmm-fit-cache resume: provenance drift for %s: %s",
+                cached_path.name, "; ".join(mismatches),
+            )
+        cache_key = (rec.sym, rec.fold_id, rec.label_horizon)
+        hmm_cache[cache_key] = _CachedHmmFit(
+            hmm=rec.hmm,
+            regime_high_mean=rec.regime_high_mean,
+            hmm_terminal_log_alpha=rec.hmm_terminal_log_alpha,
+            hmm_train_terminal_position=rec.hmm_train_terminal_position,
+            train_idx_len=rec.train_idx_len,
+            train_idx_first=rec.train_idx_first,
+            train_idx_last=rec.train_idx_last,
+        )
+        n_loaded += 1
+    _LOG.info(
+        "hmm-fit-cache resumed: sym=%s prior_run_id=%s "
+        "attempted=%d loaded=%d skipped=%d provenance_drift=%d",
+        sym, prior_run_id, len(paths_to_load), n_loaded, n_skipped, n_provenance_mismatch,
+    )
+    return n_loaded
+
+
 def _fit_fold(  # noqa: PLR0912, PLR0915
     train_idx: np.ndarray,
     *,
@@ -826,6 +1019,7 @@ def _fit_fold(  # noqa: PLR0912, PLR0915
     symbol: str | None = None,
     hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = None,
     hmm_cache_stats: _HmmCacheStats | None = None,
+    hmm_cache_run_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Fit the classifier + HMM on the outer fold's training rows.
 
@@ -837,6 +1031,11 @@ def _fit_fold(  # noqa: PLR0912, PLR0915
 
     The HMM is fit on all train-fold rows (no inner CV — model
     selection happens via BIC over covariance types per ADR-0005).
+
+    P1-HMM-FIT-CACHE-PERSIST: when ``hmm_cache_run_dir`` is set, each
+    cold-fit completion is persisted to disk via
+    :mod:`skie_ninja.models.regime.hmm_fit_cache` so a relaunch can
+    resume the cache via ``--resume-hmm-cache <prior_run_id>``.
     """
     return _fit_fold_with_progress(
         train_idx,
@@ -853,6 +1052,7 @@ def _fit_fold(  # noqa: PLR0912, PLR0915
         symbol=symbol,
         hmm_cache=hmm_cache,
         hmm_cache_stats=hmm_cache_stats,
+        hmm_cache_run_dir=hmm_cache_run_dir,
     )
 
 
@@ -874,6 +1074,7 @@ def _fit_fold_with_progress(  # noqa: PLR0912, PLR0915
     symbol: str | None = None,
     hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = None,
     hmm_cache_stats: _HmmCacheStats | None = None,
+    hmm_cache_run_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Body of _fit_fold; wrapped by the public _fit_fold entry to
     emit the PROGRESS fold-fit start/done/failed markers via the
@@ -902,6 +1103,7 @@ def _fit_fold_with_progress(  # noqa: PLR0912, PLR0915
             symbol=symbol,
             hmm_cache=hmm_cache,
             hmm_cache_stats=hmm_cache_stats,
+            hmm_cache_run_dir=hmm_cache_run_dir,
             _fold_done_ctx=_fold_done_ctx,
         )
 
@@ -924,6 +1126,7 @@ def _fit_fold_body(  # noqa: PLR0912, PLR0915
     symbol: str | None,
     hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None,
     hmm_cache_stats: _HmmCacheStats | None,
+    hmm_cache_run_dir: Path | None,
     _fold_done_ctx: dict[str, Any],
 ) -> dict[str, Any]:
     """Inner body — original _fit_fold logic, no instrumentation
@@ -1053,6 +1256,21 @@ def _fit_fold_body(  # noqa: PLR0912, PLR0915
             and cache_key is not None
             and hmm_cache is not None
         ):
+            # F-1-10: disk first, then memory. Disk is the source of
+            # truth — a process kill between disk and memory leaves
+            # the cache discoverable on restart. The in-memory write
+            # is only useful within this process.
+            _persist_hmm_fit_to_disk(
+                hmm_cache_run_dir=hmm_cache_run_dir,
+                sym=symbol,
+                fold_id=fold_id,
+                label_horizon=label_horizon,
+                hmm=hmm,
+                regime_high_mean=int(rhm_short),
+                hmm_terminal_log_alpha=tla_short,
+                hmm_train_terminal_position=int(ttp_short),
+                train_idx=train_idx,
+            )
             hmm_cache[cache_key] = _CachedHmmFit(
                 hmm=hmm,
                 regime_high_mean=int(rhm_short),
@@ -1144,6 +1362,19 @@ def _fit_fold_body(  # noqa: PLR0912, PLR0915
         hmm_train_terminal_position = int(train_idx[-1])
 
     if cached is None and cache_key is not None and hmm_cache is not None:
+        # F-1-10: disk first, then memory. See sibling comment in the
+        # degenerate-y short-circuit branch above.
+        _persist_hmm_fit_to_disk(
+            hmm_cache_run_dir=hmm_cache_run_dir,
+            sym=symbol,
+            fold_id=fold_id,
+            label_horizon=label_horizon,
+            hmm=hmm,
+            regime_high_mean=int(regime_high_mean),
+            hmm_terminal_log_alpha=hmm_terminal_log_alpha,
+            hmm_train_terminal_position=int(hmm_train_terminal_position),
+            train_idx=train_idx,
+        )
         hmm_cache[cache_key] = _CachedHmmFit(
             hmm=hmm,
             regime_high_mean=int(regime_high_mean),
@@ -1363,6 +1594,43 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "P1-PER-SYMBOL-RESUME."
         ),
     )
+    ap.add_argument(
+        "--resume-hmm-cache",
+        type=str,
+        default=None,
+        metavar="RUN_ID",
+        help=(
+            "P1-HMM-FIT-CACHE-PERSIST: pre-populate the in-memory HMM-"
+            "fit cache from a prior run_id's "
+            "artifacts/runs/H050/<run_id>/_hmm_cache/ pickles. The "
+            "current run still gets a fresh run_id; pickles for cold-"
+            "fits completed in this run are written under the new "
+            "run_id (each run is self-contained for audit; expensive "
+            "compute is shared across runs). NEW cold fits are "
+            "persisted to disk regardless of this flag, so any future "
+            "run can resume from this run's artifacts."
+        ),
+    )
+    ap.add_argument(
+        "--allow-substrate-drift",
+        action="store_true",
+        help=(
+            "Round-1 F-1-6: when --resume-hmm-cache is set, allow "
+            "loading cached fits even if the prior run's "
+            "dataset_checksums differ from the current run's. Default: "
+            "refuse (treat substrate drift as a leakage risk)."
+        ),
+    )
+    ap.add_argument(
+        "--allow-empty-resume",
+        action="store_true",
+        help=(
+            "Round-1 F-1-11: when --resume-hmm-cache is set but the "
+            "prior run_id directory does not exist, accept an empty "
+            "prior cache (continue with no cached fits) instead of "
+            "raising FileNotFoundError."
+        ),
+    )
     parsed = ap.parse_args(argv)
     if parsed.resume is not None:
         # Round-2 Q-1-12: reject at argparse time so this rejection
@@ -1457,6 +1725,7 @@ def _run_symbol_label_cfg(  # noqa: PLR0915
     n_inner_folds: int,
     hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = None,
     hmm_cache_stats: _HmmCacheStats | None = None,
+    hmm_cache_run_dir: Path | None = None,
 ) -> dict[str, Any] | None:
     """Run the engine for one symbol × one label cfg.
 
@@ -1512,6 +1781,7 @@ def _run_symbol_label_cfg(  # noqa: PLR0915
             n_inner_folds=n_inner_folds,
             hmm_cache=hmm_cache,
             hmm_cache_stats=hmm_cache_stats,
+            hmm_cache_run_dir=hmm_cache_run_dir,
         )
     except Exception as exc:
         _PROGRESS.failed(
@@ -1536,6 +1806,7 @@ def _run_symbol_label_cfg_body(  # noqa: PLR0915
     n_inner_folds: int,
     hmm_cache: dict[tuple[str, int, int], _CachedHmmFit] | None = None,
     hmm_cache_stats: _HmmCacheStats | None = None,
+    hmm_cache_run_dir: Path | None = None,
 ) -> dict[str, Any] | None:
     """Inner body of `_run_symbol_label_cfg`. The thin wrapper above
     handles the start/failed PROGRESS markers; this function emits
@@ -1673,6 +1944,7 @@ def _run_symbol_label_cfg_body(  # noqa: PLR0915
             symbol=sym,
             hmm_cache=hmm_cache,
             hmm_cache_stats=hmm_cache_stats,
+            hmm_cache_run_dir=hmm_cache_run_dir,
         ),
         predict_kwargs=dict(
             X=X_full,
@@ -1893,6 +2165,35 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
         {} if use_cache else None
     )
     hmm_cache_stats = _HmmCacheStats()
+
+    # P1-HMM-FIT-CACHE-PERSIST: pre-populate the in-memory cache from a
+    # prior run_id's persisted pickles when --resume-hmm-cache is set.
+    # New cold fits (this run) are written under the CURRENT run_id's
+    # cache dir regardless of the flag, so any future run can resume
+    # from this run's artifacts.
+    hmm_cache_run_dir: Path | None = run_dir if use_cache else None
+    if (
+        use_cache
+        and hmm_cache is not None
+        and getattr(args, "resume_hmm_cache", None)
+    ):
+        # F-1-6: pass current run's dataset_checksums so the resume
+        # loader can detect substrate drift. Available via ctx.log
+        # (RunContext set them at __enter__ time).
+        current_checksums: dict[str, str] | None = None
+        if ctx.log is not None and hasattr(ctx.log, "dataset_checksums"):
+            current_checksums = dict(ctx.log.dataset_checksums)  # type: ignore[union-attr]
+        _load_hmm_fits_from_prior_run(
+            paths=paths,
+            hypothesis_id=cfg.hypothesis_id,
+            prior_run_id=args.resume_hmm_cache,
+            sym=sym,
+            hmm_cache=hmm_cache,
+            current_dataset_checksums=current_checksums,
+            allow_substrate_drift=bool(getattr(args, "allow_substrate_drift", False)),
+            allow_empty=bool(getattr(args, "allow_empty_resume", False)),
+        )
+
     candidate_runs: list[tuple[tuple[float, pd.Timedelta, int], dict[str, Any]]] = []
     for cfg_idx, (pt_sl, vb, vl) in enumerate(label_grid, start=1):
         # Round-2 audit-remediate Q-2-1 fix: wrap the actual cell
@@ -1921,6 +2222,7 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
                 n_inner_folds=n_inner_folds,
                 hmm_cache=hmm_cache,
                 hmm_cache_stats=hmm_cache_stats,
+                hmm_cache_run_dir=hmm_cache_run_dir,
             )
             _step_done_ctx["status"] = (
                 "ok" if candidate is not None else "skipped"
