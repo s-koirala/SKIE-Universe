@@ -2257,14 +2257,14 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
             mismatches = _cfg_checkpoint.check_provenance(payload)
             if mismatches:
                 drift_count += 1
-                logger.warning(
+                _LOG.warning(
                     "cfg-checkpoint resume: provenance drift for %s: %s",
                     key_tuple,
                     "; ".join(mismatches),
                 )
             cfg_checkpoint_resume[key_tuple] = payload
             loaded_count += 1
-        logger.info(
+        _LOG.info(
             "cfg-checkpoint resumed: sym=%s prior_run_id=%s "
             "attempted=%d loaded=%d provenance_drift=%d",
             sym,
@@ -2349,7 +2349,7 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
                             producing_run_id=producing_run_id,
                         )
                     except (OSError, PermissionError, pickle.PickleError) as exc:
-                        logger.warning(
+                        _LOG.warning(
                             "cfg-checkpoint save failed for %s: %s; "
                             "continuing (in-memory state preserved).",
                             cfg_key.filename_stem(),
