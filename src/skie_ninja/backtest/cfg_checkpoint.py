@@ -184,18 +184,25 @@ def load_checkpoint(path: Path) -> dict[str, Any]:
 
 def discover_checkpoints(
     run_dir: Path,
+    sym: str | None = None,
 ) -> dict[tuple[str, int, float, int, int], dict[str, Any]]:
-    """Enumerate all checkpoints in a run directory's checkpoint dir.
+    """Enumerate checkpoints in a run directory's checkpoint dir.
 
     Returns a mapping ``cfg_key_tuple → payload``. Used by the
     orchestrator's resume path to short-circuit ``_run_symbol_label_cfg``
     calls when a checkpoint exists for the cfg.
+
+    If ``sym`` is given, only checkpoints with that symbol prefix are
+    loaded — important on heap-fragmented Windows long-runs where
+    loading unused checkpoints (e.g. ES pickles when the resume is
+    NQ-only) consumes contiguous numpy buffers needlessly.
     """
     cdir = cfg_checkpoint_dir(run_dir)
     if not cdir.exists():
         return {}
     out: dict[tuple[str, int, float, int, int], dict[str, Any]] = {}
-    for p in sorted(cdir.glob("*.pkl")):
+    glob_pattern = f"{sym.upper()}__*.pkl" if sym else "*.pkl"
+    for p in sorted(cdir.glob(glob_pattern)):
         try:
             payload = load_checkpoint(p)
         except (OSError, pickle.PickleError, ValueError, EOFError):

@@ -2263,7 +2263,13 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
         prior_run_dir = (
             paths.artifacts_runs / cfg.hypothesis_id / resume_cfg_run_id
         )
-        prior_payloads = _cfg_checkpoint.discover_checkpoints(prior_run_dir)
+        # P1-CFG-CHECKPOINT-SYM-FILTER: filter to current symbol's
+        # pickles. On a heap-fragmented Windows long-run the cumulative
+        # pickle.loads of out-of-symbol pickles can OOM — see
+        # prod-run-12 crash at 42 s loading ES pickles inside NQ body.
+        prior_payloads = _cfg_checkpoint.discover_checkpoints(
+            prior_run_dir, sym=str(sym).upper()
+        )
         loaded_count = 0
         drift_count = 0
         for key_tuple, payload in prior_payloads.items():
