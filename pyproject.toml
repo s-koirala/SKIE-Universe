@@ -41,12 +41,25 @@ dev = [
     "jupyterlab>=4.2",
     "pandera[polars]>=0.20",
     "psutil>=5.9,<7",       # supervised_run.py telemetry (ADR-0010 Layer 4); upper bound per Round-2 R-9 — psutil 6.x has cross-platform process-introspection breakage history
+    # R-4: numba pulled into dev so the standard test install always
+    # exercises the @njit kernels — without this, test_em_kernels.py
+    # silently soft-skips and CI greens with the numba path uncovered.
+    "numba>=0.65,<0.70",
+    "llvmlite>=0.47,<0.50",
 ]
 phase2 = [
     "tick>=0.7",            # Hawkes process — no cp311 wheel as of 2026-04; defer to Phase-2
 ]
 live = [
     "mcp>=0.9",             # MCP SDK for LLM-driven execution
+]
+perf = [
+    # R-9: tightened band. numba 0.65.1 + llvmlite 0.47.0 is the
+    # exercised pair as of 2026-04-28 (P1-HMM-EM-NUMBA-KERNELS).
+    # Upper bound guards against numba 0.70's documented @njit cache
+    # semantic drift; bump only after re-running the regression suite.
+    "numba>=0.65,<0.70",
+    "llvmlite>=0.47,<0.50",
 ]
 
 [tool.ruff]

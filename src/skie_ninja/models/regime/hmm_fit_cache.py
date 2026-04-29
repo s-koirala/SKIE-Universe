@@ -71,7 +71,40 @@ from skie_ninja.models.regime.hmm import GaussianHMM
 # SCHEMA_VERSION so a future bump is unambiguous.
 _PICKLE_PROTOCOL = 5
 
-SCHEMA_VERSION = "hmm_fit_cache_v2_pickle5"
+# v3: adds numba_version + kernel_implementation_id to the provenance
+# block. Bump from v2_pickle5 because a v2 pickle is missing the
+# new fields — the load path tolerates absence (treats as "unknown"),
+# but the on-disk schema marker should reflect the schema bump.
+SCHEMA_VERSION = "hmm_fit_cache_v3_pickle5_numba"
+
+
+def _capture_numba_version() -> str:
+    """Capture the installed numba version, or ``"unavailable"`` when
+    numba is not installed. Recording this allows cross-numba-version
+    resume to surface a provenance-drift warning, since numba's
+    LLVM-codegen path is not deterministic across major versions."""
+    try:
+        import numba
+
+        return str(numba.__version__)
+    except ImportError:
+        return "unavailable"
+
+
+def _capture_kernel_implementation_id() -> str:
+    """SHA256 of the bytes of the EM kernel module source. A change to
+    the kernel implementation that does not bump git_head (e.g. a
+    local edit during development) will still surface as a provenance
+    mismatch on cache load."""
+    try:
+        import hashlib
+        from skie_ninja.models.regime import _em_kernels
+
+        # __file__ is set on a real module; resolve to the .py source.
+        src_path = Path(_em_kernels.__file__)
+        return hashlib.sha256(src_path.read_bytes()).hexdigest()
+    except Exception:
+        return "unknown"
 
 
 def _capture_git_head() -> str:
@@ -167,6 +200,9 @@ def save_fit(
         "producing_run_id": producing_run_id,
         "python_version": platform.python_version(),
         "numpy_version": np.__version__,
+        # v3 additions — kernel-path provenance (R-1 / F-1-7).
+        "numba_version": _capture_numba_version(),
+        "kernel_implementation_id": _capture_kernel_implementation_id(),
         # ---- cache key ----
         "sym": str(sym).upper(),
         "fold_id": int(fold_id),
@@ -250,6 +286,24 @@ def check_provenance(
     if cur_np != payload_np:
         mismatches.append(
             f"numpy_version mismatch: producing={payload_np!r}, current={cur_np!r}"
+        )
+    # v3 additions — kernel-path provenance.
+    cur_numba = _capture_numba_version()
+    payload_numba = payload.get("numba_version")
+    if payload_numba is not None and cur_numba != payload_numba:
+        mismatches.append(
+            f"numba_version mismatch: producing={payload_numba!r}, current={cur_numba!r}"
+        )
+    cur_kernel = _capture_kernel_implementation_id()
+    payload_kernel = payload.get("kernel_implementation_id")
+    if (
+        payload_kernel is not None
+        and cur_kernel != payload_kernel
+        and "unknown" not in (cur_kernel, payload_kernel)
+    ):
+        mismatches.append(
+            f"kernel_implementation_id mismatch (EM kernel module bytes drifted): "
+            f"producing={payload_kernel[:16]!r}…, current={cur_kernel[:16]!r}…"
         )
     return mismatches
 

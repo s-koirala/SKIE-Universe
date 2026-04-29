@@ -14,6 +14,13 @@ __pycache__/
 .hypothesis/
 *.egg-info/
 
+# numba AOT cache (machine-specific LLVM-codegen artifacts; safe under
+# the __pycache__/ rule above but listed explicitly per R-7 audit
+# defense-in-depth in case a future env sets NUMBA_CACHE_DIR elsewhere).
+*.nbi
+*.nbc
+**/numba_cache/
+
 # data (raw/interim/processed parquets are binary + regenerable;
 # _provenance/** is tracked as the audit-record surface. DVC is the
 # longer-term plan for processed artifacts if adopted.)

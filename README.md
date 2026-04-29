@@ -92,6 +92,18 @@ uv pip install -e ".[dev]"
 python scripts/bootstrap_env.py
 ```
 
+The HMM forward-backward kernels under `src/skie_ninja/models/regime/_em_kernels.py`
+are accelerated with [Numba](https://numba.pydata.org/) `@njit`. As of
+[P1-HMM-EM-NUMBA-KERNELS](docs/audits/audit_trail_2026-04-28_hmm-em-numba-kernels.md)
+numba is included in the `[dev]` extra so the standard install above
+exercises the JIT path during testing. The `[perf]` extra is a
+deployment-only alias that pins the same numba/llvmlite band without
+the test-only deps. Reproducing production HMM fits to **byte
+identity** requires the same `(numba, llvmlite, host CPU feature set)`
+tuple as the producing run; cross-host fits agree only to
+`rtol = 1e-12` (see the kernel module docstring's
+"Cross-host determinism caveat").
+
 Shared data directory: `~/datasets/` (override with `SKIE_SHARED_DATA` env var). See [config/shared_data.yaml](config/shared_data.yaml).
 
 ## Reproducibility
