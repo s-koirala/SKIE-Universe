@@ -1662,6 +1662,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     ap.add_argument(
+        "--symbols",
+        type=str,
+        default=None,
+        metavar="SYM[,SYM...]",
+        help=(
+            "P1-SYMBOLS-FILTER: comma-separated subset of the pre-reg "
+            "universe to run. Useful for crash-resume where one symbol "
+            "is already complete (e.g. ES output written under prior "
+            "run_id) and only the other needs fresh compute. Refuses "
+            "any symbol not in the configured universe."
+        ),
+    )
+    ap.add_argument(
         "--resume-cfg-checkpoint",
         type=str,
         default=None,
@@ -2670,6 +2683,25 @@ def _run_inner(args: argparse.Namespace, cfg: RunConfig, paths: ProjectPaths) ->
         )
 
         universe = [str(s) for s in cfg.raw.get("universe", ["ES"])]
+        # P1-SYMBOLS-FILTER: optional --symbols filter to constrain a
+        # relaunch to a subset of the configured universe (e.g. ES
+        # already complete, run NQ only). Filter is applied after
+        # config-load so the pre-reg universe survives in the ReproLog.
+        symbols_filter = getattr(args, "symbols", None)
+        if symbols_filter:
+            requested = [s.strip().upper() for s in symbols_filter.split(",")]
+            unknown = [s for s in requested if s not in universe]
+            if unknown:
+                raise ValueError(
+                    f"--symbols requested {unknown!r} not in pre-reg "
+                    f"universe {universe!r}; refuse to silently expand."
+                )
+            universe = [s for s in universe if s in requested]
+            _LOG.info(
+                "--symbols filter active: running %s (full universe is %s)",
+                universe,
+                [str(s) for s in cfg.raw.get("universe", ["ES"])],
+            )
         if not universe:
             raise ValueError(
                 f"H050.yaml universe must be non-empty; got {universe!r}."
