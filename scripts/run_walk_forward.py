@@ -246,6 +246,7 @@ from skie_ninja.models.regime import (
     warm_cold_sidecar_path_for,
     write_warm_cold_sidecar,
 )
+from skie_ninja.backtest import cfg_checkpoint as _cfg_checkpoint
 from skie_ninja.models.regime import hmm_fit_cache as _hmm_fit_cache
 from skie_ninja.utils.hashing import frame_sha256
 from skie_ninja.utils.paths import ProjectPaths
@@ -1660,6 +1661,21 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "raising FileNotFoundError."
         ),
     )
+    ap.add_argument(
+        "--resume-cfg-checkpoint",
+        type=str,
+        default=None,
+        metavar="RUN_ID",
+        help=(
+            "P1-CFG-CHECKPOINT: pre-populate per-cfg candidate results "
+            "from a prior run_id's artifacts/runs/H050/<run_id>/_cfg_checkpoints/ "
+            "pickles. Each cfg whose checkpoint is present is loaded "
+            "directly (skipping fold-fit + inner-CV-LGB + label-panel "
+            "construction). Bounds work loss on a fragmentation-driven "
+            "MemoryError to <=1 cfg. Use together with --resume-hmm-cache "
+            "<same_run_id> for full crash-recovery resume."
+        ),
+    )
     parsed = ap.parse_args(argv)
     if parsed.resume is not None:
         # Round-2 Q-1-12: reject at argparse time so this rejection
@@ -2223,6 +2239,41 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
             allow_empty=bool(getattr(args, "allow_empty_resume", False)),
         )
 
+    # P1-CFG-CHECKPOINT: pre-populate cfg_checkpoint cache from a
+    # prior run if --resume-cfg-checkpoint <RUN_ID> is set. Each entry
+    # short-circuits the corresponding _run_symbol_label_cfg call.
+    cfg_checkpoint_resume: dict[
+        tuple[str, int, float, int, int], dict[str, Any]
+    ] = {}
+    resume_cfg_run_id = getattr(args, "resume_cfg_checkpoint", None)
+    if resume_cfg_run_id:
+        prior_run_dir = (
+            paths.artifact_root() / "runs" / cfg.hypothesis_id / resume_cfg_run_id
+        )
+        prior_payloads = _cfg_checkpoint.discover_checkpoints(prior_run_dir)
+        loaded_count = 0
+        drift_count = 0
+        for key_tuple, payload in prior_payloads.items():
+            mismatches = _cfg_checkpoint.check_provenance(payload)
+            if mismatches:
+                drift_count += 1
+                logger.warning(
+                    "cfg-checkpoint resume: provenance drift for %s: %s",
+                    key_tuple,
+                    "; ".join(mismatches),
+                )
+            cfg_checkpoint_resume[key_tuple] = payload
+            loaded_count += 1
+        logger.info(
+            "cfg-checkpoint resumed: sym=%s prior_run_id=%s "
+            "attempted=%d loaded=%d provenance_drift=%d",
+            sym,
+            resume_cfg_run_id,
+            len(prior_payloads),
+            loaded_count,
+            drift_count,
+        )
+
     candidate_runs: list[tuple[tuple[float, pd.Timedelta, int], dict[str, Any]]] = []
     for cfg_idx, (pt_sl, vb, vl) in enumerate(label_grid, start=1):
         # Round-2 audit-remediate Q-2-1 fix: wrap the actual cell
@@ -2238,24 +2289,72 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
             vb=str(vb),
             vl=vl,
         ) as _step_done_ctx:
-            candidate = _run_symbol_label_cfg(
-                sym,
-                panel_for_symbol,
-                feature_matrix,
-                cfg=cfg,
-                args=args,
-                pt_sl=pt_sl,
-                vertical_barrier=vb,
-                volatility_lookback=vl,
-                lgb_n_draws=lgb_n_draws,
-                n_inner_folds=n_inner_folds,
-                hmm_cache=hmm_cache,
-                hmm_cache_stats=hmm_cache_stats,
-                hmm_cache_run_dir=hmm_cache_run_dir,
+            # P1-CFG-CHECKPOINT: short-circuit if resume payload exists.
+            cfg_key_tuple = (
+                str(sym).upper(),
+                int(cfg_idx),
+                float(pt_sl),
+                int(vb.total_seconds()),
+                int(vl),
             )
-            _step_done_ctx["status"] = (
-                "ok" if candidate is not None else "skipped"
-            )
+            resumed_payload = cfg_checkpoint_resume.get(cfg_key_tuple)
+            if resumed_payload is not None:
+                candidate = resumed_payload.get("candidate")
+                _step_done_ctx["status"] = (
+                    "resumed" if candidate is not None else "resumed_skipped"
+                )
+            else:
+                candidate = _run_symbol_label_cfg(
+                    sym,
+                    panel_for_symbol,
+                    feature_matrix,
+                    cfg=cfg,
+                    args=args,
+                    pt_sl=pt_sl,
+                    vertical_barrier=vb,
+                    volatility_lookback=vl,
+                    lgb_n_draws=lgb_n_draws,
+                    n_inner_folds=n_inner_folds,
+                    hmm_cache=hmm_cache,
+                    hmm_cache_stats=hmm_cache_stats,
+                    hmm_cache_run_dir=hmm_cache_run_dir,
+                )
+                _step_done_ctx["status"] = (
+                    "ok" if candidate is not None else "skipped"
+                )
+                # P1-CFG-CHECKPOINT: persist this cfg's candidate to disk
+                # immediately so a fragmentation-driven crash on the next
+                # cfg costs at most this cfg's recompute (not the full
+                # candidate_runs list rebuilt from scratch). Only write
+                # on a successful candidate; skipped (None) cells have
+                # no useful state to persist.
+                if candidate is not None:
+                    cfg_key = _cfg_checkpoint.CfgKey(
+                        sym=str(sym),
+                        cfg_idx=int(cfg_idx),
+                        pt_sl=float(pt_sl),
+                        vertical_barrier_seconds=int(vb.total_seconds()),
+                        volatility_lookback=int(vl),
+                    )
+                    producing_run_id = (
+                        ctx.log.run_id
+                        if (ctx is not None and ctx.log is not None)
+                        else None
+                    )
+                    try:
+                        _cfg_checkpoint.save_checkpoint(
+                            run_dir=run_dir,
+                            key=cfg_key,
+                            candidate=candidate,
+                            producing_run_id=producing_run_id,
+                        )
+                    except (OSError, PermissionError, pickle.PickleError) as exc:
+                        logger.warning(
+                            "cfg-checkpoint save failed for %s: %s; "
+                            "continuing (in-memory state preserved).",
+                            cfg_key.filename_stem(),
+                            exc,
+                        )
         if candidate is None:
             continue
         candidate_runs.append(((pt_sl, vb, vl), candidate))
