@@ -241,3 +241,56 @@ def test_frame_sha256_pinned_vector_against_canonical() -> None:
                 body.extend(str(cell).encode("utf-8"))
     expected = hashlib.sha256(header + b"\x00\x03" + bytes(body)).hexdigest()
     assert frame_sha256(_pinned_frame(), sort_cols=["ts", "sym"]) == expected
+
+
+def test_streaming_matches_canonical_bytes_path() -> None:
+    """``_hash_polars_streaming`` must produce a hash bit-identical to
+    feeding ``_canonicalize_polars`` bytes into a fresh hasher. Pinned
+    via the H050 production substrate breakage (prod-run-9 OOM at
+    300 MB materialised); future refactors must not silently drift."""
+    import hashlib
+
+    from skie_ninja.utils.hashing import (
+        _canonicalize_polars,
+        _hash_polars_streaming,
+    )
+
+    df = _pinned_frame()
+    sort_cols = ["ts", "sym"]
+
+    canonical_bytes = _canonicalize_polars(df, sort_cols)
+    canonical_digest = hashlib.sha256(canonical_bytes).hexdigest()
+
+    hasher = hashlib.sha256()
+    _hash_polars_streaming(df, sort_cols, hasher)
+    streaming_digest = hasher.hexdigest()
+
+    assert canonical_digest == streaming_digest
+
+
+def test_streaming_handles_nulls_and_binary() -> None:
+    """The streaming path's None branch + Binary hex-encode branch must
+    preserve the same bytes as the buffered path."""
+    import hashlib
+
+    import polars as pl
+
+    from skie_ninja.utils.hashing import (
+        _canonicalize_polars,
+        _hash_polars_streaming,
+    )
+
+    df = pl.DataFrame(
+        {
+            "ts": [1, 2, 3],
+            "sym": ["A", "B", None],
+            "blob": [b"\x00\x01", b"\xff", b""],
+        }
+    )
+
+    canonical_digest = hashlib.sha256(
+        _canonicalize_polars(df, sort_cols=["ts", "sym"])
+    ).hexdigest()
+    hasher = hashlib.sha256()
+    _hash_polars_streaming(df, ["ts", "sym"], hasher)
+    assert canonical_digest == hasher.hexdigest()

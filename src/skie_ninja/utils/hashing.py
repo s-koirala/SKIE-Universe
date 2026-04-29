@@ -57,6 +57,16 @@ def _canonicalize_polars(df: Any, sort_cols: list[str]) -> bytes:
     This avoids polars IPC, whose binary layout has changed across
     minor versions (see polars-rs release notes) and is not a
     supported hash-stability surface.
+
+    Note
+    ----
+    For T = 3·10⁶ row substrates, the materialised bytes can exceed
+    300 MB, which OOM'd prod-run-9 on a fragmented Windows heap. This
+    function is preserved for backward compatibility; callers should
+    prefer :func:`_hash_polars_streaming`, which produces the same
+    canonical bytes incrementally and feeds them straight to the
+    hasher (O(1) memory). ``frame_sha256`` switched to the streaming
+    path in commit P1-FRAME-SHA-STREAMING.
     """
     import polars as pl
 
@@ -115,6 +125,70 @@ def _canonicalize_polars(df: Any, sort_cols: list[str]) -> bytes:
     return header + b"\x00\x03" + out.getvalue()
 
 
+def _hash_polars_streaming(df: Any, sort_cols: list[str], hasher: Any) -> None:
+    """Stream the canonical bytes of a polars DataFrame into ``hasher``.
+
+    Bit-equivalent to feeding ``_canonicalize_polars(df, sort_cols)``
+    into ``hasher.update``, but materialises only one row of UTF-8
+    bytes at a time — bounded O(max_row_bytes) memory rather than
+    O(rows × cols × avg_str_len). Required for the H050 production
+    substrate (T ≈ 3·10⁶, ~300 MB materialised) on heap-fragmented
+    Windows long-running processes.
+
+    Caller passes a ``hashlib.sha256()``-style object; this function
+    returns ``None`` and mutates the hasher in place.
+    """
+    import polars as pl
+
+    if isinstance(df, pl.LazyFrame):
+        df = df.collect()
+    sorted_df = df.sort(sort_cols, maintain_order=False)
+
+    remaining = sorted(c for c in sorted_df.columns if c not in sort_cols)
+    ordered_cols = list(sort_cols) + remaining
+    sorted_df = sorted_df.select(ordered_cols)
+
+    cast_exprs = []
+    for name in ordered_cols:
+        dtype = sorted_df.schema[name]
+        if dtype == pl.Binary:
+            try:
+                cast_exprs.append(pl.col(name).bin.encode("hex").alias(name))
+            except AttributeError:
+                cast_exprs.append(
+                    pl.col(name)
+                    .map_elements(
+                        lambda b: b.hex() if b is not None else None,
+                        return_dtype=pl.Utf8,
+                    )
+                    .alias(name)
+                )
+        else:
+            cast_exprs.append(pl.col(name).cast(pl.Utf8).alias(name))
+    str_df = sorted_df.with_columns(cast_exprs)
+
+    # Header (column names + dtype names) — must come before the body
+    # to match the byte order of ``_canonicalize_polars``.
+    header = "\x00".join(
+        f"{c}:{sorted_df.schema[c]}" for c in ordered_cols
+    ).encode("utf-8")
+    hasher.update(header)
+    hasher.update(b"\x00\x03")
+
+    # Stream rows directly into the hasher; never materialise more
+    # than one row's bytes at a time.
+    for i, row in enumerate(str_df.iter_rows()):
+        if i > 0:
+            hasher.update(_ROW_SEP)
+        for j, cell in enumerate(row):
+            if j > 0:
+                hasher.update(_CELL_SEP)
+            if cell is None:
+                hasher.update(b"\x02NULL")
+            else:
+                hasher.update(str(cell).encode("utf-8"))
+
+
 def frame_sha256(df: Any, sort_cols: list[str]) -> str:
     """Hash a dataframe after stable-sorting by `sort_cols`.
 
@@ -126,13 +200,18 @@ def frame_sha256(df: Any, sort_cols: list[str]) -> str:
 
     Bump `ReproLog.env_id` on polars MAJOR upgrades — the Utf8
     formatting of floats in particular is a polars-version surface.
+
+    For polars frames, hashing streams via :func:`_hash_polars_streaming`
+    so that materialised intermediate buffers stay bounded — required
+    for T = 3·10⁶ substrates on heap-fragmented Windows runs.
     """
     if not sort_cols:
         raise ValueError("sort_cols must be non-empty for deterministic hashing")
 
     if _is_polars(df):
-        canonical = _canonicalize_polars(df, sort_cols)
-        return hashlib.sha256(canonical).hexdigest()
+        hasher = hashlib.sha256()
+        _hash_polars_streaming(df, sort_cols, hasher)
+        return hasher.hexdigest()
 
     if _is_pandas(df):
         import polars as pl
