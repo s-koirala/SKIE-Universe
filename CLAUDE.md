@@ -5,10 +5,11 @@ Inherits all user-global rules from `~/.claude/CLAUDE.md` plus the imported `rul
 ## Scope
 Intraday directional, volatility, breakout, and size trading on CME ES and NQ (and micro equivalents MES/MNQ) futures. Execution target: NinjaTrader 8 Desktop, automated via Python bridge or NinjaScript. ML/LLM inference may connect via MCP or REST.
 
-Parallel tracks authorized by [ADR-0006](docs/decisions/ADR-0006-scope-extension-hmm-0dte.md) (2026-04-20):
+Parallel tracks authorized by [ADR-0006](docs/decisions/ADR-0006-scope-extension-hmm-0dte.md) (2026-04-20) + chart-reader synthesis memo (2026-04-27):
 
 - **HMM regime track** — Baum-Welch + causal forward-filter Viterbi ([ADR-0005](docs/decisions/ADR-0005-hmm-regime-toolkit.md)) as regime-conditioning layer on top of existing directional/vol/breakout hypotheses.
 - **0DTE options track** — QQQ first-hour long-call scalp via sibling repo [`s-koirala/SKIE-NINJA-0DTE`](https://github.com/s-koirala/SKIE-NINJA-0DTE) (internal code SKIE-ORB-CALL). Equity layer cross-validated on NQ/MNQ futures.
+- **AI chart-reader cohort (Tier 2c, added 2026-04-27)** — four pre-registered hypotheses (H057 1D-CNN, H058 TS foundation model + LoRA, H059 open VLM + LoRA on rendered candlesticks, H060 PatchTST from scratch) attacking the H050 LightGBM baseline as the model-class differential. Open weights only; hosted black-box VLMs explicitly disqualified from inference paths. Family B Hansen 2005 SPA (M=5) with H050 as baseline anchor; H050 stays in Family A under Romano-Wolf step-down per its frozen pre-reg. Synthesis: [docs/research_notes/memo_chartreader-research-synthesis_2026-04-27.md](docs/research_notes/memo_chartreader-research-synthesis_2026-04-27.md).
 
 ## Standing constraints
 
@@ -122,6 +123,26 @@ Four pre-registered hypotheses under [research/01_hypothesis_register/](research
 - **H052b** — HMM regime-gated QQQ first-hour long-call 0DTE scalp, SKIE-ORB-CALL overlay (Tier 2b; renamed from H052 on 2026-04-23)
 
 HMM hyperparameters (n_states, covariance, init, restarts) are BIC/CV-selected inside walk-forward per ADR-0005; emission and transition metadata written to sidecar `logs/reproducibility/{run_id}_hmm_selection.json`, hashed into `ReproLog.model_hash` (no frozen-dataclass change). Audit trail: [docs/audits/audit_trail_2026-04-20_hmm-scope-extension.md](docs/audits/audit_trail_2026-04-20_hmm-scope-extension.md).
+
+### Phase 2 extension — Tier 2c "AI chart reader" cohort (added 2026-04-27)
+
+Four additional pre-registered hypotheses scoped via the audit-remediated chart-reader survey + targeted-research package (synthesis: [docs/research_notes/memo_chartreader-research-synthesis_2026-04-27.md](docs/research_notes/memo_chartreader-research-synthesis_2026-04-27.md); landscape: [docs/research_notes/memo_chartreader-hypothesis-survey_2026-04-27.md](docs/research_notes/memo_chartreader-hypothesis-survey_2026-04-27.md)):
+
+- **H057** — 1D-CNN on causal 60×5 OHLCV tensor with HMM regime gate (train-from-scratch, zero pretraining contamination by construction)
+- **H058** — TS foundation model (TimesFM-2.5-200M + Chronos-Bolt-base-205M) with LoRA fine-tune and HMM regime gate; 2 backbones contribute 2 SPA family entries
+- **H059** — Open VLM (Qwen2.5-VL-3B-Instruct) LoRA fine-tuned on rendered candlestick chart with HMM regime gate; per-bar inference cadence with fold-0 wall-clock pilot gate (`P1-H059-WALL-CLOCK-PILOT-MEASUREMENT`)
+- **H060** — PatchTST trained from scratch on causal 60×5 OHLCV with HMM regime gate (train-from-scratch transformer baseline, zero pretraining contamination)
+
+**SPA family declaration (binding 2026-04-27).** Two separate Hansen 2005 SPA families per the audit-remediated synthesis memo §6:
+
+- **Family A** (regime-lift, frozen pre-reg): `{H050}` (M=1, `omega_method=hac`); H050 stays under Romano-Wolf step-down per [ADR-0003](docs/decisions/ADR-0003-spa-vs-romanowolf.md) per its frozen pre-reg; reconciliation with H050.yaml's Hansen-SPA wiring tracked under `P1-H050-MULTIPLE-TEST-FAMILY-RECONCILE`.
+- **Family B** (chart-reader cohort, model-class lift): `{H057, H058a, H058b, H059, H060}` (M=5, `omega_method=bootstrap` per [ADR-0008](docs/decisions/ADR-0008-spa-omega-method.md) two-tier rule); H050 is the **baseline anchor only**, NOT a Family B member. Test statistic per arm: `T_arm = SR_arm_gated − SR_H050_gated`; bar-aligned at per-bar cadence; shared bootstrap indices across the M=5 cohort per Hansen 2005 §3.
+
+**Black-box VLMs disqualified.** Hosted models (Claude, GPT-4V, Gemini) cannot enter inference paths because vendor model drift breaks SPA stability across the 60-session-day paper-trade window and weights cannot be hashed into `ReproLog.model_hash`. Open-weight only.
+
+**Multi-sidecar `model_hash` interim rule.** Per the synthesis memo §5, until `P1-MODEL-HASH-MULTI-SIDECAR-HELPER` lands, each chart-reader arm uses per-arm pre-aggregation: `arm_sidecar_sha256 := sha256(sorted_tuple([sidecar_a, sidecar_b, ...]))`, then the canonical outer 4-tuple `model_hash = sha256(sorted_tuple([arm_sidecar_sha256, hmm_sidecar_sha256, warm_cold_sidecar_sha256, ledger_rollup_sha256]))`.
+
+Audit trail: [docs/audits/audit_trail_2026-04-27_chartreader-hypothesis-package.md](docs/audits/audit_trail_2026-04-27_chartreader-hypothesis-package.md) — 3-round audit-remediate-loop with parallel quant-auditor + literature-check + reproducibility-verifier; 36 Round-1 + 22 Round-2 findings remediated; Round-3 verdict `clear`.
 
 ### Test coverage
 - 196 unit tests passing (9s runtime)
