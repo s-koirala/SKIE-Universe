@@ -72,6 +72,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import gc
 import hashlib
 import json
 import logging
@@ -722,7 +723,18 @@ def _inner_cv_select_hp(
     best_params: dict[str, Any] | None = None
     best_logloss = np.inf
     best_sharpe = -np.inf
-    for params in draws:
+    # P1-LGB-INNER-CV-HEAP-FRAGMENTATION: prod-run-4 OOM'd at cfg 20
+    # after ~11,400 LGB Booster fit-predict cycles (19 cfgs × 200 draws ×
+    # 3 inner folds). The 4.6 MiB allocation that failed is not a
+    # working-set issue (RSS was 5.7 GB at crash) but Windows
+    # address-space fragmentation: LightGBM's C-side Booster destructor
+    # only releases its tree blocks when the Python wrapper is gc'd, and
+    # the implicit-rebind pattern (``model = lgb.LGBMClassifier(...)``
+    # in a tight loop) leaves the prior wrapper as a generational-gc
+    # candidate, accumulating fragments. Explicit ``del`` + periodic
+    # ``gc.collect()`` after each draw bounds the heap. See
+    # docs/audits/audit_trail_2026-04-28_lgb-heap-fragmentation.md.
+    for draw_idx, params in enumerate(draws):
         fold_loglosses: list[float] = []
         fold_sharpes: list[float] = []
         for inner_tr, inner_te in inner_folds:
@@ -732,6 +744,7 @@ def _inner_cv_select_hp(
             y_in_te = y_train_outer[inner_te]
             r_in_te = r_train_outer[inner_te]
             if len(np.unique(y_in_tr)) < 2 or len(np.unique(y_in_te)) < 2:  # noqa: PLR2004
+                del X_in_tr, y_in_tr, X_in_te, y_in_te, r_in_te
                 continue
             model = lgb.LGBMClassifier(
                 n_estimators=50,
@@ -746,6 +759,9 @@ def _inner_cv_select_hp(
                 p_te = model.predict(X_in_te).astype(float)
             fold_loglosses.append(_logistic_loss_safe(y_in_te, p_te))
             fold_sharpes.append(_strategy_sharpe_simple(p_te, r_in_te))
+            # Explicit cleanup — drop refs to LGB Booster + numpy fancy-
+            # indexed slices before the next iteration creates new ones.
+            del model, p_te, X_in_tr, y_in_tr, X_in_te, y_in_te, r_in_te
         if not fold_loglosses:
             continue
         mean_logloss = float(np.mean(fold_loglosses))
@@ -755,6 +771,19 @@ def _inner_cv_select_hp(
             best_logloss = mean_logloss
             best_sharpe = mean_sharpe
             best_params = params
+        # Periodic GC to coalesce freed Booster + numpy fragments.
+        # After every 20 draws (configurable; cheap relative to LGB
+        # fit time at ~2 s/draw). Empirically: Microsoft KB on
+        # heap-fragmentation under repeated allocations
+        # (https://learn.microsoft.com/en-us/troubleshoot/windows-server/performance/troubleshoot-pool-leaks)
+        # advises bounded-cadence release for long-lived process
+        # heaps. 20 is a project-tunable; if a future run still
+        # OOMs, reduce to 10.
+        if (draw_idx + 1) % 20 == 0:
+            gc.collect()
+    # Final GC before return — caller chains many label-cfg invocations
+    # of this function, and we want the heap clean across the boundary.
+    gc.collect()
 
     return best_params, best_logloss, best_sharpe
 
@@ -2230,6 +2259,11 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
         if candidate is None:
             continue
         candidate_runs.append(((pt_sl, vb, vl), candidate))
+        # P1-LGB-INNER-CV-HEAP-FRAGMENTATION: defense-in-depth GC at the
+        # cfg-loop boundary. _inner_cv_select_hp already calls
+        # gc.collect() per-draw; this catches anything held by the
+        # outer cfg loop (engine state, label panels, fold ledgers).
+        gc.collect()
 
     if not candidate_runs:
         _write_aggregate(
