@@ -167,3 +167,4 @@ pytest tests/integration/ -v -m integration        # requires FRED_API_KEY
 | [ADR-0007](docs/decisions/ADR-0007-embargo-placement.md) | Embargo placement: stacked vs overlap form | accepted |
 | [ADR-0008](docs/decisions/ADR-0008-spa-omega-method.md) | SPA omega estimator selection | accepted |
 | [ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md) | BLAS thread pinning for reproducibility | accepted |
+| [ADR-0010](docs/decisions/ADR-0010-spa-universe-topology-flat-vs-two-tier.md) | SPA-universe topology — flat single-universe vs two-tier Family A / Family B | proposed (stub; binds before any family-aggregate inference report) |
