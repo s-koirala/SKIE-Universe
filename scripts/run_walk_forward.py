@@ -2248,7 +2248,7 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
     resume_cfg_run_id = getattr(args, "resume_cfg_checkpoint", None)
     if resume_cfg_run_id:
         prior_run_dir = (
-            paths.artifact_root() / "runs" / cfg.hypothesis_id / resume_cfg_run_id
+            paths.artifacts_runs / cfg.hypothesis_id / resume_cfg_run_id
         )
         prior_payloads = _cfg_checkpoint.discover_checkpoints(prior_run_dir)
         loaded_count = 0
