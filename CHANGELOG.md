@@ -4,6 +4,17 @@ All notable changes to the SKIE-Universe research program are documented here. F
 
 ## [Unreleased]
 
+### Added — 2026-04-28 — H053 multi-timeframe regression with opening-bar mediation (Tier 2b; merged from sibling claude/laughing-shamir-059944)
+- New pre-registered hypothesis **H053** added to [plan/hypothesis_backlog.md](plan/hypothesis_backlog.md) Tier 2b: "Multi-timeframe 09:45→10:30 ET ES/NQ regression with opening-bar mediation and a categorical bias-target-probability table". Three ex-ante pre-registered arms (ElasticNet / LightGBM / open-weights LLM, the LLM arm conditional on H053 design.md §11.4 deterministic-replay scaffolding).
+- Predictand: `y_{i,t} = log(C_i(10:30 ET, t)) − log(C_i(09:45 ET, t))` on the front-month roll-adjusted continuous series for ES + NQ.
+- Imai-Keele-Tingley 2010 mediation analysis with NDE/NIE/TCE estimands as **descriptive secondary outcomes** (NOT gating); E-value sensitivity per VanderWeele-Ding 2017.
+- H053 enters the project's **flat Hansen SPA universe** (sibling-branch SPA-universe topology) alongside H050/H051/H052a/H052b with **exactly 3 ex-ante slots** (Arm 1, Arm 2, Arm 3); arms whose §11.4 prerequisites fail to land before `running` consume their slot as `archive(null, prerequisite-not-met)` per H053 §8 family-entry rule, preserving family size at exactly 3.
+- Pre-registration package at [research/01_hypothesis_register/H053/](research/01_hypothesis_register/H053/) — `design.md` (481 lines, 11-section pre-reg + §11.4 prerequisites), `data_requirements_H053_2026-04-28.md`, `lit_review_H053_2026-04-28.md`. (Filename-convention deviation from canonical `data_requirements.md` / no-precedent-`lit_review.md` tracked under follow-up `P1-H053-FILENAME-CONVENTION-NORMALISE`.)
+- 6-cycle staged buildout (Cycles 7-12: feature factory → Stage-1 mediator-only Gao 2018 replication → Stage-2 multi-timeframe + mediation → Stage-3 full Arms 1+2 + SPA submission → paper-trade scaffolding → optional Arm-3 LLM) at [plan/h053_buildout_2026-04-28.md](plan/h053_buildout_2026-04-28.md).
+- Audit trail (sibling-branch audit-remediate-loop): [docs/audits/audit_trail_2026-04-28_h053-design.md](docs/audits/audit_trail_2026-04-28_h053-design.md).
+- Merge mechanics: fast-forward of `claude/laughing-shamir-059944` (4 commits ahead of merge-base, zero behind, zero conflicts per `git merge-tree`) per the audit-remediated branch-merge decision memo at [docs/research_notes/memo_branch-merge-decision_2026-04-27.md](docs/research_notes/memo_branch-merge-decision_2026-04-27.md). Merge surfaces a structural **SPA-universe topology incompatibility** between sibling H053's flat-universe approach and the chart-reader cohort's two-tier Family A/B declaration (synthesis memo §6); adjudication deferred to **ADR-0010** (separate commit). Neither topology is binding before any family-aggregate inference report.
+- Concurrent renumber: chart-reader cohort H053-H056 → H057-H060 (sibling H053 keeps the ID per its committed-frozen pre-reg; current chart-reader cohort was uncommitted at merge time).
+
 ### Added — 2026-04-27 — Tier 2c AI chart-reader hypothesis cohort
 - Four pre-registered hypotheses added to [plan/hypothesis_backlog.md](plan/hypothesis_backlog.md):
   - **H057** — 1D-CNN on causal 60×5 OHLCV tensor with HMM regime gate (train-from-scratch, zero pretraining contamination).
