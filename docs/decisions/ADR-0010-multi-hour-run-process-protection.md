@@ -70,6 +70,8 @@ Before launching any walk-forward run expected to exceed one hour:
 
 The runbook is published at [docs/research_notes/runbook_walk-forward-launch-prep_2026-04-27.md](../research_notes/runbook_walk-forward-launch-prep_2026-04-27.md) and the supervisor wrapper enforces the checklist programmatically.
 
+> **Note (2026-04-29):** This Layer was extended from Windows-Update-specific to general production-run gating by [ADR-0011](ADR-0011-production-walkforward-runbook.md). The 2026-04-27 operator-facing per-run runbook was superseded on 2026-04-29 by the per-hypothesis runbook template at [research/_templates/production_run_runbook.md](../../research/_templates/production_run_runbook.md), instantiated per hypothesis under `research/01_hypothesis_register/<HXXX>/production_run_runbook.md`. The 2026-04-27 runbook remains historically valid for the H050 launch arc but is no longer the canonical reference.
+
 ### Layer 3 — Resume-from-checkpoint
 
 Even with Layers 1 and 2, treat external termination as possible. The orchestrator writes per-fold artifacts (`fold_<N>.json`) to `artifacts/runs/H050/<run_id>/<sym>/folds/` *as each fold completes*. A relaunch with the same `run_id` (or a `--resume <run_id>` flag) detects already-completed folds by file presence and skips them.

@@ -2,10 +2,14 @@
 title: H050 walk-forward launch — pre-launch runbook (ADR-0010 Layer 2)
 date: 2026-04-27
 type: runbook
-status: live
+status: superseded
+superseded_by: docs/decisions/ADR-0011-production-walkforward-runbook.md, research/_templates/production_run_runbook.md
+superseded_date: 2026-04-29
 applies_to: any walk-forward run expected to exceed 1 hour wall-clock
 supersedes: prior ad-hoc launch (no pre-launch checks)
 ---
+
+> **SUPERSEDED 2026-04-29** — this operator-facing per-run runbook is replaced by the per-hypothesis runbook template at [research/_templates/production_run_runbook.md](../../research/_templates/production_run_runbook.md), instantiated per hypothesis under [research/01_hypothesis_register/<HXXX>/production_run_runbook.md](../../research/01_hypothesis_register/) and bound by [ADR-0011](../decisions/ADR-0011-production-walkforward-runbook.md). The 5-step content below remains historically valid for the H050 launch arc but is no longer the canonical reference. Empirical basis for supersession: [memo_h050-prodrun-retrospective_2026-04-29.md](memo_h050-prodrun-retrospective_2026-04-29.md).
 
 # H050 walk-forward launch — pre-launch runbook
 
