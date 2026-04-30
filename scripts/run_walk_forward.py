@@ -247,6 +247,19 @@ from skie_ninja.models.regime import (
     write_warm_cold_sidecar,
 )
 from skie_ninja.backtest import cfg_checkpoint as _cfg_checkpoint
+from skie_ninja.backtest import lgb_inner_cv_checkpoint as _lgb_inner_cv_checkpoint
+
+
+# P1-LGB-INNER-CV-RESULT-CHECKPOINT (2026-04-30): module-level cfg
+# context the cfg loop sets just before calling _run_symbol_label_cfg
+# and clears afterwards. _inner_cv_select_hp reads this to decide
+# whether to engage per-draw checkpointing. Threading the resume ctx
+# through the 4-level call chain (cfg-loop -> _run_symbol_label_cfg ->
+# _run_symbol_label_cfg_body -> engine.run -> _fit_fold -> _fit_fold_body
+# -> _inner_cv_select_hp) would require a wide signature change; the
+# module-level state is bounded (set/cleared inside one cfg's body)
+# and pragmatic. None when no resume is desired.
+_LGB_INNER_CV_CURRENT_CTX: dict[str, Any] | None = None
 from skie_ninja.models.regime import hmm_fit_cache as _hmm_fit_cache
 from skie_ninja.utils.hashing import frame_sha256
 from skie_ninja.utils.paths import ProjectPaths
@@ -724,6 +737,68 @@ def _inner_cv_select_hp(
     best_params: dict[str, Any] | None = None
     best_logloss = np.inf
     best_sharpe = -np.inf
+
+    # P1-LGB-INNER-CV-RESULT-CHECKPOINT (2026-04-30): if the cfg loop
+    # set a per-cfg resume context, load any cached per-draw results
+    # for THIS outer fold and skip those draws below. Cache miss falls
+    # through to compute-and-save. The context is module-level (see top
+    # of file) to avoid threading 4 layers of optional kwargs.
+    #
+    # Round-1 audit R-1-1 fix: cache key is now (cfg_signature, fold_id,
+    # draw_idx); resume_ctx must carry fold_id (set by _fit_fold_body
+    # before the call). Q-1-1 fix: discover_draws + merge_resume_into_current
+    # return dicts sorted by (fold_id, draw_idx) so cache-population
+    # iteration is deterministic. Q-1-2 fix: lgb_seed is part of the
+    # cfg subdirectory name so cross-seed runs can't contaminate.
+    cached_draws_for_fold: dict[int, dict[str, Any]] = {}
+    resume_ctx = _LGB_INNER_CV_CURRENT_CTX
+    if resume_ctx is not None and "fold_id" in resume_ctx:
+        cached_all = _lgb_inner_cv_checkpoint.merge_resume_into_current(
+            prior_run_dir=resume_ctx.get("prior_run_dir"),
+            current_run_dir=resume_ctx["current_run_dir"],
+            cfg_signature=resume_ctx["cfg_signature"],
+            lgb_seed=int(lgb_seed),
+        )
+        cached_draws_for_fold = _lgb_inner_cv_checkpoint.filter_draws_by_fold(
+            cached_all, fold_id=int(resume_ctx["fold_id"])
+        )
+        # Score cached draws for THIS fold into the best-tracking
+        # variables. Iteration order is deterministic via the sort
+        # in merge_resume_into_current + filter_draws_by_fold's dict
+        # comprehension preserving order; for tie-breaking robustness,
+        # iterate explicitly by sorted draw_idx.
+        prov_drift = 0
+        for d_idx in sorted(cached_draws_for_fold.keys()):
+            payload = cached_draws_for_fold[d_idx]
+            mismatches = _lgb_inner_cv_checkpoint.check_provenance(payload)
+            if mismatches:
+                prov_drift += 1
+            fold_loglosses_c = list(payload.get("fold_loglosses", []))
+            fold_sharpes_c = list(payload.get("fold_sharpes", []))
+            if not fold_loglosses_c:
+                continue
+            mean_logloss_c = float(np.mean(fold_loglosses_c))
+            finite_sharpes_c = [s for s in fold_sharpes_c if np.isfinite(s)]
+            mean_sharpe_c = (
+                float(np.mean(finite_sharpes_c)) if finite_sharpes_c else -np.inf
+            )
+            if mean_logloss_c < best_logloss:
+                best_logloss = mean_logloss_c
+                best_sharpe = mean_sharpe_c
+                best_params = dict(payload.get("params", {}))
+        _LOG.info(
+            "lgb-inner-cv-checkpoint resumed: sym=%s fold_id=%s cfg_signature=%s "
+            "lgb_seed=%s n_draws=%d cached=%d remaining=%d provenance_drift=%d",
+            resume_ctx.get("sym", "?"),
+            resume_ctx.get("fold_id"),
+            resume_ctx["cfg_signature"][:16],
+            int(lgb_seed),
+            lgb_n_draws,
+            len(cached_draws_for_fold),
+            lgb_n_draws - len(cached_draws_for_fold),
+            prov_drift,
+        )
+
     # P1-LGB-INNER-CV-HEAP-FRAGMENTATION: prod-run-4 OOM'd at cfg 20
     # after ~11,400 LGB Booster fit-predict cycles (19 cfgs × 200 draws ×
     # 3 inner folds). The 4.6 MiB allocation that failed is not a
@@ -736,6 +811,10 @@ def _inner_cv_select_hp(
     # ``gc.collect()`` after each draw bounds the heap. See
     # docs/audits/audit_trail_2026-04-28_lgb-heap-fragmentation.md.
     for draw_idx, params in enumerate(draws):
+        # P1-LGB-INNER-CV-RESULT-CHECKPOINT: skip already-cached draws
+        # for THIS outer fold (cache key includes fold_id per R-1-1 fix).
+        if draw_idx in cached_draws_for_fold:
+            continue
         fold_loglosses: list[float] = []
         fold_sharpes: list[float] = []
         for inner_tr, inner_te in inner_folds:
@@ -772,6 +851,33 @@ def _inner_cv_select_hp(
             best_logloss = mean_logloss
             best_sharpe = mean_sharpe
             best_params = params
+        # P1-LGB-INNER-CV-RESULT-CHECKPOINT (2026-04-30): persist this
+        # draw's per-inner-fold results to disk immediately so any
+        # external kill (OS reboot, BSOD, hardware) on the next draw
+        # costs at most this draw's recompute. Atomic write semantics
+        # match cfg_checkpoint and hmm_fit_cache (tmp + os.replace).
+        if resume_ctx is not None and "fold_id" in resume_ctx:
+            try:
+                _lgb_inner_cv_checkpoint.save_draw_checkpoint(
+                    run_dir=resume_ctx["current_run_dir"],
+                    cfg_signature=resume_ctx["cfg_signature"],
+                    fold_id=int(resume_ctx["fold_id"]),
+                    draw_idx=draw_idx,
+                    params=params,
+                    fold_loglosses=fold_loglosses,
+                    fold_sharpes=fold_sharpes,
+                    producing_run_id=resume_ctx.get("producing_run_id"),
+                    lgb_seed=int(lgb_seed),
+                )
+            except (OSError, PermissionError) as exc:
+                _LOG.warning(
+                    "lgb-inner-cv-checkpoint save failed for fold %s draw %d "
+                    "(cfg %s): %s; continuing (in-memory state preserved).",
+                    resume_ctx.get("fold_id"),
+                    draw_idx,
+                    resume_ctx["cfg_signature"][:16],
+                    exc,
+                )
         # Periodic GC to coalesce freed Booster + numpy fragments.
         # After every 20 draws (configurable; cheap relative to LGB
         # fit time at ~2 s/draw). Empirically: Microsoft KB on
@@ -1329,6 +1435,13 @@ def _fit_fold_body(  # noqa: PLR0912, PLR0915
         n_draws=lgb_n_draws,
         n_inner_folds=n_inner_folds,
     ) as _inner_cv_done_ctx:
+        # P1-LGB-INNER-CV-RESULT-CHECKPOINT (R-1-1 fix): inject fold_id
+        # into the module-level resume ctx that the cfg loop set with
+        # cfg-level fields. _inner_cv_select_hp keys per-(cfg, fold,
+        # draw); without fold_id the v1 schema collided across folds.
+        global _LGB_INNER_CV_CURRENT_CTX
+        if _LGB_INNER_CV_CURRENT_CTX is not None:
+            _LGB_INNER_CV_CURRENT_CTX["fold_id"] = int(fold_id)
         best_params, best_logloss, best_sharpe = _inner_cv_select_hp(
             X_train_outer=X_tr,
             y_train_outer=y_tr,
@@ -2323,21 +2436,51 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
                     "resumed" if candidate is not None else "resumed_skipped"
                 )
             else:
-                candidate = _run_symbol_label_cfg(
-                    sym,
-                    panel_for_symbol,
-                    feature_matrix,
-                    cfg=cfg,
-                    args=args,
-                    pt_sl=pt_sl,
-                    vertical_barrier=vb,
-                    volatility_lookback=vl,
-                    lgb_n_draws=lgb_n_draws,
-                    n_inner_folds=n_inner_folds,
-                    hmm_cache=hmm_cache,
-                    hmm_cache_stats=hmm_cache_stats,
-                    hmm_cache_run_dir=hmm_cache_run_dir,
+                # P1-LGB-INNER-CV-RESULT-CHECKPOINT (2026-04-30): set
+                # the module-level resume context so _inner_cv_select_hp
+                # can engage per-draw checkpointing without threading
+                # 4 layers of optional kwargs. Cleared in the finally
+                # so a downstream exception can't leak the ctx into
+                # the next cfg.
+                global _LGB_INNER_CV_CURRENT_CTX
+                _producing_run_id = (
+                    ctx.log.run_id
+                    if (ctx is not None and ctx.log is not None)
+                    else None
                 )
+                _prior_run_dir_for_lgb = (
+                    paths.artifacts_runs / cfg.hypothesis_id / resume_cfg_run_id
+                    if resume_cfg_run_id
+                    else None
+                )
+                _LGB_INNER_CV_CURRENT_CTX = {
+                    "sym": str(sym).upper(),
+                    "cfg_idx": int(cfg_idx),
+                    "cfg_signature": _lgb_inner_cv_checkpoint.cfg_signature_from_key_tuple(
+                        cfg_key_tuple
+                    ),
+                    "current_run_dir": run_dir,
+                    "prior_run_dir": _prior_run_dir_for_lgb,
+                    "producing_run_id": _producing_run_id,
+                }
+                try:
+                    candidate = _run_symbol_label_cfg(
+                        sym,
+                        panel_for_symbol,
+                        feature_matrix,
+                        cfg=cfg,
+                        args=args,
+                        pt_sl=pt_sl,
+                        vertical_barrier=vb,
+                        volatility_lookback=vl,
+                        lgb_n_draws=lgb_n_draws,
+                        n_inner_folds=n_inner_folds,
+                        hmm_cache=hmm_cache,
+                        hmm_cache_stats=hmm_cache_stats,
+                        hmm_cache_run_dir=hmm_cache_run_dir,
+                    )
+                finally:
+                    _LGB_INNER_CV_CURRENT_CTX = None
                 _step_done_ctx["status"] = (
                     "ok" if candidate is not None else "skipped"
                 )

@@ -50,6 +50,44 @@ Hypotheses for the bypass mechanism (each requires further evidence; none fully 
 
 **Disposition after Round-1 audit:** H-A and H-B are unprobed candidates of approximately equal weight; H-C and H-E are eliminated by mechanism analysis; H-D is weakly refuted but not fully eliminated. **No single hypothesis is "leading"** until the empirical probes specified under `P1-WAKE-LOCK-BYPASS-INVESTIGATION` (acceptance criteria below) execute.
 
+### Disposition after probes (2026-04-30)
+
+Acceptance criterion (1) — **probe `Microsoft-Windows-WindowsUpdateClient/Operational` for the 20:14-20:16 window — executed**. Result:
+
+| TimeCreated | Event ID | Message |
+|---|---|---|
+| 2026-04-29 20:16:03 | 26 | "Windows Update successfully found 0 updates." |
+| 2026-04-29 20:26:57 | 26 | "Windows Update successfully found 1 updates." (post-reboot) |
+| 2026-04-29 20:26:57 | 41 | "An update was downloaded." (post-reboot) |
+
+The Event 26 at **20:16:03** is at the same second as the Microsoft-Windows-Kernel-Power Event 109 reboot. UsoSvc / MoUsoCoreWorker was active at the exact reboot moment. Event 26 itself is the scan-completion class ("Windows Update successfully found N updates") and is *not* a reboot-trigger event; the same-second timestamp establishes that an Operational-channel UsoSvc scan was in flight at shutdown but does not by itself prove UsoSvc was the *caller* of the Kernel API shutdown — UsoSvc's actual reboot-orchestration trace would be in the USO trace channel (`Microsoft-Windows-USO-CoreWorker/...`), which was NOT probed in this round (Q-1-5 finding). H-B is **consistent with the evidence**, not confirmed.
+
+Acceptance criterion (2) — **Smart Active Hours probe**. Result on this host:
+
+```
+ActiveHoursStart       : 8
+ActiveHoursEnd         : 1
+SmartActiveHoursState  : (empty/null)
+IsExpedited            : (empty/null)
+PauseUpdatesExpiryTime : (empty/null)
+```
+
+`SmartActiveHoursState` is unset. With manual AH configured (8–1) and Smart AH not engaged, the Smart-AH dynamic-expiry path is not active on this host. **H-A is eliminated.**
+
+Acceptance criterion (3) — per-hypothesis disposition update:
+
+| Hypothesis | Pre-probe status | Post-probe status |
+|---|---|---|
+| H-A Smart AH dynamic | not eliminated, not confirmed | **Eliminated** — `SmartActiveHoursState` is unset on this host. |
+| H-B UsoSvc enforcement-deadline | not eliminated, not confirmed | **Consistent with evidence; load-bearing candidate caller; not yet confirmed.** Event 26 at 20:16:03 same-second as Kernel-Power 109; Event 26 is scan-completion, not reboot-trigger. USO trace channel probe (`Microsoft-Windows-USO-CoreWorker/...`) deferred to `P1-USO-TRACE-CHANNEL-PROBE` follow-up; defense layer (`pause_windows_update.ps1` + Group Policy registry pause) ships against H-B regardless. |
+| H-C Kernel watchdog | Eliminated (mechanism) | Eliminated (mechanism) — unchanged. |
+| H-D Non-1074 user reboot | Weakly refuted | Weakly refuted — unchanged. |
+| H-E Hardware | Eliminated (no Event 41) | Eliminated — unchanged. |
+
+Acceptance criterion (4) — **defense layer shipped**. [scripts/preflight/pause_windows_update.ps1](../../scripts/preflight/pause_windows_update.ps1) sets `PauseUpdatesExpiryTime` (+ `PauseFeatureUpdatesEndTime`, `PauseQualityUpdatesEndTime`) to a future timestamp covering the run window. The pause is registry-resident, reversible via `-Resume`, requires admin once at launch time. The preflight check (`scripts/preflight/check_windows_update.ps1`) now reads `PauseUpdatesExpiryTime`; if a pause covers the run window, the verdict downgrades from "warn (AH coverage gap)" to "ok (WU paused)".
+
+**P1-WAKE-LOCK-BYPASS-INVESTIGATION acceptance criteria (1)+(2)+(3)+(4) all closed in this commit.** The follow-up moves from BLOCKING-BEFORE-NEXT-H050-LAUNCH to closed-via-commit.
+
 `P1-WAKE-LOCK-BYPASS-INVESTIGATION` is filed as the umbrella follow-up; it must conclude before another multi-hour H050 launch.
 
 ### F-2 — Preflight script timed out at 60s, supervisor proceeded under `--allow-preflight-warn`

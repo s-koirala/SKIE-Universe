@@ -67,9 +67,22 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
+_PREFLIGHT_TIMEOUT_S = 180  # P1-PREFLIGHT-SCRIPT-TIMEOUT (2026-04-30):
+                            # raised from 60 -> 180 per
+                            # audit_trail_2026-04-29_h050-prod-run-attempt2-os-reboot-bypass.md
+                            # F-2 (60s timeout produced TimeoutExpired
+                            # with no JSON; gates 6/7/9/10 unexercised
+                            # for the 19:25 attempt). 180s gives the
+                            # PS1 enough budget on slow hosts (Get-CimInstance
+                            # against Win32_OperatingSystem can be slow on
+                            # fresh boot; future Get-WUList queries even
+                            # slower).
+
+
 def _run_preflight(
     preflight_path: Path,
     expected_runtime_h: int = _DEFAULT_EXPECTED_RUNTIME_H,
+    output_path: Path | None = None,
 ) -> tuple[int, dict[str, Any] | None]:
     """Returns (exit_code, parsed_json_or_None).
 
@@ -84,6 +97,16 @@ def _run_preflight(
       itself is also a no-op on non-Windows; no protection needed).
     - Q-1-5 + R-6: passes `expected_runtime_h` so the .ps1 script can
       check whether Active Hours covers the run window.
+
+    P1-PREFLIGHT-SCRIPT-TIMEOUT (2026-04-30):
+
+    - timeout raised from 60 to ``_PREFLIGHT_TIMEOUT_S = 180``.
+    - if ``output_path`` is provided, it is forwarded to the .ps1 as
+      ``-OutputPath`` so the script writes incremental JSON to disk
+      after each major check section. On ``TimeoutExpired``, we read
+      the partial JSON from disk if it exists and return it with
+      ``status="warn-timeout-partial"``. Gate-6/7/9/10 readers can
+      use the partial values that were written before the timeout.
     """
     if sys.platform != "win32":
         return 0, {
@@ -95,20 +118,23 @@ def _run_preflight(
             "status": "warn",
             "reason": f"preflight script not found at {preflight_path}",
         }
+    cmd = [
+        "powershell.exe",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(preflight_path),
+        "-ExpectedRuntimeHours",
+        str(expected_runtime_h),
+    ]
+    if output_path is not None:
+        cmd.extend(["-OutputPath", str(output_path)])
     try:
         proc = subprocess.run(
-            [
-                "powershell.exe",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(preflight_path),
-                "-ExpectedRuntimeHours",
-                str(expected_runtime_h),
-            ],
+            cmd,
             capture_output=True,
             text=True,
-            timeout=60,
+            timeout=_PREFLIGHT_TIMEOUT_S,
         )
         try:
             payload = json.loads(proc.stdout)
@@ -119,6 +145,29 @@ def _run_preflight(
                 "raw_stderr": proc.stderr,
             }
         return proc.returncode, payload
+    except subprocess.TimeoutExpired as exc:
+        # P1-PREFLIGHT-SCRIPT-TIMEOUT: try to recover the partial
+        # report the .ps1 incrementally wrote before the timeout fired.
+        partial: dict[str, Any] | None = None
+        if output_path is not None and output_path.exists():
+            try:
+                partial = json.loads(output_path.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                partial = None
+        if partial is not None:
+            partial.setdefault("notes", []).append(
+                f"supervisor TimeoutExpired after {_PREFLIGHT_TIMEOUT_S}s; "
+                f"partial JSON read from {output_path}; phase at timeout "
+                f"= {partial.get('progress_phase', 'unknown')}"
+            )
+            partial["status"] = "warn-timeout-partial"
+            partial["timeout_s"] = _PREFLIGHT_TIMEOUT_S
+            return 2, partial
+        return 2, {
+            "status": "warn",
+            "error": repr(exc),
+            "timeout_s": _PREFLIGHT_TIMEOUT_S,
+        }
     except Exception as exc:  # noqa: BLE001
         return 2, {"status": "warn", "error": repr(exc)}
 
@@ -297,7 +346,9 @@ def main(argv: list[str] | None = None) -> int:
     # --- Preflight --------------------------------------------------
     if not args.skip_preflight:
         rc, report = _run_preflight(
-            preflight_path, expected_runtime_h=args.expected_runtime_h
+            preflight_path,
+            expected_runtime_h=args.expected_runtime_h,
+            output_path=preflight_report_path,
         )
         if report is not None:
             _atomic_write_json(preflight_report_path, report)
