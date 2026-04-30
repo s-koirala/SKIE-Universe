@@ -103,6 +103,20 @@ for ATTEMPT in $(seq 1 "$MAX_ATTEMPTS"); do
         exit 0
     fi
 
+    # Fail-fast on preflight-block (rc=3): pending Windows restart,
+    # WU expiry-window violation with refused-warn, etc. are operator-
+    # action-required states, NOT transient crashes. Retrying without
+    # operator intervention burns attempts pointlessly.
+    if [[ "$RC" -eq 3 ]]; then
+        echo "BLOCKED: preflight returned rc=3 (operator-action-required)."
+        echo "See preflight report above. Common causes:"
+        echo "  - PendingFileRenameOperations / pending Windows restart → reboot."
+        echo "  - WU pause expiry < expected runtime → re-pause via pause_windows_update.ps1."
+        echo "  - Active Hours window does not cover runtime → adjust AH or pause WU."
+        echo "Resolve the block, then relaunch the loop."
+        exit 3
+    fi
+
     echo "Attempt $ATTEMPT exited rc=$RC; latest run_id $LATEST_RUN_ID"
 
     # Fresh-mode bootstrap: after attempt 1 in --fresh, promote the
