@@ -238,7 +238,10 @@ from skie_ninja.features.labels import (
     TripleBarrierLabeler,
 )
 from skie_ninja.inference import choose_block_length, hansen_spa_test
-from skie_ninja.inference.stats import opdyke2007_ci, sample_sharpe
+from skie_ninja.inference.stats import (
+    ledoit_wolf_2008_differential_ci,
+    sample_sharpe,
+)
 from skie_ninja.models.regime import (
     GaussianHMM,
     WarmColdDiagnostic,
@@ -411,6 +414,8 @@ class RunConfig:
     cost_model_id: str
     cost_sensitivity_mult: float
     gate_alpha: float
+    diff_ci_n_bootstrap: int
+    diff_ci_block_length: float | None  # None → Politis-White auto
     train_start: pd.Timestamp
     train_end: pd.Timestamp
     val_start: pd.Timestamp
@@ -471,7 +476,22 @@ def load_config(path: Path) -> RunConfig:
         spa_omega_method=str(raw["gates"]["hansen_spa"].get("omega_method", "bootstrap")),
         cost_model_id=str(raw.get("cost_model", "nt8_es_nq_rth_v1")),
         cost_sensitivity_mult=float(raw.get("cost_sensitivity_mult", 1.0)),
-        gate_alpha=float(raw["gates"]["opdyke2007_ci"]["alpha"]),
+        gate_alpha=float(raw["gates"]["ledoit_wolf_2008_differential_ci"]["alpha"]),
+        diff_ci_n_bootstrap=int(
+            raw["gates"]["ledoit_wolf_2008_differential_ci"]["n_bootstrap"]
+        ),
+        diff_ci_block_length=(
+            None
+            if str(
+                raw["gates"]["ledoit_wolf_2008_differential_ci"].get(
+                    "block_length", "auto"
+                )
+            )
+            == "auto"
+            else float(
+                raw["gates"]["ledoit_wolf_2008_differential_ci"]["block_length"]
+            )
+        ),
         train_start=train_start,
         train_end=train_end,
         val_start=val_start,
@@ -1642,35 +1662,77 @@ def _sharpe_differential_stats(
     *,
     gated: np.ndarray,
     unconditional: np.ndarray,
-    n_bootstrap: int,
+    spa_n_bootstrap: int,
+    diff_ci_n_bootstrap: int,
+    diff_ci_block_length: float | None,
+    diff_ci_alpha: float,
     seed: int,
     omega_method: str = "bootstrap",
 ) -> dict[str, Any]:
-    """Opdyke CI + Hansen SPA on OOS returns.
+    """Ledoit-Wolf 2008 paired-Sharpe-difference CI + Hansen SPA on OOS returns.
 
-    ``omega_method`` follows ADR-0008: pass ``"hac"`` for single-strategy
-    gates (M=1) to decouple the bootstrap MC error from the LRV estimator.
+    Per H050 design.md §1 the test statistic is the paired-differential
+    ``T_H050 = SR_filtered,gated − SR_filtered,unconditional``. The
+    primary CI primitive is the audited `ledoit_wolf_2008_differential_ci`
+    at [src/skie_ninja/inference/stats/ledoit_wolf_2008.py](../src/skie_ninja/inference/stats/ledoit_wolf_2008.py)
+    per ADR-0008 §"Cross-reference: LW2008 differential CI as primary
+    inference"; rules/quant-project.md mandates LW2008 for pairwise
+    Sharpe comparison. The audited primitive uses the Jobson-Korkie
+    1981 + Memmel 2003 joint-moment-vector delta method for the HAC SE,
+    per-replicate bandwidth re-selection (LW2008 WP 320 §3.2.2),
+    asymmetric studentised-pivotal CI form (Hall 1992 §3.5 / Davison
+    & Hinkley 1997 §5.4 eq. 5.10), and Politis-Romano 1994 stationary
+    bootstrap with Politis-White 2004 block-length on the paired-
+    difference series ``r_a - r_b``.
+
+    Independent child generators for LW2008 vs Hansen SPA — spawned
+    from a single ``SeedSequence(seed)`` so reproducibility is
+    deterministic but the two primitives' bootstrap streams do not
+    couple (R-1-2 audit fix). A future re-implementation of either
+    primitive cannot silently shift the other's p-value via shared rng
+    consumption.
+
+    ``omega_method`` follows ADR-0008: pass ``"hac"`` for single-
+    strategy SPA gates (M=1) to decouple the bootstrap MC error from
+    the LRV estimator.
     """
-    ci = opdyke2007_ci(gated)
-    sharpe_g, _ = sample_sharpe(gated)
-    sharpe_u, _ = sample_sharpe(unconditional) if unconditional.std() > 0 else (0.0, 0)
-    differential = sharpe_g - sharpe_u
+    seed_seq = np.random.SeedSequence(seed)
+    lw_seed, spa_seed = seed_seq.spawn(2)
+    lw_rng = np.random.default_rng(lw_seed)
+    spa_rng = np.random.default_rng(spa_seed)
+
+    sharpe_gated, _ = sample_sharpe(gated)
+    sharpe_unconditional, _ = (
+        sample_sharpe(unconditional) if unconditional.std() > 0 else (0.0, 0)
+    )
+
+    diff_ci = ledoit_wolf_2008_differential_ci(
+        gated,
+        unconditional,
+        alpha=diff_ci_alpha,
+        n_bootstrap=diff_ci_n_bootstrap,
+        block_length=diff_ci_block_length,
+        bandwidth_strategy="per_replicate",
+        rng=lw_rng,
+    )
+
     # SPA: one candidate strategy (gated minus unconditional).
     d = (gated - unconditional).reshape(-1, 1)
-    rng = np.random.default_rng(seed)
-    bl_selection = choose_block_length(gated - unconditional, bootstrap_type="stationary")
+    bl_selection = choose_block_length(
+        gated - unconditional, bootstrap_type="stationary"
+    )
     spa = hansen_spa_test(
         d,
-        n_bootstrap=n_bootstrap,
+        n_bootstrap=spa_n_bootstrap,
         block_length=bl_selection.block_length,
-        rng=rng,
+        rng=spa_rng,
         omega_method=omega_method,
     )
     return {
-        "sharpe_gated": float(sharpe_g),
-        "sharpe_unconditional": float(sharpe_u),
-        "sharpe_differential": float(differential),
-        "opdyke_ci": ci.to_dict(),
+        "sharpe_gated": float(sharpe_gated),
+        "sharpe_unconditional": float(sharpe_unconditional),
+        "sharpe_differential": float(diff_ci.point_estimate),
+        "ledoit_wolf_2008_differential_ci": diff_ci.to_dict(),
         "hansen_spa": {
             "p_value": spa.p_value,
             "p_value_lower": spa.p_value_lower,
@@ -2646,13 +2708,37 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
             float(uncond_arr.std()),
         )
     if _gate_ok:
-        metrics = _sharpe_differential_stats(
-            gated=gated_arr,
-            unconditional=uncond_arr,
-            n_bootstrap=cfg.spa_n_bootstrap,
-            seed=cfg.random_seed,
-            omega_method=cfg.spa_omega_method,
-        )
+        try:
+            metrics = _sharpe_differential_stats(
+                gated=gated_arr,
+                unconditional=uncond_arr,
+                spa_n_bootstrap=cfg.spa_n_bootstrap,
+                diff_ci_n_bootstrap=cfg.diff_ci_n_bootstrap,
+                diff_ci_block_length=cfg.diff_ci_block_length,
+                diff_ci_alpha=cfg.gate_alpha,
+                seed=cfg.random_seed,
+                omega_method=cfg.spa_omega_method,
+            )
+        except (RuntimeError, ValueError) as exc:
+            # Degenerate-bootstrap or zero-variance-resample paths in
+            # `ledoit_wolf_2008_differential_ci` raise rather than
+            # silently produce NaN-laden CIs. Per R-1-7 audit fix:
+            # surface as a per-symbol status without crashing the
+            # multi-symbol orchestrator. Reproducibility is preserved
+            # because the seed + data deterministically reproduce the
+            # raise.
+            _LOG.warning(
+                "Gate raised on sym=%s: %s — recording 'degenerate_bootstrap' "
+                "and continuing with remaining symbols.",
+                sym,
+                exc,
+            )
+            metrics = {
+                "status": "degenerate_bootstrap",
+                "exception_type": type(exc).__name__,
+                "exception_message": str(exc),
+                "n_returns": int(gated_arr.size),
+            }
     else:
         metrics = {
             "status": "insufficient_oos_returns",

@@ -42,7 +42,7 @@ splitter:
   embargo: auto  # max(PACF_lag, politis_white_block) per plan §4.1
   purge: auto    # max(vertical_barrier) across folds
 gates:
-  opdyke2007_ci: {alpha: 0.05, tails: two, must_exclude: 0}
+  ledoit_wolf_2008_differential_ci: {alpha: 0.05, tails: two, must_exclude: 0, n_bootstrap: 2000, block_length: auto, bandwidth_strategy: per_replicate}  # paired-differential CI on T_H050 = SR_gated − SR_unconditional per design.md §1; rules/quant-project.md mandates LW2008 for pairwise comparison; B=2000 per Hall 1992 §1.5 (K(1-α)-1 for K=100, α=0.05); per_replicate bandwidth per LW2008 WP 320 §3.2.2; binds to audited primitive at src/skie_ninja/inference/stats/ledoit_wolf_2008.py per ADR-0008 §"Cross-reference"
   hansen_spa: {alpha: 0.05, variant: consistent, n_bootstrap: 1000, omega_method: hac}  # ADR-0008: M=1 single-strategy → HAC decouples MC error
   bh_q: {threshold: 0.10}
   power: {target: 0.80}
