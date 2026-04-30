@@ -27,7 +27,17 @@ START_RESUME_RUN_ID=""
 MAX_ATTEMPTS=10
 HYPOTHESIS=H050
 CONFIG="config/hypotheses/H050.yaml"
-PER_LAUNCH_CAP_S=10800  # 3 hours per attempt (well below fragmentation wall)
+PER_LAUNCH_CAP_S=21600  # 6 hours per attempt -- raised 2026-04-29 from 10800 (3 hr) per
+                        # audit_trail_2026-04-29_h050-prod-run-attempt2-os-reboot-bypass.md
+                        # F-3 finding. Empirical evidence: attempt-1 (16:24) hit the 3-hr
+                        # cap with 0 new NQ cfgs, proving 3 hr is too short. Attempt-2
+                        # (19:25) was killed by OS reboot at +49 min and cannot constrain
+                        # the upper end. **6 hr is a provisional doubling, not an
+                        # empirical floor**; calibration to a per-cfg-completion-time
+                        # distribution must land under P1-RELAUNCH-PER-ATTEMPT-CAP-
+                        # CALIBRATION before the next H050 launch sequence completes.
+                        # The cap raise alone does NOT solve the wake-lock bypass (F-1)
+                        # -- see P1-WAKE-LOCK-BYPASS-INVESTIGATION (blocking).
 EXPECTED_H=2
 
 while [[ $# -gt 0 ]]; do

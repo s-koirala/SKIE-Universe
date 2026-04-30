@@ -52,6 +52,8 @@ The previous execution state returned by `SetThreadExecutionState` on first acqu
 - Forced reboot via `shutdown /f`.
 For these residual cases, Layer 3 (resume-from-checkpoint) is the recovery path.
 
+> **Note (2026-04-29):** Layer 1 alone is empirically insufficient on Windows 11 under at least one bypass mechanism. The 2026-04-29 H050 prod-run-6 attempt-2 was killed by Microsoft-Windows-Kernel-Power Event 109 ("Reason: Kernel API") at 20:16:03 CT despite an acquired `ES_SYSTEM_REQUIRED` wake-lock at 19:26:45 CT. See [audit_trail_2026-04-29_h050-prod-run-attempt2-os-reboot-bypass.md](../audits/audit_trail_2026-04-29_h050-prod-run-attempt2-os-reboot-bypass.md) F-1 for the 5-hypothesis disposition (H-A Smart AH dynamic, H-B UsoSvc enforcement-deadline, H-C kernel watchdog [eliminated], H-D non-1074 user reboot, H-E hardware [eliminated]). The investigation is tracked under `P1-WAKE-LOCK-BYPASS-INVESTIGATION` (ADR-0011 §"Residual risk", blocking before the next H050 launch). **Layer 1 remains a necessary precondition but is no longer claimed as sufficient**; combine with the within-cfg checkpoint (`P1-LGB-INNER-CV-RESULT-CHECKPOINT`) defense from ADR-0011.
+
 ### Layer 2 — Pre-launch runbook
 
 Before launching any walk-forward run expected to exceed one hour:

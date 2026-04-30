@@ -69,6 +69,21 @@ New follow-ups registered in ADR-0011 residual-risk ledger:
 - Auditability: `P1-SUPERVISOR-RUNBOOK-COMMIT-CAPTURE` (load-bearing for full gate-14 auditability; transitional operator-recorded value used until shipping).
 - Threshold derivation: `P1-RELAUNCH-MAX-ATTEMPTS-DERIVATION`, `P1-ADR-0011-DISK-CEILING-EMPIRICAL`, `P1-ADR-0011-AH-MARGIN-EMPIRICAL`.
 
+### Prod-run-6 attempt-2 OS-reboot-bypass diagnosis (2026-04-29 evening)
+
+H050 prod-run-6 attempt-2 (run_id `e59171865ebb45559434250f3674a9e3`, launched 19:25:43 CT under HEAD `6bed0c2`) terminated at +49 min by Microsoft-Windows-Kernel-Power Event 109 ("Reason: Kernel API") **despite an acquired `ES_CONTINUOUS|ES_SYSTEM_REQUIRED` wake-lock**. Followed 24 min later by a user-initiated reboot (Event 1074 at 20:40:01). Diagnosis audit trail: [docs/audits/audit_trail_2026-04-29_h050-prod-run-attempt2-os-reboot-bypass.md](docs/audits/audit_trail_2026-04-29_h050-prod-run-attempt2-os-reboot-bypass.md). Evidence preserved at [logs/crash_evidence/walk_forward_2026-04-29_192543/](logs/crash_evidence/walk_forward_2026-04-29_192543/) + [logs/crash_evidence/system_events_2026-04-29_2014-2017.json](logs/crash_evidence/system_events_2026-04-29_2014-2017.json). Three findings: F-1 wake-lock bypass (regression of ADR-0010 Layer 1; 5-hypothesis disposition with H-C/H-E eliminated and H-A/H-B/H-D unprobed-after-Round-1; primary investigation paths are USO trace channel and Smart-AH test-rig replication), F-2 preflight script timed out at 60s, F-3 orchestrator at 0% CPU for ≥2 min before the reboot (mechanism analysis pins F-3 as coincident-not-cause; py-spy unrecoverable on dead process). Cumulative NQ cfg-checkpoints unchanged at 11/27.
+
+`PER_LAUNCH_CAP_S` raised from 10800 (3 hr) to 21600 (6 hr) in [scripts/supervised_relaunch_loop.sh](scripts/supervised_relaunch_loop.sh) — addresses cap-vs-cfg-cost mismatch but does NOT solve F-1.
+
+ADR-0011 §"Residual risk" ledger updated:
+- `P1-LGB-INNER-CV-RESULT-CHECKPOINT` **promoted from non-blocking → BLOCKING-BEFORE-NEXT-H050-LAUNCH**: any external kill mid-cfg loses inner-CV-LGB work without within-cfg checkpointing.
+- `P1-WAKE-LOCK-BYPASS-INVESTIGATION` **NEW + BLOCKING**: 4-criterion acceptance — (1) probe `Microsoft-Windows-WindowsUpdateClient/Operational` + USO trace channels for the 20:14-20:16 window, (2) Smart-AH test-rig replication, (3) per-hypothesis disposition for H-A through H-E, (4) ship a defense layer for whichever hypothesis remains open.
+- `P1-PREFLIGHT-SCRIPT-TIMEOUT` **NEW + BLOCKING**: raise timeout (180s) + partial-JSON-on-timeout.
+- `P1-RELAUNCH-PER-ATTEMPT-CAP-CALIBRATION` (this commit's 6-hr is a provisional doubling, not an empirical floor; calibrate after within-cfg checkpoint lands per-draw progress markers).
+- `P1-LGB-INNER-CV-CPU-ZERO-INVESTIGATION` (soft; capture stack on next 0% CPU event via py-spy → procdump -ma → ETW trace, with auto-trigger after 5 consecutive 30s 0% samples).
+- `P1-SUPERVISOR-FINALLY-WRITE-ON-HARD-KILL` (operational; OS hard-kill bypasses `finally` block).
+- `P1-SUPERVISOR-CAP-FIELD-PERSISTENCE` (persist `max_runtime_s` + `expected_runtime_h` into `.preflight.json` at supervisor-spawn so cap value survives `finally` bypass).
+
 ## Implemented infrastructure (as of 2026-04-20)
 
 ### Phase 1 ingest — live on this machine (2026-04-20)

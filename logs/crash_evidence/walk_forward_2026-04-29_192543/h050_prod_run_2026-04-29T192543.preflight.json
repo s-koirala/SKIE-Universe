@@ -1,0 +1,4 @@
+{
+  "status": "warn",
+  "error": "TimeoutExpired(['powershell.exe', '-ExecutionPolicy', 'Bypass', '-File', 'C:\\\\Users\\\\skoir\\\\Documents\\\\SKIE-Universe\\\\.claude\\\\worktrees\\\\charming-heyrovsky-6f6b91\\\\scripts\\\\preflight\\\\check_windows_update.ps1', '-ExpectedRuntimeHours', '2'], 60)"
+}
