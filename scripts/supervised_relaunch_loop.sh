@@ -24,6 +24,7 @@ set -o pipefail
 
 SYMBOLS=""
 START_RESUME_RUN_ID=""
+FRESH=0
 MAX_ATTEMPTS=10
 HYPOTHESIS=H050
 CONFIG="config/hypotheses/H050.yaml"
@@ -44,6 +45,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --symbols) SYMBOLS="$2"; shift 2 ;;
         --start-resume-run-id) START_RESUME_RUN_ID="$2"; shift 2 ;;
+        --fresh) FRESH=1; shift ;;
         --max-attempts) MAX_ATTEMPTS="$2"; shift 2 ;;
         --hypothesis) HYPOTHESIS="$2"; shift 2 ;;
         --config) CONFIG="$2"; shift 2 ;;
@@ -51,8 +53,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -z "$START_RESUME_RUN_ID" ]]; then
-    echo "ERROR: --start-resume-run-id is required" >&2
+if [[ -z "$START_RESUME_RUN_ID" && "$FRESH" -ne 1 ]]; then
+    echo "ERROR: provide either --start-resume-run-id <id> or --fresh" >&2
     exit 2
 fi
 
@@ -66,11 +68,19 @@ export OPENBLAS_NUM_THREADS=1
 for ATTEMPT in $(seq 1 "$MAX_ATTEMPTS"); do
     echo "================================================================="
     echo "Relaunch loop attempt $ATTEMPT / $MAX_ATTEMPTS"
-    echo "Resume from run_id: $RESUME_RUN_ID"
+    if [[ -n "$RESUME_RUN_ID" ]]; then
+        echo "Resume from run_id: $RESUME_RUN_ID"
+    else
+        echo "Resume from run_id: <fresh — no prior checkpoints>"
+    fi
     echo "Symbols filter:     ${SYMBOLS:-<all>}"
     echo "================================================================="
 
-    ORCH_ARGS="--resume-hmm-cache $RESUME_RUN_ID --resume-cfg-checkpoint $RESUME_RUN_ID"
+    if [[ -n "$RESUME_RUN_ID" ]]; then
+        ORCH_ARGS="--resume-hmm-cache $RESUME_RUN_ID --resume-cfg-checkpoint $RESUME_RUN_ID"
+    else
+        ORCH_ARGS=""
+    fi
     if [[ -n "$SYMBOLS" ]]; then
         ORCH_ARGS="--symbols $SYMBOLS $ORCH_ARGS"
     fi
@@ -95,6 +105,14 @@ for ATTEMPT in $(seq 1 "$MAX_ATTEMPTS"); do
 
     echo "Attempt $ATTEMPT exited rc=$RC; latest run_id $LATEST_RUN_ID"
 
+    # Fresh-mode bootstrap: after attempt 1 in --fresh, promote the
+    # latest run_id to the resume base for subsequent attempts so the
+    # consolidation block has a valid target.
+    if [[ -z "$RESUME_RUN_ID" && -n "$LATEST_RUN_ID" ]]; then
+        RESUME_RUN_ID="$LATEST_RUN_ID"
+        echo "Fresh-mode bootstrap: resume base now $RESUME_RUN_ID"
+    fi
+
     # Use whichever run_id has the most cfg-checkpoints as the next
     # resume source. Usually the latest run, but if the latest crashed
     # before writing anything, fall back to the prior resume id.
@@ -113,8 +131,9 @@ for ATTEMPT in $(seq 1 "$MAX_ATTEMPTS"); do
     echo "Checkpoint counts: latest=$N_LATEST prior=$N_PRIOR"
 
     # Consolidate latest checkpoints into a single resume dir if the
-    # latest made progress; otherwise keep using the prior.
-    if [[ "$N_LATEST" -gt 0 ]]; then
+    # latest made progress AND the latest run is not already the
+    # resume base; otherwise keep using the prior.
+    if [[ "$N_LATEST" -gt 0 && "$LATEST_RUN_ID" != "$RESUME_RUN_ID" ]]; then
         # Copy latest cfg-checkpoints + HMM-fits onto the prior so
         # next attempt resumes from the union (ignore-existing so we
         # never overwrite a good pickle with a stale one).
