@@ -73,6 +73,12 @@ ignore = ["PLR0913"]
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
+# justify: pythonpath ['.'] makes the canonical `pytest` invocation
+# discover the `scripts/` package (CLI entrypoints used by tests).
+# Without this, `pytest tests/unit/test_h053_stage0_hks_sanity.py`
+# fails with ModuleNotFoundError; `python -m pytest …` works because
+# cwd auto-prepends to sys.path. Closes Round-1 R-9 finding.
+pythonpath = ["."]
 markers = [
     "integration: marks tests that hit the network or external services",
 ]
