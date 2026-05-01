@@ -324,3 +324,80 @@ The structural Class-B failures (Windows CRT fragmentation) are bounded by per-c
 - López de Prado, M. (2018). *Advances in Financial Machine Learning*. Wiley. ISBN 978-1-119-48208-6. [TOC PDF mirror, ETH Library](https://toc.library.ethz.ch/objects/pdf03/e01_978-1-119-48208-6_01.pdf).
 - Cappé, O., Moulines, E., Rydén, T. (2005). *Inference in Hidden Markov Models*. Springer Series in Statistics. ISBN 978-0-387-40264-2.
 - Rabiner, L. R. (1989). "A tutorial on hidden Markov models and selected applications in speech recognition." *Proc. IEEE* 77(2):257-286. doi:[10.1109/5.18626](https://doi.org/10.1109/5.18626).
+
+---
+
+## Appendix — H053 build-session findings (appended 2026-05-01)
+
+The autonomous Cycles 7-10 H053 build sequence (2026-04-30 → 2026-05-01) ran through to a provisional `archive(null, descriptive-mediation-only)` Stage-3 disposition that was REVERSED on user-prompted post-hoc diagnosis. Like the H050 prod-run sequence, the H053 build accumulated a meaningful defect ledger that is canonically appended here for cross-hypothesis discipline. Each finding is given a verdict using the same convention as §4 above.
+
+### A. Setup defects that affected the H053 disposition (DEFECT)
+
+| # | Defect | Where | Impact | Fix path |
+|---|---|---|---|---|
+| H053-D1 | **Daily-block strict `n_rth_bars == 405` gate truncates train fold** by 65% | [src/skie_ninja/features/h053/daily.py](../../src/skie_ninja/features/h053/daily.py):297 | Stage-2 + Stage-3 train fold dropped from ~1900 → ~178 sessions on the IS fold; sample-to-feature ratio ~4 → negative inner-CV R² → spurious archive(null) verdict | `P1-H053-DAILY-405-GATE-RECONCILE` (BLOCKING-BEFORE-NEXT-STAGE-3): relax to `>= 404` with `# justify:` documenting substrate's pre-2022 missing-bar pattern + regression test; OR substrate-side fix to identify + add the missing pre-2022 RTH bar. Per-year RTH bar distribution: median 404 bars/session pre-2022, 405 from 2022 onward |
+| H053-D2 | **Polars i8 overflow in `dt.hour() * 60` arithmetic** for `_h ≥ 12` | [scripts/run_h053_stage0_hks_sanity.py](../../scripts/run_h053_stage0_hks_sanity.py) initial draft | Stage-0 HKS sanity initially produced "ES bin returns: 350 rows across 89 sessions, 4 unique bins" instead of the expected 13 bins × ~2700 sessions | Fixed in-loop: explicit `.cast(pl.Int32)` on `_hour_et` / `_minute_et` at extraction; locked by regression test [tests/unit/test_h053_stage0_hks_sanity.py](../../tests/unit/test_h053_stage0_hks_sanity.py) `TestBinAssignmentNoIntOverflow` |
+| H053-D3 | **Polars `Datetime("us", "UTC")` substrate vs `Datetime("ns", "UTC")` feature output dtype mismatch** in `join` | Cycle 8/9/10 scripts (recurring) | First-pass scripts crashed on the join with `SchemaError: datatypes of join keys don't match`; required explicit cast at join-time for each script | Pattern fix: cast both sides at the join boundary; deeper fix is upstream uniform ns-precision policy. Tracked under follow-up `P1-SUBSTRATE-PRECISION-UNIFY` |
+| H053-D4 | **H053Hourly internally constructs ns-precision `pl.datetime_range` grid but receives μs panel** | [src/skie_ninja/features/h053/hourly.py](../../src/skie_ninja/features/h053/hourly.py) | Hourly's compute crashes with `_ts_et_grid: ns vs _ts_et: μs` schema error when called with default-precision substrate | Stage-2/3 entry-point worked around by casting panel to ns BEFORE Hourly invocation; upstream fix tracked under `P1-H053-HOURLY-PRECISION-COERCE` |
+| H053-D5 | **Cross-block ts_event misalignment — each H053 block anchors at a different intraday clock-time** | Block A Daily anchors at T-1 16:15 ET; Block B Hourly at 09:31 ET; Block C/D at 09:45 ET | First-pass Stage-2/3 scripts attempted inner-join on `ts_event` and got 0 rows; not detected by unit tests because each block was tested in isolation | Stage-2/3 fix: switch the inter-block join to `(symbol, session_date_et)` with Daily's date shifted +1 calendar day. No upstream fix — the per-block ts_event anchors are correct per design.md §3.0 R5; the inter-block join is the consumer's responsibility |
+| H053-D6 | **Daily column name bakes the CV-tuned N (e.g., `daily_realized_range_60`)** | [src/skie_ninja/features/h053/daily.py](../../src/skie_ninja/features/h053/daily.py) | First-pass Stage-2 scripts hardcoded `daily_realized_range_n` and crashed on `ColumnNotFoundError` | Stage-2 fix: auto-discover columns via `df.columns` rather than enumerating; upstream improvement tracked under `P1-H053-DAILY-COLUMN-NAME-STABILITY` |
+
+### B. Methodological deferrals that may bias Stage-3 once re-run (DEFENSIVE / NEEDED-BUT-OVERBUILT)
+
+| # | Deferral | Verdict | Note |
+|---|---|---|---|
+| H053-M1 | **Cross-fitted DML alternative (Chernozhukov et al. 2018)** deferred from Stage-2 | NEEDED-FOR-STAGE-3 | Stage-2 partial-R² is in-sample on OOS; the canonical OOS predictive partial-R² requires the design.md §5.4 fold-disjoint scalarization protocol with `f_S` fitted on `S` sub-fold + frozen on `Med` + OOS. Tracked under `P1-H053-CYCLE9-DML-SENSITIVITY` |
+| H053-M2 | **Synthetic-null Monte-Carlo coverage test (design.md §11.2 prereq 3)** deferred from Stage-2 to Stage-3 | NEEDED-FOR-STAGE-3 | Unit-tested at coarse precision in [tests/unit/test_h053_mediation.py](../../tests/unit/test_h053_mediation.py); production-grade Monte-Carlo (~5000 replicates, AR(1) residuals) deferred. Tracked under `P1-H053-CYCLE9-OOS-PARTIAL-R2-COVERAGE-TEST` |
+| H053-M3 | **PC1 < 50% triggers per-coordinate robustness exhibit at Stage-3** | NEEDED-FOR-STAGE-3 | Stage-2 found ES PC1 var-expl 0.479, NQ 0.461 — both below the design.md §5.4 50% threshold. Per-coordinate exhibit is mandatory for Stage-3 re-run. Tracked under `P1-H053-CYCLE10-PC1-PER-COORDINATE-ROBUSTNESS` |
+| H053-M4 | **27-cell CV grids → simplified to 9+4 = 13 cells** in Stage-3 first-pass | NEEDED-BUT-OVERBUILT-IF-RE-RUN-WITH-FULL-GRID | Operational simplification of design.md §5.1 + §5.2; the binding pre-reg grid is 5×3 ElasticNet × 3×2×2 LightGBM = 27 cells. Tracked under `P1-H053-CYCLE10-FULL-CV-GRIDS` |
+| H053-M5 | **Isotonic calibration fitted in-fold per archetype** instead of true OOF | NEEDED-FOR-STAGE-3 | Stage-3 first-pass categorical-table v2 used in-fold isotonic which is mildly optimistic; design.md §4.5.3 binds OOF calibration. Tracked under `P1-H053-CYCLE10-ISOTONIC-OOF` |
+| H053-M6 | **HKS time-of-day-FE benchmark collapses to passive-long when `mean_y_train > 0`** | DEFECT-IN-BENCHMARK | The constant-mean-of-train signal sets sign=+1 for all sessions when train mean is positive (which is the realised case on ES + NQ); makes the conjunctive `arm vs ToD-FE` test redundant with `arm vs passive`. Better benchmark: prior-day-same-bin return. Tracked under `P1-H053-STAGE1-HKS-BENCHMARK-RECONCILE` |
+
+### C. Cross-cutting protocol observations (mirroring H050 §6)
+
+#### O-H053-1. Diagnostic instrumentation arrived after the build, not before
+
+The pre-2022 RTH bar count distribution was not inspected at any point during the Stage-2 / Stage-3 build until after the user prompted post-hoc diagnosis. A pre-build sanity audit on the substrate's per-session bar-count distribution would have surfaced the `404 vs 405` discrepancy before the Daily-block gate truncated the train fold. **This is a recurrence of H050 §O-1**: diagnostic instrumentation arriving late.
+
+**Mitigation**: pre-build "substrate fitness for hypothesis" sanity check that includes per-session-bar-count distribution + RTH-window-coverage histogram. Tracked under `P1-PRE-BUILD-SUBSTRATE-FITNESS-AUDIT`.
+
+#### O-H053-2. Single-round inline audit on Cycles 8/9/10 missed the truncation
+
+Each of Cycles 8 / 9 / 10 used a "single-round inline" audit-remediate pattern (the build defects were caught in-loop during script iteration, but no separate quant-auditor / repro-verifier subagent was launched). On Cycle 7 + Phase B I used the canonical 2-3 round parallel-subagent audit; on Cycles 8/9/10 I scoped down to "the empirical result IS the verdict" and skipped the formal audit. **This is the failure mode**: a parallel quant-auditor invocation on Cycle 9 / 10 would likely have flagged the small train fold as a confounding factor before the disposition was committed.
+
+**Mitigation**: parallel quant-auditor is mandatory on every "binding disposition" cycle (8, 9, 10), even when the result appears clean from inline iteration. The scope-down "single-round inline" pattern is acceptable for build-only deliverables (Cycle 7 feature factory), not for evidence-bar dispositions. Tracked under `P1-AUDIT-DISCIPLINE-DISPOSITION-CYCLES`.
+
+#### O-H053-3. The reversal-direction empirical pattern survives the truncation defect, but is narrower than first claimed
+
+Stage-1's negative `m_return` OLS coefficient on full 1971-session IS train was **not** affected by the Daily-gate defect (mediator block doesn't depend on Daily). Stage-2's negative NDE point estimate was on the truncated 178-session train, so it is fragile. Stage-3's negative inner-CV R² is mostly an artifact of the truncation. The genuine empirical finding from the H053 build sequence is therefore narrower than the original phrase "consistent reversal-direction pattern across all 3 stages": it is "the H053 mediator alone shows no Sharpe-promotable signal in 09:45-10:30 ET on ES/NQ at the full 1971-session sample" (Stage-1). Whether multi-timeframe X carries Sharpe-promotable signal is **untested** until the Daily-gate defect is fixed and Stage-3 is re-run.
+
+#### O-H053-4. CLAUDE.md ledger update on `archive(null)` was premature
+
+The Phase E commit (`28f93ec`) wrote the H053 archive disposition to CLAUDE.md before the user-prompted diagnosis exposed the truncation. Per `P1-CLAUDE-MD-LEDGER-AUDIT-DISCIPLINE` (filed 2026-04-30 in this same post-mortem), CLAUDE.md ledger updates that reframe audit-trail dispositions must themselves go through the audit-remediate-loop. **The Phase E ledger update violates that discipline** and is being remediated in the same commit as this appendix (un-archive section + appended findings).
+
+**Mitigation**: CLAUDE.md `archive(...)` ledger entries require an explicit audit-remediate-loop pass that includes a "is the disposition robust to the build defects observed in the cycle" gate. Tracked under `P1-CLAUDE-MD-LEDGER-DISPOSITION-ROBUSTNESS-CHECK`.
+
+### D. Defect taxonomy summary (H053 build vs H050 prod-run)
+
+| Category | H050 prod-run § | H053 build § |
+|---|---|---|
+| OS / hardware kills (reboot, OOM) | §3 (run-2 reboot, run-4 OOM, run-5 OOM, run-6 reboot-bypass) | n/a (offline analysis) |
+| Substrate quality issues | implicit in Cell-I refresh + decade-wraparound | **H053-D1** (404 vs 405 bar pre-2022) |
+| Feature-factory dtype + alignment | n/a (H050 used pre-aligned features) | **H053-D2/D3/D4/D5/D6** |
+| Methodological deferrals (proper protocol postponed) | §3 run-3 numba-equivalence claim | **H053-M1/M2/M3/M4/M5** |
+| Audit-discipline regressions | §6 O-3 (lit-check on ADRs) + §6 O-4 (regression in CLAUDE.md re-framing) | **O-H053-2/O-H053-4** |
+| Diagnostic instrumentation late | §6 O-1 | **O-H053-1** (recurrence) |
+
+### E. New follow-ups filed (H053 appendix)
+
+- `P1-H053-DAILY-405-GATE-RECONCILE` — BLOCKING-BEFORE-NEXT-STAGE-3 — relax gate to `>= 404` OR substrate-side fix.
+- `P1-SUBSTRATE-PRECISION-UNIFY` — uniform ns-precision policy across substrate vendors.
+- `P1-H053-HOURLY-PRECISION-COERCE` — H053Hourly internal cast to ns-precision.
+- `P1-H053-DAILY-COLUMN-NAME-STABILITY` — stable column naming independent of CV-tuned N.
+- `P1-PRE-BUILD-SUBSTRATE-FITNESS-AUDIT` — pre-build substrate-fitness audit including per-session-bar-count distribution.
+- `P1-AUDIT-DISCIPLINE-DISPOSITION-CYCLES` — parallel quant-auditor mandatory on disposition cycles.
+- `P1-CLAUDE-MD-LEDGER-DISPOSITION-ROBUSTNESS-CHECK` — extend `P1-CLAUDE-MD-LEDGER-AUDIT-DISCIPLINE` to include disposition-robustness gate.
+
+### F. H053 disposition status (binding)
+
+**UN-ARCHIVED 2026-05-01.** Stage-1 NULL evidence (mediator alone insufficient on full 1971 IS sessions) holds and is genuine. Stage-2 + Stage-3 first-pass results are NOT BINDING due to train-fold truncation. Stage-3 must be re-run after `P1-H053-DAILY-405-GATE-RECONCILE` lands.

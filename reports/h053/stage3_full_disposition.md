@@ -1,14 +1,15 @@
 ---
-title: H053 Cycle 10 Stage-3 full Arms 1+2 + SPA family — disposition memo
+title: H053 Cycle 10 Stage-3 full Arms 1+2 + SPA family — disposition memo (FIRST-PASS; DISPOSITION REVERSED 2026-05-01)
 date: 2026-05-01
 type: stage3_disposition
-status: ARCHIVE NULL — no arm clears conjunctive Sharpe gate on either ES or NQ; SPA p > 0.05
+status: ⚠ DISPOSITION REVERSED — original archive(null) verdict was based on a setup defect (Daily-block 405-bar gate truncation); H053 UN-ARCHIVED pending Stage-3 re-run after P1-H053-DAILY-405-GATE-RECONCILE
+status_first_pass: ARCHIVE NULL — no arm clears conjunctive Sharpe gate on either ES or NQ; SPA p > 0.05 (NOT BINDING due to train-fold truncation; see appended §"Disposition reversed" below)
 substrate_dataset_checksum: bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665
 sidecar: runs/h053/stage3/h053_stage3_20260501T115445Z/sidecar.json
 sidecar_scientific_payload_sha256: 6a001cf4a847c4d70122b13652bbb35d4ba85aa6b5bb884eedbc8df36cdf1cf5
 git_head_at_authoring: ee2eeaa
-recommendation_per_design_md_section_10_1: archive(null) — Sharpe-CI gate not cleared; SPA p > α
-overall_h053_disposition: archive(null, descriptive-mediation-only)
+recommendation_per_design_md_section_10_1: REVERSED — first-pass archive(null) NOT BINDING due to train truncation defect
+overall_h053_disposition: UN-ARCHIVED 2026-05-01; awaiting Stage-3 re-run on a fixed Daily-gate
 ---
 
 # H053 Stage-3 full Arms 1+2 + SPA family — disposition memo
@@ -185,3 +186,111 @@ H053 finishes at the Stage-3 disposition.
 - [Ledoit & Wolf 2008 *JEF* 15(5):850-859](https://doi.org/10.1016/j.jempfin.2008.03.002)
 - [Lo 2002 *FAJ* 58(4):36-52](https://doi.org/10.2469/faj.v58.n4.2453)
 - [Gao, Han, Li & Zhou 2018 *JFE* 129(2):394-414](https://doi.org/10.1016/j.jfineco.2018.05.009)
+
+---
+
+## DISPOSITION REVERSED — appended 2026-05-01 (post-hoc diagnosis)
+
+### What changed
+
+User-prompted post-hoc inspection of the Cycle 10 Stage-3 run revealed
+that the train fold was severely truncated (~178 sessions instead of
+the expected ~1900) due to a substrate × feature-block defect:
+
+- The H053 Daily block applies a strict `n_rth_bars == 405` gate per
+  design.md §3.0 R1 binding (line 297 of [src/skie_ninja/features/h053/daily.py](../../src/skie_ninja/features/h053/daily.py)).
+- The post-Cell-I substrate has **median 404 RTH bars per session
+  pre-2022** (one bar systematically missing across 2015-2021); from
+  2022 onward, sessions consistently emit 405 bars.
+- Result: only **938 of 2710 ES sessions (35%)** and **943 of 2715 NQ
+  sessions (35%)** survived the Daily gate. Joining with Hourly +
+  Microstructure + Mediator yielded **178 train sessions on the IS
+  fold** instead of the expected ~1900 (post-warmup).
+
+Per-year RTH bar distribution (ES, full substrate):
+
+| Year | n_sessions | n_405 | median_bars | min_bars |
+|---|---:|---:|---:|---:|
+| 2015 | 246 | 4 | 404 | 208 |
+| 2016 | 247 | 1 | 404 | 208 |
+| 2017 | 247 | 1 | 404 | 205 |
+| 2018 | 248 | 64 | 404 | 208 |
+| 2019 | 250 | 3 | 404 | 208 |
+| 2020 | 245 | 3 | 404 | 208 |
+| 2021 | 245 | 119 | 404 | 209 |
+| 2022 | 245 | 237 | 405 | 209 |
+| 2023 | 246 | 237 | 405 | 209 |
+| 2024 | 252 | 243 | 405 | 205 |
+| 2025 | 237 | 228 | 405 | 208 |
+
+Pre-2022: a tiny minority of sessions reach 405 bars; vast majority
+reach 404. Post-2022: a strong majority reach 405. The single missing
+RTH bar pre-2022 is either the 09:30 ET prior-bar reference, the
+16:15 ET RTH-close bar, or a substrate-vendor cleanup-version
+boundary (likely a vendor cleanup that started 2022).
+
+### Why this invalidates the first-pass archive(null) disposition
+
+With sample-to-feature ratio ~4 (178 train × 42 features), both
+ElasticNet and LightGBM hit **negative inner-CV R² at the optimum cell**
+(Arm 1 -0.0723; Arm 2 -0.1804). This is the canonical small-train-overfit-fail
+pattern — NOT a clean test of "does the multi-timeframe X carry
+predictive content for the H053 09:45-10:30 ET predictand". The model
+literally cannot fit on the truncated train fold.
+
+The conjunctive Sharpe-CI gate then fails because both arms produce
+near-zero OOS Sharpe; that's downstream of the model failing to fit,
+not of the underlying signal being absent.
+
+### What still holds (genuinely)
+
+- **Stage-1 NULL** with the **full 1971-session IS train fold × 4
+  mediator features**: paired Sharpe-CI does not exclude zero on either
+  ES or NQ. This is a clean test on a sample where the Daily-gate defect
+  does NOT apply (the mediator block doesn't depend on Daily). The
+  opening-15-min mediator alone does NOT carry a Sharpe-promotable
+  signal at the H053 09:45-10:30 ET slice on ES/NQ. **Stage-1 NULL is
+  genuine evidence.**
+- **Stage-2 partial-R² 13-17% in-sample on OOS** is descriptive
+  evidence that multi-timeframe X carries some additional explanatory
+  variance over mediator alone in-sample on the OOS fold — but Stage-2's
+  178-session train was already truncated by the same Daily-gate defect.
+
+### What needs re-running
+
+Cycle 10 Stage-3 must be re-run after the Daily-gate defect is fixed.
+New BLOCKING-BEFORE-NEXT-STAGE-3 follow-up: `P1-H053-DAILY-405-GATE-RECONCILE`.
+
+Two paths to fix (decision pending):
+
+(a) **Relax the Daily gate to `n_rth_bars >= 404`** with a `# justify:`
+    comment documenting the substrate's pre-2022 missing-bar pattern
+    + a regression test asserting the gate accepts the empirical 404-bar
+    pre-2022 sessions. This adds <0.25% missing-bar-noise to the daily
+    OHLC aggregation (1 bar of 405 ≈ 0.247%); for SMA50/SMA200
+    smoothing the impact is sub-bp.
+
+(b) **Substrate-side fix**: identify which RTH bar is systematically
+    missing pre-2022 (likely 09:30 ET via per-session bar-time inspection),
+    add it to the substrate via a vendor-data re-ingest or interpolation,
+    and re-pin the substrate_dataset_checksum.
+
+Path (a) is faster and operationally sufficient; (b) is more rigorous
+and the canonical fix. The decision goes through its own audit-remediate-loop
+when prioritised.
+
+### Disposition status (binding)
+
+H053 is **UN-ARCHIVED 2026-05-01**. Status returns to "Cycle 10 first-pass
+ran with truncated train fold; Stage-3 re-run pending Daily-gate fix".
+The Stage-1 + Stage-2 + Stage-3 first-pass artifacts SHIP as a
+documented build-session record (this memo + the audit trails), but the
+Stage-3 verdict is NOT a binding archive disposition.
+
+The full H053 build-session error/mistake record is appended to the H050
+production-run post-mortem at
+[docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md §H053 build-session findings](../../docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md).
+
+### Audit trail of the disposition reversal
+
+[docs/audits/audit_trail_2026-05-01_h053-disposition-reversal.md](../../docs/audits/audit_trail_2026-05-01_h053-disposition-reversal.md).

@@ -152,3 +152,24 @@ The H053 archive is itself the empirical contribution per CLAUDE.md
 §"Research philosophy" — null results are as valuable as positive
 results and protect against later rediscovery of the same negative
 finding.
+
+---
+
+## Disposition correction — appended 2026-05-01
+
+The "archive(null, descriptive-mediation-only)" verdict above is
+**REVERSED** following user-prompted post-hoc diagnosis. The Stage-3
+run was severely train-truncated (~178 sessions instead of ~1900) due
+to the H053 Daily block's strict `n_rth_bars == 405` gate dropping
+~65% of pre-2022 sessions (substrate has median 404 RTH bars
+pre-2022). Negative inner-CV R² at the optimum hyperparameter cell is
+the canonical small-train-overfit-fail pattern — NOT a clean test of
+signal-absence.
+
+H053 is **UN-ARCHIVED 2026-05-01**. Stage-3 must be re-run after
+`P1-H053-DAILY-405-GATE-RECONCILE` (BLOCKING-BEFORE-NEXT-STAGE-3) lands.
+
+Full diagnosis + remediation in
+[docs/audits/audit_trail_2026-05-01_h053-disposition-reversal.md](audit_trail_2026-05-01_h053-disposition-reversal.md)
+and the appended findings section of the H050 post-mortem at
+[docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md §H053 build-session findings](../research_notes/memo_h050-prodrun-postmortem_2026-04-30.md).

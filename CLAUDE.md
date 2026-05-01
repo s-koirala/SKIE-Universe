@@ -142,23 +142,41 @@ Deliverables: [src/skie_ninja/inference/mediation.py](src/skie_ninja/inference/m
 
 Sidecar scientific_payload SHA256: `a27a46de2bc18948f65948a104a778d3d3d5bf0cd3e2b821665033ef32bfe422`. 1000 bootstrap replicates × deterministic rng_seed=42/43. Build defects remediated in-loop: 5 dtype + alignment + column-name issues (most material: each feature block anchors at a different intraday clock-time, so the inter-block join must be on `session_date_et` not `ts_event`; Daily's date is shifted +1 calendar day to align with the next prediction session). 4 new follow-ups: `P1-H053-CYCLE9-DML-SENSITIVITY`, `P1-H053-CYCLE9-OOS-PARTIAL-R2-COVERAGE-TEST`, `P1-H053-CYCLE10-PC1-PER-COORDINATE-ROBUSTNESS`, `P1-H053-HOURLY-PRECISION-COERCE`.
 
-### Phase E: Cycle 10 Stage-3 full Arms 1+2 + SPA family (2026-05-01) — archive(null, descriptive-mediation-only)
+### Phase E: Cycle 10 Stage-3 full Arms 1+2 + SPA family (2026-05-01) — DISPOSITION REVERSED; H053 UN-ARCHIVED pending Daily-gate defect fix
 
-**H053 hypothesis archived as NULL.** Cycle 10 Stage-3 fits the full design.md §5 estimator stack (Arm 1 ElasticNet + Arm 2 LightGBM with inner-CV grid selection) and submits to Hansen 2005 SPA family. **Neither arm clears the conjunctive Sharpe-CI gate** vs passive-long AND time-of-day-FE benchmarks on either ES or NQ; SPA p > 0.05 on both instruments.
+**H053 was provisionally archived NULL on the first-pass Stage-3 run, but the disposition has been REVERSED 2026-05-01** ([docs/audits/audit_trail_2026-05-01_h053-disposition-reversal.md](docs/audits/audit_trail_2026-05-01_h053-disposition-reversal.md)) after the user-prompted post-hoc diagnosis revealed that the Stage-3 run was severely train-truncated due to a substrate × feature-block defect:
+
+- The H053 Daily block applies a strict `n_rth_bars == 405` gate per design.md §3.0 R1 binding.
+- The post-Cell-I substrate has **median 404 RTH bars per session pre-2022** (one bar systematically missing across 2015-2021), and **median 405 from 2022 onward**.
+- Result: only 938 of 2710 ES sessions and 943 of 2715 NQ sessions survived the Daily gate. Joining with Hourly + Micro + Mediator yielded ~178 train sessions on the IS fold instead of the expected ~1900.
+- With sample-to-feature ratio ~4 (178 train × 42 features), both ElasticNet and LightGBM hit negative inner-CV R² at the optimum cell — this is the canonical small-train-overfit-fail pattern, NOT a clean signal-absence test.
+
+**What still holds**: Stage-1 NULL is genuine — mediator-only OLS with the full 1971-session IS fold × 4 features showed paired Sharpe-CI not excluding zero. The opening-15-min mediator alone does NOT carry a Sharpe-promotable signal at the 09:45→10:30 ET slice on ES/NQ.
+
+**What must be re-run**: Stage-3 ElasticNet + LightGBM + SPA family + categorical table v2 — but only after the Daily-gate defect is fixed. New BLOCKING-BEFORE-NEXT-STAGE-3 follow-up: `P1-H053-DAILY-405-GATE-RECONCILE`. Two paths:
+- (a) relax Daily gate to `n_rth_bars >= 404` with `# justify:` documenting the substrate's pre-2022 missing-bar pattern + regression test
+- (b) upstream substrate fix to identify + add the missing pre-2022 RTH bar (likely 09:30 ET prior-bar boundary; confirmed via per-session bar-time inspection)
+
+**Provisional Cycle 10 first-pass results** (NOT BINDING; for reference only):
 
 | Symbol | Arm 1 Sharpe | Arm 1 conjunctive | Arm 2 Sharpe | Arm 2 conjunctive | SPA p |
 |---|---:|:--:|---:|:--:|---:|
 | ES | -0.028 | NOT CLEAR | +0.004 | NOT CLEAR | 0.593 |
 | NQ | -0.048 | NOT CLEAR | +0.034 | NOT CLEAR | 0.501 |
 
-Both arms produced **negative inner-CV R² at the optimum hyperparameter cell** (Arm 1 -0.0723; Arm 2 -0.1804). The 42-feature multi-timeframe matrix has inadequate predictive power for the H053 09:45→10:30 ET predictand at this train-size envelope — Block A's 290-day SMA200 + 60-day RV warmup truncates the IS train fold to ~170 sessions, giving sample-to-feature ratio ~4.
+Both arms produced **negative inner-CV R² at the optimum hyperparameter cell** (Arm 1 -0.0723; Arm 2 -0.1804) — the canonical small-train-overfit-fail pattern, NOT a clean signal-absence test. The 42-feature multi-timeframe matrix is fitted on only ~170 train sessions, giving sample-to-feature ratio ~4.
 
-All 3 H053 SPA family slots consumed (per design.md §8):
-- Arm 1 (ElasticNet): `archive(null, sharpe-ci-not-clearing-conjunctive)`.
-- Arm 2 (LightGBM): `archive(null, sharpe-ci-not-clearing-conjunctive)`.
-- Arm 3 (LLM): `archive(null, prerequisite-not-met)` (design.md §11.4 prereq 7 deterministic-replay scaffolding never landed).
+All 3 H053 SPA family slots' first-pass-null verdicts ARE NOT BINDING per design.md §8 (the SPA test was run on the truncated-train output, not on a clean run):
+- Arm 1 (ElasticNet): provisional `archive(null, sharpe-ci-not-clearing-conjunctive)` — NOT BINDING.
+- Arm 2 (LightGBM): provisional `archive(null, sharpe-ci-not-clearing-conjunctive)` — NOT BINDING.
+- Arm 3 (LLM): `archive(null, prerequisite-not-met)` (design.md §11.4 prereq 7 deterministic-replay scaffolding never landed) — slot consumption holds independently of Cycle 10 re-run.
 
-**Final H053 disposition: `archive(null, descriptive-mediation-only)` per design.md §10.1 + §10.2.** Combined with Stage-1 NULL + Stage-2 descriptive-positive (in-sample partial-R² 13-17%) + Stage-3 NULL, the consistent reversal-direction pattern (negative `m_return` Stage-1 coefficient; negative NDE Stage-2; negative inner-CV R² Stage-3) suggests the H053 09:45→10:30 ET sub-window is structurally a reversal slice rather than a continuation slice as Gao-2018-style cross-sectional intraday momentum would suggest.
+**First-pass H053 disposition (NOT BINDING; REVERSED 2026-05-01)**: `archive(null, descriptive-mediation-only)` per design.md §10.1 + §10.2 was the first-pass-run verdict. **Reversed** pending Stage-3 re-run after `P1-H053-DAILY-405-GATE-RECONCILE` lands.
+
+The "consistent reversal-direction" empirical observation across stages is itself **narrowed** by the disposition reversal (per [docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md §H053 build-session findings §O-H053-3](docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md)):
+- Stage-1 negative `m_return` coefficient on full 1971-session IS train: clean evidence that the linear mediator-only fit predicts reversal in this slice.
+- Stage-2 negative NDE point on truncated 178-session train: fragile direction-only.
+- Stage-3 negative inner-CV R² on truncated 178-session train: artifact of the truncation, NOT a signal-direction inference.
 
 **Cycle 11 paper-trade scaffolding: NOT FIRED.** Per plan §Cycle 11, only fires on `archive(positive)`; H053 archives as null. The 60-session-day paper-trade clock does NOT start.
 
@@ -170,17 +188,17 @@ Deliverables: [scripts/run_h053_stage3_full.py](scripts/run_h053_stage3_full.py)
 
 Sidecar scientific_payload SHA256: `6a001cf4a847c4d70122b13652bbb35d4ba85aa6b5bb884eedbc8df36cdf1cf5`. 1000 bootstrap replicates × deterministic rng_seed=42 across all CI + SPA + isotonic invocations. 3 new follow-ups: `P1-H053-CYCLE10-FULL-CV-GRIDS`, `P1-H053-CYCLE10-ISOTONIC-OOF`, `P1-H053-WARMUP-TRUNCATION-IMPACT`.
 
-### Autonomous Cycles 7-10 mandate: COMPLETE (2026-05-01)
+### Autonomous Cycles 7-10 mandate: PARTIAL — Cycle 10 NEEDS RE-RUN (2026-05-01)
 
-The autonomous Cycles 7-10 execution mandate per the user's 2026-04-30 directive is **complete**. All 5 phases executed end-to-end:
+The autonomous Cycles 7-10 execution mandate per the user's 2026-04-30 directive is **partially complete**. 5 phases executed end-to-end; Phase E disposition has been REVERSED pending Daily-gate defect fix:
 
 - **Phase A** (LANDED fc0fcc7): Cycle 7 closeout — Stage-0 HKS U-shape PASS, audit-remediate ✓, all 8 Cycle 7 deliverables landed.
 - **Phase B** (LANDED ec11f3a): H050 BLOCKING follow-ups closed — USOSvc Layer-5 + ADR-0010 framing/amendment + supervisor wiring + paths-guard fix.
-- **Phase C** (LANDED 76599bd): Cycle 8 Stage-1 mediator-only — NULL disposition.
-- **Phase D** (LANDED ee2eeaa): Cycle 9 Stage-2 multi-timeframe + mediation — descriptive-positive (in-sample partial-R² CI excludes zero, OOS partial-R² deferred to Stage-3 fold-disjoint protocol).
-- **Phase E** (this commit): Cycle 10 Stage-3 full Arms 1+2 + SPA family — archive(null, descriptive-mediation-only).
+- **Phase C** (LANDED 76599bd): Cycle 8 Stage-1 mediator-only — NULL disposition (genuine; full IS train fold).
+- **Phase D** (LANDED ee2eeaa): Cycle 9 Stage-2 multi-timeframe + mediation — descriptive-positive (in-sample partial-R² CI excludes zero) but caveat: train-fold truncation already present from Daily-gate defect; Stage-2 used in-sample partial-R² on OOS so it is somewhat insulated from the defect, but the Daily-feature column ranges may be biased by the 2022+ regime selection.
+- **Phase E** (LANDED 28f93ec): Cycle 10 Stage-3 first-pass — provisional `archive(null)` ⚠ DISPOSITION REVERSED 2026-05-01; H053 un-archived pending Stage-3 re-run on a fixed Daily-gate (or substrate fix).
 
-**H053 hypothesis status**: ARCHIVED NULL. Ships to [research/01_hypothesis_register/H053/](research/01_hypothesis_register/H053/) as a documented null-result per CLAUDE.md §"Research philosophy" — "null results are as valuable as positive results and protect against later rediscovery". The full Stages 1-3 evidence package + categorical table v2 + descriptive mediation are the empirical contribution.
+**H053 hypothesis status**: UN-ARCHIVED. The genuine Stage-1 NULL evidence (mediator alone insufficient on ES/NQ at this slice) holds. Cycle 10 Stage-3 first-pass disposition is NOT BINDING — re-run after `P1-H053-DAILY-405-GATE-RECONCILE` lands. The full Stages 1-3 first-pass artifact ships as a documented build-session record per CLAUDE.md §"Research philosophy" + the H050 post-mortem appendix on H053 build-session findings ([docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md](docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md) §H053 build-session findings).
 
 ### H050 production-run comprehensive post-mortem (2026-04-30)
 
