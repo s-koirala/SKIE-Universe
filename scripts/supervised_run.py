@@ -42,6 +42,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from skie_ninja.utils.usosvc_task_manager import disable_for_run, restore_after_run
+
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]  # paths-guard: allow (supervisor wrapper script; spawns subprocess relative to repo root, not loaded as a project module)
 _DEFAULT_TELEMETRY_INTERVAL_S = 30.0
@@ -366,6 +368,39 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[supervisor] preflight report at {preflight_report_path}", flush=True)
             return 2
 
+    # --- Layer 5: USOSvc Task Scheduler reboot-task disable ---------
+    # Per ADR-0010 §Layer 5 + post-mortem §5.2: temporarily disable the
+    # canonical USOSvc reboot tasks for the run window. On non-Windows
+    # hosts this is a no-op skip. On Windows non-elevated context, the
+    # disable returns exit 2 (needs_elevation) — log and continue, since
+    # the orchestrator is still viable (just exposed to the OS-reboot
+    # path that motivated this layer). Per
+    # `P1-SUPERVISOR-USOSVC-INTEGRATION` closure:
+    usosvc_state_path = base.with_suffix(".usosvc_state.json")
+    usosvc_disable = disable_for_run(usosvc_state_path)
+    if usosvc_disable.action == "skipped":
+        print(
+            f"[supervisor] USOSvc disable skipped: {usosvc_disable.skipped_reason}",
+            flush=True,
+        )
+    elif usosvc_disable.ok:
+        print(
+            f"[supervisor] USOSvc reboot tasks disabled; state at {usosvc_state_path}",
+            flush=True,
+        )
+    elif usosvc_disable.needs_elevation():
+        print(
+            "[supervisor] USOSvc disable requires elevation; continuing without "
+            "Layer 5 protection. Relaunch from an elevated terminal to enable.",
+            flush=True,
+        )
+    else:
+        print(
+            f"[supervisor] USOSvc disable failed (rc={usosvc_disable.exit_code}); "
+            "continuing without Layer 5 protection.",
+            flush=True,
+        )
+
     # --- Spawn orchestrator -----------------------------------------
     orchestrator_cmd = [
         sys.executable,
@@ -455,6 +490,30 @@ def main(argv: list[str] | None = None) -> int:
                 proc.wait(timeout=10.0)
             except subprocess.TimeoutExpired:
                 proc.kill()
+        # Layer 5 cleanup: restore USOSvc reboot tasks to pre-run state.
+        # Idempotent + cross-platform-safe via the wrapper. On hard-kill
+        # (OS reboot) this finally block does NOT run; tracked under
+        # `P1-SUPERVISOR-FINALLY-WRITE-ON-HARD-KILL` for the residual
+        # case where USOSvc tasks remain disabled across a kill cycle
+        # (operator must manually re-enable via
+        # `pwsh -File scripts/preflight/manage_usosvc_reboot_tasks.ps1
+        #   -Action Enable -StatePath <state_path>`).
+        usosvc_restore = restore_after_run(usosvc_state_path)
+        if usosvc_restore.action == "skipped":
+            pass  # non-Windows skip; already logged at disable
+        elif usosvc_restore.ok:
+            print("[supervisor] USOSvc reboot tasks restored to pre-run state.", flush=True)
+        elif usosvc_restore.exit_code == 3:
+            # No state file — disable was a no-op (e.g., elevation denied)
+            pass
+        else:
+            print(
+                f"[supervisor] WARN USOSvc restore failed (rc={usosvc_restore.exit_code}); "
+                f"manual restore required: pwsh -File scripts/preflight/"
+                f"manage_usosvc_reboot_tasks.ps1 -Action Enable -StatePath "
+                f"{usosvc_state_path}",
+                flush=True,
+            )
 
     # --- Classification + summary -----------------------------------
     final_tail = _tail_lines(log_path, n=200)
