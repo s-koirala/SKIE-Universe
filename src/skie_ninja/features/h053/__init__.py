@@ -38,5 +38,11 @@ DST-aware session-date parametrisations) enforces the §3.0 R1-R6 rules.
 from skie_ninja.features.h053.daily import H053Daily
 from skie_ninja.features.h053.hourly import H053Hourly
 from skie_ninja.features.h053.mediator import H053Mediator
+from skie_ninja.features.h053.microstructure_5_15min import H053Microstructure5_15min
 
-__all__ = ["H053Daily", "H053Hourly", "H053Mediator"]
+__all__ = [
+    "H053Daily",
+    "H053Hourly",
+    "H053Mediator",
+    "H053Microstructure5_15min",
+]
