@@ -142,6 +142,46 @@ Deliverables: [src/skie_ninja/inference/mediation.py](src/skie_ninja/inference/m
 
 Sidecar scientific_payload SHA256: `a27a46de2bc18948f65948a104a778d3d3d5bf0cd3e2b821665033ef32bfe422`. 1000 bootstrap replicates × deterministic rng_seed=42/43. Build defects remediated in-loop: 5 dtype + alignment + column-name issues (most material: each feature block anchors at a different intraday clock-time, so the inter-block join must be on `session_date_et` not `ts_event`; Daily's date is shifted +1 calendar day to align with the next prediction session). 4 new follow-ups: `P1-H053-CYCLE9-DML-SENSITIVITY`, `P1-H053-CYCLE9-OOS-PARTIAL-R2-COVERAGE-TEST`, `P1-H053-CYCLE10-PC1-PER-COORDINATE-ROBUSTNESS`, `P1-H053-HOURLY-PRECISION-COERCE`.
 
+### Phase E: Cycle 10 Stage-3 full Arms 1+2 + SPA family (2026-05-01) — archive(null, descriptive-mediation-only)
+
+**H053 hypothesis archived as NULL.** Cycle 10 Stage-3 fits the full design.md §5 estimator stack (Arm 1 ElasticNet + Arm 2 LightGBM with inner-CV grid selection) and submits to Hansen 2005 SPA family. **Neither arm clears the conjunctive Sharpe-CI gate** vs passive-long AND time-of-day-FE benchmarks on either ES or NQ; SPA p > 0.05 on both instruments.
+
+| Symbol | Arm 1 Sharpe | Arm 1 conjunctive | Arm 2 Sharpe | Arm 2 conjunctive | SPA p |
+|---|---:|:--:|---:|:--:|---:|
+| ES | -0.028 | NOT CLEAR | +0.004 | NOT CLEAR | 0.593 |
+| NQ | -0.048 | NOT CLEAR | +0.034 | NOT CLEAR | 0.501 |
+
+Both arms produced **negative inner-CV R² at the optimum hyperparameter cell** (Arm 1 -0.0723; Arm 2 -0.1804). The 42-feature multi-timeframe matrix has inadequate predictive power for the H053 09:45→10:30 ET predictand at this train-size envelope — Block A's 290-day SMA200 + 60-day RV warmup truncates the IS train fold to ~170 sessions, giving sample-to-feature ratio ~4.
+
+All 3 H053 SPA family slots consumed (per design.md §8):
+- Arm 1 (ElasticNet): `archive(null, sharpe-ci-not-clearing-conjunctive)`.
+- Arm 2 (LightGBM): `archive(null, sharpe-ci-not-clearing-conjunctive)`.
+- Arm 3 (LLM): `archive(null, prerequisite-not-met)` (design.md §11.4 prereq 7 deterministic-replay scaffolding never landed).
+
+**Final H053 disposition: `archive(null, descriptive-mediation-only)` per design.md §10.1 + §10.2.** Combined with Stage-1 NULL + Stage-2 descriptive-positive (in-sample partial-R² 13-17%) + Stage-3 NULL, the consistent reversal-direction pattern (negative `m_return` Stage-1 coefficient; negative NDE Stage-2; negative inner-CV R² Stage-3) suggests the H053 09:45→10:30 ET sub-window is structurally a reversal slice rather than a continuation slice as Gao-2018-style cross-sectional intraday momentum would suggest.
+
+**Cycle 11 paper-trade scaffolding: NOT FIRED.** Per plan §Cycle 11, only fires on `archive(positive)`; H053 archives as null. The 60-session-day paper-trade clock does NOT start.
+
+**Cycle 12 LLM Arm 3: SKIPPED.** Conditional on Cycles 8-10 producing positive; archived null.
+
+**Categorical-table v2 ships as research artifact** per design.md §10.2 with isotonic-calibrated probabilities per (archetype × ŷ-quantile-bin). K=5 archetypes × 3 bins = 15 cells per symbol. Available in [runs/h053/stage3/h053_stage3_20260501T115445Z/sidecar.json](runs/h053/stage3/h053_stage3_20260501T115445Z/sidecar.json) `categorical_table_v2` field.
+
+Deliverables: [scripts/run_h053_stage3_full.py](scripts/run_h053_stage3_full.py) (640 lines, ElasticNet + LightGBM with inner-WF grid CV + Hansen SPA + isotonic calibration) + [reports/h053/stage3_full_disposition.md](reports/h053/stage3_full_disposition.md) + [docs/audits/audit_trail_2026-05-01_h053-stage3-full.md](docs/audits/audit_trail_2026-05-01_h053-stage3-full.md).
+
+Sidecar scientific_payload SHA256: `6a001cf4a847c4d70122b13652bbb35d4ba85aa6b5bb884eedbc8df36cdf1cf5`. 1000 bootstrap replicates × deterministic rng_seed=42 across all CI + SPA + isotonic invocations. 3 new follow-ups: `P1-H053-CYCLE10-FULL-CV-GRIDS`, `P1-H053-CYCLE10-ISOTONIC-OOF`, `P1-H053-WARMUP-TRUNCATION-IMPACT`.
+
+### Autonomous Cycles 7-10 mandate: COMPLETE (2026-05-01)
+
+The autonomous Cycles 7-10 execution mandate per the user's 2026-04-30 directive is **complete**. All 5 phases executed end-to-end:
+
+- **Phase A** (LANDED fc0fcc7): Cycle 7 closeout — Stage-0 HKS U-shape PASS, audit-remediate ✓, all 8 Cycle 7 deliverables landed.
+- **Phase B** (LANDED ec11f3a): H050 BLOCKING follow-ups closed — USOSvc Layer-5 + ADR-0010 framing/amendment + supervisor wiring + paths-guard fix.
+- **Phase C** (LANDED 76599bd): Cycle 8 Stage-1 mediator-only — NULL disposition.
+- **Phase D** (LANDED ee2eeaa): Cycle 9 Stage-2 multi-timeframe + mediation — descriptive-positive (in-sample partial-R² CI excludes zero, OOS partial-R² deferred to Stage-3 fold-disjoint protocol).
+- **Phase E** (this commit): Cycle 10 Stage-3 full Arms 1+2 + SPA family — archive(null, descriptive-mediation-only).
+
+**H053 hypothesis status**: ARCHIVED NULL. Ships to [research/01_hypothesis_register/H053/](research/01_hypothesis_register/H053/) as a documented null-result per CLAUDE.md §"Research philosophy" — "null results are as valuable as positive results and protect against later rediscovery". The full Stages 1-3 evidence package + categorical table v2 + descriptive mediation are the empirical contribution.
+
 ### H050 production-run comprehensive post-mortem (2026-04-30)
 
 Canonical record of every H050 production walk-forward attempt to date (runs 1–6 attempt-2): [docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md](docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md). Audit-remediate-loop trail (Round-1 with parallel quant-auditor + literature-check + reproducibility-verifier; verdict `accept-with-residuals`): [docs/audits/audit_trail_2026-04-30_h050-prodrun-postmortem.md](docs/audits/audit_trail_2026-04-30_h050-prodrun-postmortem.md). Supersedes the 2026-04-29 retrospective ([memo_h050-prodrun-retrospective_2026-04-29.md](docs/research_notes/memo_h050-prodrun-retrospective_2026-04-29.md)) on three dimensions: (1) coverage extends to run-6 attempt-2 + 2026-04-30 closures, (2) value-of-information audit on 16 reactively-built infrastructure artifacts (verdict distribution: NEEDED 12, NEEDED-BUT-OVERBUILT 1, DEFENSIVE 2; total 15 artifact-rows × verdicts plus the wake-lock framing-defect orthogonal dimension), (3) primary-source verifications correcting load-bearing claims in ADR-0010 (`SetThreadExecutionState` does not block reboots, only idle sleep), in the H-B / WUfB framing (WUfB compliance-deadline policy is GPO/MDM-only; not exposed on Windows 11 Home — the reboot path is the internal UsoSvc Task Scheduler tree, not WUfB), and in ADR-0005 (AFML §7.4.1 = "Purging the Training Set", not HMM warm-start; AFML has no HMM chapter — retarget to Cappé-Moulines-Rydén 2005 Ch.10 or Rabiner 1989 §III.C).
