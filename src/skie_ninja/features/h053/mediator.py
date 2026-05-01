@@ -106,6 +106,7 @@ import polars as pl
 import pyarrow as pa
 
 from skie_ninja.features.base import DatasetRef
+from skie_ninja.features.h053._constants import GK_C_OVER_O_COEF
 from skie_ninja.features.windowing import _pit_cutoff
 
 
@@ -113,13 +114,10 @@ _NAME = "h053_mediator"
 _VERSION = "1.0"
 
 
-# Garman-Klass 1980 eq. 6 second-term coefficient. Defined as a module
-# constant rather than recomputed inline so the value is auditable
-# against the published formula.
-# justify: 2·ln(2) − 1 = 2·0.6931... − 1 = 0.3862... ; this is the
-# closed-form coefficient on log(C/O)² in the GK estimator and is
-# pre-computed for floating-point reproducibility.
-_GK_C_OVER_O_COEF: float = 2.0 * math.log(2.0) - 1.0
+# F-1-12: GK_C_OVER_O_COEF imported from the shared `_constants` module
+# so daily.py and mediator.py share a single source of truth. See
+# `_constants.py` for derivation + `P1-GK1980-EQ6-PRIMARY-VERIFY`
+# follow-up on the eq.-number anchor verification gap.
 
 
 # Mediator-window bar-set definition per design.md §3.0 R2.
@@ -309,7 +307,7 @@ class H053Mediator:
             # Component B: -(2·ln 2 - 1) * log(C/O)²  ← reuses m_return = log(C/O)
             (
                 0.5 * (pl.col("_high_max") / pl.col("_low_min")).log().pow(2)
-                - _GK_C_OVER_O_COEF * pl.col("m_return").pow(2)
+                - GK_C_OVER_O_COEF * pl.col("m_return").pow(2)
             ).alias("m_log_range")
         )
 
