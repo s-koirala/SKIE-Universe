@@ -94,6 +94,9 @@ class ClassAGateApplicability:
     dsr_applicable: bool = False                     # YES when family ≥ activation_size
     bss_applicable_reason: str = ""                  # justification text
 
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
 
 @dataclass(frozen=True)
 class ClassAGateVerdicts:
