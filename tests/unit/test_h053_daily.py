@@ -153,13 +153,16 @@ class TestOutputSchema:
 
 
 class TestDailyAggregation:
-    def test_rejects_session_with_incomplete_rth_coverage(self):
-        """A session missing one or more RTH bars must not produce a row."""
+    def test_accepts_session_with_one_missing_rth_bar(self):
+        """Per `P1-H053-DAILY-405-GATE-RECONCILE` (BLOCKING-BEFORE-NEXT-STAGE-3
+        closure 2026-05-01): the gate is `>= _MIN_ACCEPTABLE_RTH_BAR_COUNT`
+        (= 404), NOT `== _EXPECTED_RTH_BAR_COUNT` (= 405). A session with
+        exactly 404 RTH bars (one bar missing — substrate has median 404
+        pre-2022) MUST produce a row. Locking the gate-relaxation."""
         sds = _gen_session_dates(220)
         panel = _make_full_rth_panel(sds)
-        # Drop one bar from the most recent session
         feature = H053Daily(window_days=60, yz_lookback=20, slope_window=5)
-        # Build a panel missing one RTH bar of the last session
+        # Drop ONE bar from the most recent session (404 remaining → accepted)
         panel_dropped = panel.filter(
             ~(
                 (pl.col("ts_event").dt.convert_time_zone("America/New_York").dt.hour() == 10)
@@ -169,8 +172,32 @@ class TestDailyAggregation:
         )
         out_full = feature.compute(panel.lazy(), now=sds[-1] + timedelta(days=1)).collect()
         out_partial = feature.compute(panel_dropped.lazy(), now=sds[-1] + timedelta(days=1)).collect()
-        # The partial-coverage session is dropped; full has one more row
-        assert len(out_full) == len(out_partial) + 1
+        # Both full (405) and partial (404) sessions are accepted under the
+        # relaxed `>= 404` gate. Row counts identical.
+        assert len(out_full) == len(out_partial), (
+            "Daily gate must accept 404-bar sessions per P1-H053-DAILY-405-GATE-RECONCILE."
+        )
+
+    def test_rejects_session_with_more_than_one_missing_rth_bar(self):
+        """A session with < 404 RTH bars (more than 1 missing) must still
+        be rejected. Locks the gate floor at 404."""
+        sds = _gen_session_dates(220)
+        panel = _make_full_rth_panel(sds)
+        feature = H053Daily(window_days=60, yz_lookback=20, slope_window=5)
+        # Drop TWO bars from the most recent session (403 remaining → rejected)
+        panel_dropped = panel.filter(
+            ~(
+                (pl.col("ts_event").dt.convert_time_zone("America/New_York").dt.hour() == 10)
+                & (pl.col("ts_event").dt.convert_time_zone("America/New_York").dt.minute().is_in([0, 1]))
+                & (pl.col("ts_event").dt.convert_time_zone("America/New_York").dt.date() == sds[-1].date())
+            )
+        )
+        out_full = feature.compute(panel.lazy(), now=sds[-1] + timedelta(days=1)).collect()
+        out_partial = feature.compute(panel_dropped.lazy(), now=sds[-1] + timedelta(days=1)).collect()
+        # The partial-coverage session (403 bars) is dropped; full has one more row
+        assert len(out_full) == len(out_partial) + 1, (
+            "Daily gate must reject sessions with < 404 RTH bars."
+        )
 
 
 # ---------------------------------------------------------------------------

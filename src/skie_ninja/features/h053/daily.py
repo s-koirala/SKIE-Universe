@@ -143,6 +143,27 @@ _RTH_CLOSE_ET_MINUTE: int = 15    # last RTH bar timestamp
 # End-of-bar timestamps {09:31, 09:32, ..., 16:15} → |range| = 405.
 _EXPECTED_RTH_BAR_COUNT: int = 405
 
+# Minimum acceptable RTH bar count per session.
+# justify: per `P1-H053-DAILY-405-GATE-RECONCILE` (BLOCKING-BEFORE-NEXT-STAGE-3
+# closure, 2026-05-01): the post-Cell-I substrate has median 404 RTH bars
+# per session pre-2022 (one bar systematically missing across 2015-2021;
+# vendor-cleanup boundary at 2022 — substrate emits median 405 from 2022
+# onward). The strict `== 405` gate dropped ~65% of pre-2022 sessions,
+# truncating the H053 IS train fold from ~1900 to ~178 sessions and producing
+# spurious small-train-overfit-fail dispositions in Stages 2 + 3 first-pass.
+# Relaxing to `>= 404` restores ~1500 train sessions for the IS fold while
+# admitting at most 1 missing bar per session (0.247% of the 405-bar range).
+# The OHLC aggregation under 1-bar-missing has bounded contamination: open is
+# the open of the first bar present (typically 09:31 ET still); close is the
+# close of the last bar present (typically 16:15 ET still); high/low are
+# range-min/max which are insensitive to a single dropped intra-session bar
+# at modest volatility levels. The 1-bar contamination is below the daily
+# realized-volatility noise floor for ES (sub-bp impact on SMA50/SMA200
+# smoothing). Per H053 disposition-philosophy-shift audit-trail
+# `audit_trail_2026-05-01_disposition-philosophy-shift.md` + post-mortem
+# `memo_h050-prodrun-postmortem_2026-04-30.md` §H053-D1.
+_MIN_ACCEPTABLE_RTH_BAR_COUNT: int = 404
+
 
 # Feature-window defaults per design.md §3.1.
 # justify: SMA50 / SMA200 are explicit design.md §3.1 windows;
@@ -288,13 +309,16 @@ class H053Daily:
         )
 
         # Step 4: drop sessions with incomplete RTH coverage (data outage).
-        # An RTH session must have all 405 bars; partial sessions are excluded.
-        # justify: 405-bar bound is the §3.0 R1 end-of-bar convention's
-        # consequence on the 09:31..16:15 ET RTH range, not a tunable threshold.
-        # Early-close days (e.g., day-after-Thanksgiving 12:00 CT close)
-        # produce shorter windows and are correctly excluded; the H053
-        # design has no special handling for shortened sessions.
-        daily = daily.filter(pl.col("_rth_bar_count") == _EXPECTED_RTH_BAR_COUNT)
+        # Per `P1-H053-DAILY-405-GATE-RECONCILE` (BLOCKING-BEFORE-NEXT-STAGE-3
+        # closure, 2026-05-01) the gate is `>= _MIN_ACCEPTABLE_RTH_BAR_COUNT`
+        # (= 404), NOT `== _EXPECTED_RTH_BAR_COUNT` (= 405). Substrate has
+        # median 404 bars pre-2022; strict 405 dropped ~65% of pre-2022
+        # sessions. Early-close days (e.g., day-after-Thanksgiving 12:00 CT
+        # close) still produce shorter windows (~210 bars) and are correctly
+        # excluded; the H053 design has no special handling for shortened
+        # sessions. See `_MIN_ACCEPTABLE_RTH_BAR_COUNT` constant docstring
+        # for the full justification + audit trail link.
+        daily = daily.filter(pl.col("_rth_bar_count") >= _MIN_ACCEPTABLE_RTH_BAR_COUNT)
 
         # Step 5: collect to materialize the daily series for rolling computations.
         # The numpy-based YZ + OLS slope require materialized arrays; polars
