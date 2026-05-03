@@ -69,11 +69,22 @@ _log = logging.getLogger(__name__)
 # Disposition class labels per ADR-0012 §"Disposition labels under the new rubric".
 # Strict precedence: leakage-detected → reproducibility-incomplete →
 # calibration-failed → prerequisite-not-met → archive(complete; KPI report).
+#
+# NOTE per ADR-0014: only `archive(complete)` and `archive(null, ...)` are TRUE
+# archive labels. The other four disposition_class values below are *states*
+# indicating remediation-pending status — they are NOT archive decisions.
+# See `lifecycle_state` for the operator-visible "is this hypothesis still alive?"
+# answer.
 DISPOSITION_LEAKAGE_DETECTED = "leakage-detected"
 DISPOSITION_REPRO_INCOMPLETE = "reproducibility-incomplete"
 DISPOSITION_CALIBRATION_FAILED = "calibration-failed"
 DISPOSITION_PREREQUISITE_NOT_MET = "prerequisite-not-met"
 DISPOSITION_ARCHIVE_COMPLETE = "archive(complete; KPI report)"
+
+# Lifecycle states per ADR-0014 — operator-visible "is this hypothesis still alive?"
+LIFECYCLE_PAPER_TRADE_ELIGIBLE = "paper-trade-eligible"
+LIFECYCLE_ACTIVE_INVESTIGATION = "active-investigation"
+LIFECYCLE_ARCHIVED = "archived"
 
 
 @dataclass(frozen=True)
@@ -171,18 +182,20 @@ class ClassCDocumentation:
 
 @dataclass(frozen=True)
 class DispositionResult:
-    """Composite disposition payload per ADR-0012."""
+    """Composite disposition payload per ADR-0012 + ADR-0014."""
 
     hypothesis_id: str
     arm_id: str
     run_id: str
-    disposition_class: str                                   # one of the DISPOSITION_* constants
+    disposition_class: str                                   # one of the DISPOSITION_* constants (technical state)
     class_a_applicability: ClassAGateApplicability
     class_a_verdicts: ClassAGateVerdicts
     class_b_kpis: ClassBKPIReportCard
     class_c_documentation: ClassCDocumentation
     disposition_string: str                                  # full disposition_class | KPI annotations | strengths
     paper_trade_eligible: bool                               # True iff disposition_class == archive(complete) AND operator-promotion criteria met
+    lifecycle_state: str = LIFECYCLE_ACTIVE_INVESTIGATION    # ADR-0014: operator-visible "is this hypothesis still alive?"
+    lifecycle_state_reason: str = ""                         # justification for lifecycle_state assignment
 
     def to_dict(self) -> dict[str, Any]:
         d = {
@@ -196,6 +209,8 @@ class DispositionResult:
             "class_c_documentation": self.class_c_documentation.to_dict(),
             "disposition_string": self.disposition_string,
             "paper_trade_eligible": self.paper_trade_eligible,
+            "lifecycle_state": self.lifecycle_state,
+            "lifecycle_state_reason": self.lifecycle_state_reason,
         }
         return d
 
@@ -570,6 +585,49 @@ The operator MUST promote any arm satisfying ALL of:
 # ---------------------------------------------------------------------------
 
 
+def determine_lifecycle_state(
+    *,
+    disposition_class: str,
+    sharpe_vs_passive: SharpeKPI,
+    max_dd_annotation: str,
+    explicit_archive: bool = False,
+) -> tuple[str, str]:
+    """Per ADR-0014: determine lifecycle_state distinct from disposition_class.
+
+    Returns (lifecycle_state, reason).
+
+    Rules:
+    1. If `explicit_archive` (set only on operator decision after explicit review),
+       return ARCHIVED.
+    2. If disposition_class == archive(complete) AND auto-promotion criteria,
+       return PAPER_TRADE_ELIGIBLE.
+    3. If raw Sharpe is positive (point estimate > 0) AND CI lower bound
+       NOT catastrophically low (> -0.5 floor), return ACTIVE_INVESTIGATION
+       regardless of any failed Class A gate. ADR-0014 §2 NEVER-ARCHIVE-PROFITABLE.
+    4. Else, return ACTIVE_INVESTIGATION (default; the DEFAULT IS NOT ARCHIVE per ADR-0014).
+    """
+    if explicit_archive:
+        return LIFECYCLE_ARCHIVED, "operator-explicit archive decision"
+    if disposition_class == DISPOSITION_ARCHIVE_COMPLETE:
+        # Sharpe-positive Class-A-pass case → eligible for paper-trade
+        return LIFECYCLE_PAPER_TRADE_ELIGIBLE, "Class A gates passed"
+    # Per ADR-0014 §2: profitable strategy → ACTIVE_INVESTIGATION regardless of disposition_class
+    sharpe_positive_at_alpha_10 = (
+        sharpe_vs_passive.point_estimate > 0.0
+        and sharpe_vs_passive.ci_low > -0.5
+    )
+    if sharpe_positive_at_alpha_10:
+        return (
+            LIFECYCLE_ACTIVE_INVESTIGATION,
+            f"ADR-0014 NEVER-ARCHIVE-PROFITABLE: Sharpe point={sharpe_vs_passive.point_estimate:.4f} CI=[{sharpe_vs_passive.ci_low:.4f}, {sharpe_vs_passive.ci_high:.4f}] passes positive-at-alpha-0.10 floor; disposition_class={disposition_class} indicates remediation-pending state (NOT archive)",
+        )
+    # Default per ADR-0014 §4: ACTIVE_INVESTIGATION when in doubt
+    return (
+        LIFECYCLE_ACTIVE_INVESTIGATION,
+        f"ADR-0014 default: disposition_class={disposition_class} is a remediation-pending state, NOT an archive decision; lifecycle_state stays active-investigation pending operator review",
+    )
+
+
 def compose_disposition(
     *,
     hypothesis_id: str,
@@ -580,8 +638,9 @@ def compose_disposition(
     kpis: ClassBKPIReportCard,
     documentation: ClassCDocumentation,
     prerequisite_met: bool = True,
+    explicit_archive: bool = False,
 ) -> DispositionResult:
-    """Compose a full ADR-0012 DispositionResult from Class A/B/C inputs."""
+    """Compose a full ADR-0012 + ADR-0014 DispositionResult from Class A/B/C inputs."""
     disposition_class = determine_disposition_class(
         verdicts=verdicts,
         applicability=applicability,
@@ -613,6 +672,13 @@ def compose_disposition(
         annotations.append("mediation-NDE-significant")
     disposition_string = f"{disposition_class}; KPI: " + ", ".join(annotations)
 
+    lifecycle_state, lifecycle_reason = determine_lifecycle_state(
+        disposition_class=disposition_class,
+        sharpe_vs_passive=kpis.sharpe_vs_passive,
+        max_dd_annotation=kpis.max_dd_annotation,
+        explicit_archive=explicit_archive,
+    )
+
     return DispositionResult(
         hypothesis_id=hypothesis_id,
         arm_id=arm_id,
@@ -624,6 +690,8 @@ def compose_disposition(
         class_c_documentation=documentation,
         disposition_string=disposition_string,
         paper_trade_eligible=auto_eligible,
+        lifecycle_state=lifecycle_state,
+        lifecycle_state_reason=lifecycle_reason,
     )
 
 
@@ -639,6 +707,9 @@ __all__ = [
     "DISPOSITION_CALIBRATION_FAILED",
     "DISPOSITION_PREREQUISITE_NOT_MET",
     "DISPOSITION_ARCHIVE_COMPLETE",
+    "LIFECYCLE_PAPER_TRADE_ELIGIBLE",
+    "LIFECYCLE_ACTIVE_INVESTIGATION",
+    "LIFECYCLE_ARCHIVED",
     "annotate_sharpe",
     "ar1_lag1_benchmark_returns",
     "max_dd_ratio_kpi",
@@ -646,6 +717,7 @@ __all__ = [
     "assert_pit_canaries_green",
     "evaluate_class_a_gates",
     "determine_disposition_class",
+    "determine_lifecycle_state",
     "emit_promotion_log",
     "compose_disposition",
 ]

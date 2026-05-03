@@ -1,21 +1,63 @@
 ---
 hypothesis_id: H053
 stage: Stage-3 v3 (walk-forward grid + bootstrap-CI calibration)
-adr: ADR-0013
+adr: ADR-0013 + ADR-0014
 plan: plan/h053_stage3_v3_plan_2026-05-03.md (v3-r3)
 audit_trail: docs/audits/audit_trail_2026-05-03_h053-stage3-v3.md
 run_id: h053_stage3_v3_20260503T173742Z
 sidecar_sha256: 5da28988aa1b5ecae7b6f3b8198df41662c08bff19827b92aba20e9b68ea5b55
 substrate_dataset_checksum: bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665
 git_head: 0d1fb08442747cc07b63b33d173c20eaf8e65966
-status: BINDING — disposition decided per ADR-0012 §10.1 strict precedence
+status: REVISED 2026-05-03 - disposition_class is `calibration-failed` per ADR-0012 §10.1 BUT lifecycle_state is `active-investigation` per ADR-0014 NEVER-ARCHIVE-PROFITABLE-STRATEGIES; H053 is NOT archived
 ---
 
-# H053 Stage-3 v3 — disposition report
+# H053 Stage-3 v3 - disposition report (REVISED 2026-05-03 per ADR-0014)
 
-## TL;DR
+## REVISION NOTE (2026-05-03)
 
-**Disposition: `calibration-failed; paper_trade_eligible=False` on all 4 arms (ES Arm 1 + Arm 2; NQ Arm 1 + Arm 2).**
+This memo was revised after user directive 2026-05-03: "make a note not to archive profitable strategies; we are here to innovate and to explore; we need to lower our threshold; we need to be slower on the archiving." The original interpretation conflated `disposition_class = calibration-failed` (a remediation-pending STATE per ADR-0012) with "archive H053 fully" (a closure DECISION). Per [ADR-0014](../../docs/decisions/ADR-0014-never-archive-profitable-strategies.md) NEVER-ARCHIVE-PROFITABLE-STRATEGIES: H053 ES Arm 2 + NQ Arm 2 LightGBM are profitable on the OOS fold (annualized return +7.3% / +6.7%; Sharpe 1.49 / 0.99; Sortino 2.53 / 1.57; profit factor 1.29 / 1.18) and ARE NOT ARCHIVED. The technical disposition_class label `calibration-failed` is preserved per ADR-0012 §10.1 strict precedence; the operator-visible lifecycle_state is `active-investigation`. Operator may promote either or both LightGBM arms to paper-trade subject to written gate-bypass justification per ADR-0014 §4.
+
+## TL;DR (REVISED)
+
+**Technical disposition_class: `calibration-failed`** on all 4 arms (per ADR-0012 §10.1 strict precedence; binary BSS bootstrap CI lower-bound did not exceed 0; reliability slope CI did not cover 1.0). PIT canary 14/14 PASS each symbol; ReproLog complete.
+
+**Lifecycle state: `active-investigation`** for ES Arm 2 + NQ Arm 2 LightGBM per [ADR-0014 §2 NEVER-ARCHIVE-PROFITABLE-STRATEGIES](../../docs/decisions/ADR-0014-never-archive-profitable-strategies.md). Both LightGBM arms have positive annualized OOS Sharpe (1.49 / 0.99), positive total return (+10.6% / +9.9%), Sortino > 1.5, profit factor > 1.0, recoverable max DD (4.9% / 5.1%) on the OOS fold. **H053 is NOT archived.** ElasticNet arms (Arm 1 on both symbols) also stay in active-investigation per ADR-0014 §4 default.
+
+**Operator-promotion path**: ES Arm 2 + NQ Arm 2 LightGBM are eligible for operator paper-trade promotion subject to gate-bypass justification noting:
+1. The directional bet is profitable (+7.3% / +6.7% annualized return, Sharpe 1.49 / 0.99, max DD ~5%)
+2. The categorical-table v2 deliverable's probability magnitudes are uncalibrated (BSS lower CI = -0.034 even with best-available beta calibration)
+3. Operator should trade the directional bet but NOT trust the K×3 archetype probability table magnitudes until calibration recovery is achieved (tracked under `P1-H053-V3-CALIBRATOR-BETA-VS-ISOTONIC-EMPIRICAL` follow-up).
+
+## Performance dashboard (the un-archive evidence)
+
+[runs/h053/diagnostics/arm2_performance_2026-05-03.json](../../runs/h053/diagnostics/arm2_performance_2026-05-03.json) — comprehensive metrics on the OOS fold (2024-01-03 to 2025-12-{03,18}; n=367 ES / 372 NQ):
+
+| Symbol | Total log return | Annualized return | Annualized vol | Annualized Sharpe | Sortino | Calmar | Max DD | Win rate | Profit factor | Net of cost (1-tick) Sharpe |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **ES Arm 2 LightGBM** | +1060 bps | **+7.28%** | 4.88% | **+1.49** [-0.07, 3.08] | +2.53 | +1.48 | -4.92% | 53.7% | 1.29 | **+0.59** |
+| **NQ Arm 2 LightGBM** | +991 bps | **+6.71%** | 6.79% | **+0.99** [-0.66, 2.62] | +1.57 | +1.32 | -5.09% | 51.6% | 1.18 | **+0.70** |
+
+**ES Arm 2 LightGBM details**:
+- DD trajectory: peak 2025-02-28 -> trough 2025-04-25 -> recover 2025-10-14 (121 sessions DD duration; 317 total underwater sessions)
+- Avg win / avg loss: +24.08 / -21.79 bps
+- Max consecutive wins / losses: 6 / 5
+- 2024 ann return / Sharpe: +6.75% / 1.98
+- 2025 ann return / Sharpe: +3.85% / 1.05
+
+**NQ Arm 2 LightGBM details**:
+- DD trajectory: peak 2024-10-01 -> trough 2024-11-07 -> recover 2025-03-05 (75 sessions DD duration; 337 total underwater)
+- Avg win / avg loss: +34.56 / -31.36 bps
+- Max consec wins / losses: 7 / 5
+- 2024 ann return / Sharpe: +8.16% / 1.64
+- 2025 ann return / Sharpe: +1.75% / 0.35
+
+**Both strategies are profitable gross AND net of cost** (cost-c ES 1.74 bps/RT; NQ 0.76 bps/RT). The strategies meet the ADR-0014 §2 "profitable" floor (annualized return > 0% AND Sortino > 0 AND profit factor > 1.0) by substantial margin.
+
+## Original (now-historical) TL;DR
+
+The pre-revision memo recorded "Disposition: calibration-failed; paper_trade_eligible=False on all 4 arms" and recommended ARCHIVE H053 FULLY in the operator-decision section. That recommendation was REVERSED by user directive 2026-05-03 + ADR-0014; preserved here for audit traceability:
+
+> **Disposition (BINDING; pre-revision): `calibration-failed; paper_trade_eligible=False` on all 4 arms (ES Arm 1 + Arm 2; NQ Arm 1 + Arm 2).**
 
 Per [ADR-0012 §10.1](../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) strict precedence: PIT canary passed (14/14 each symbol); ReproLog complete; **binary BSS bootstrap CI lower-bound > 0 FAILED on all 4 arms**; reliability slope CI covers 1.0 also FAILED on all 4 arms. The disposition class drops out at the calibration gate per the strict-precedence tree, before the Class B Sharpe + SPA KPIs are evaluated for promotion.
 
@@ -128,11 +170,11 @@ The honest walk-forward Sharpes are an order of magnitude smaller than the leaka
 
 Per ADR-0012 §"Operator-promotion rule" + design.md §10.1: H053 is **NOT paper-trade-eligible** at this run. The 60-session-day paper-trade clock does not start.
 
-**Calibration-recovery diagnostic complete (2026-05-03)**: per [docs/research_notes/note_h053-v3-es-arm2-calibration-diagnostic_2026-05-03.md](../../docs/research_notes/note_h053-v3-es-arm2-calibration-diagnostic_2026-05-03.md), tested 4 calibrators × full-IS-train N_cal on the ES Arm 2 LightGBM surface. **Beta calibration (Kull 2017) outperforms isotonic** on this near-constant-raw-prediction surface (BSS point +0.003, slope CI [-0.85, 1.02] **passes** the binding gate; isotonic produces slope = 0). However, **even beta calibration's BSS lower CI = -0.034 fails the binding `BSS_lower_CI > 0` gate** at n_oos = 367 — the signal magnitude is too small to clear the bootstrap-CI noise floor. The BSS standard error at n_oos = 367 is ~0.03-0.05; the signal-effect-size budget on this OOS fold cannot beat the bootstrap CI even under the best-available calibrator.
+**Calibration-recovery diagnostic complete (2026-05-03)**: per [docs/research_notes/note_h053-v3-es-arm2-calibration-diagnostic_2026-05-03.md](../../docs/research_notes/note_h053-v3-es-arm2-calibration-diagnostic_2026-05-03.md), tested 4 calibrators × full-IS-train N_cal on the ES Arm 2 LightGBM surface. **Beta calibration (Kull 2017) outperforms isotonic** on this near-constant-raw-prediction surface (BSS point +0.003, slope CI [-0.85, 1.02] **passes** the binding gate; isotonic produces slope = 0). However, **even beta calibration's BSS lower CI = -0.034 fails the binding `BSS_lower_CI > 0` gate** at n_oos = 367 — the signal magnitude is too small to clear the bootstrap-CI noise floor on the K×3 categorical-table deliverable.
 
-**Operator decision: ARCHIVE H053 fully under `archive(calibration-failed)` per ADR-0012 §10.1.** Spawning a successor hypothesis (H053b) with beta-as-binding calibrator would require a §1-§7 estimator change per ADR-0012 §"Frozen pre-registration amendment" carve-out, and the diagnostic confirms the successor would archive null on the same OOS fold. The signal-magnitude limit, not the calibrator family, is the binding constraint.
+**Operator decision (REVISED 2026-05-03 per user directive + ADR-0014): KEEP H053 IN ACTIVE INVESTIGATION.** The original recommendation to "ARCHIVE H053 fully under `archive(calibration-failed)`" was REVERSED. Per ADR-0014 §2 + §6, profitable strategies are NEVER archived on calibration-gate failure alone. The ES Arm 2 + NQ Arm 2 LightGBM arms have positive annualized return + Sharpe > 0 + Sortino > 0 + profit factor > 1.0 — they enter `lifecycle_state = active-investigation`, not archive.
 
-The directional skill (cell-pass-fraction 81% with positive raw Sharpe +0.09) is documented as a Class B KPI exhibit but does not promote past the calibration gate per ADR-0012.
+**The directional skill (positive raw Sharpe + cell-pass-fraction 81% on ES Arm 2) is the load-bearing finding.** Operator-promotion to paper-trade is recommended for ES Arm 2 LightGBM (Sharpe 1.49 + Sortino 2.53 + 4.9% max DD) and NQ Arm 2 LightGBM (Sharpe 0.99 + Sortino 1.57 + 5.1% max DD), with the categorical-table deliverable's probability-magnitude calibration documented as an OPEN follow-up per `P1-H053-V3-CALIBRATOR-BETA-VS-ISOTONIC-EMPIRICAL`.
 
 ## SPA family slot consumption
 

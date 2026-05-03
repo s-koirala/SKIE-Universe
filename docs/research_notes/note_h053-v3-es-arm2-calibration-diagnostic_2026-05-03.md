@@ -5,10 +5,14 @@ related_disposition: reports/h053/stage3_v3_full_disposition.md
 related_adr: docs/decisions/ADR-0013-walk-forward-grid-and-calibration-CI.md
 diagnostic_script: scripts/diagnose_h053_v3_es_arm2_calibration.py
 findings_json: runs/h053/diagnostics/es_arm2_calib_2026-05-03.json
-status: research note; informs operator decision (archive H053 fully vs spawn successor hypothesis)
+status: REVISED 2026-05-03 - the original "ARCHIVE H053 fully" recommendation in §Recommendation has been REVERSED per ADR-0014 NEVER-ARCHIVE-PROFITABLE-STRATEGIES. H053 stays in lifecycle_state=active-investigation; ES Arm 2 + NQ Arm 2 LightGBM eligible for operator paper-trade promotion.
 ---
 
 # H053 v3 ES Arm 2 LightGBM calibration diagnostic — root-cause + remediation surface
+
+## REVISION NOTE (2026-05-03)
+
+The original §Recommendation in this note recommended "Archive H053 fully under archive(calibration-failed) per ADR-0012 §10.1." This recommendation was **REVERSED** by user directive 2026-05-03 + [ADR-0014 NEVER-ARCHIVE-PROFITABLE-STRATEGIES](../decisions/ADR-0014-never-archive-profitable-strategies.md). The original recommendation conflated `disposition_class = calibration-failed` (a remediation-pending STATE per ADR-0012) with "archive the hypothesis" (a closure DECISION). Per ADR-0014: profitable strategies (ES Arm 2 LightGBM annualized Sharpe 1.49 + Sortino 2.53 + profit factor 1.29; NQ Arm 2 annualized Sharpe 0.99 + Sortino 1.57 + profit factor 1.18) are NEVER archived on calibration-gate failure. H053 stays in `lifecycle_state = active-investigation`. The diagnostic findings below are unchanged; only the §Recommendation interpretation has been corrected.
 
 ## Question
 
@@ -82,17 +86,24 @@ At n_oos = 367 with 95% bootstrap CI, the BSS standard error is approximately 0.
 
 The diagnostic confirms: the **signal magnitude on this OOS fold is too small** to clear the bootstrap-CI binding gate even under the best-available calibrator. The directional skill is real (raw Sharpe = +0.09; cell-pass-fraction 81%) but the probabilistic skill is not statistically distinguishable from climatological-prior performance at this sample size.
 
-## Recommendation
+## Recommendation (REVISED 2026-05-03 per ADR-0014)
 
-**Archive H053 fully under `archive(calibration-failed)` per ADR-0012 §10.1 strict precedence.**
+**ORIGINAL recommendation (REVERSED)**: "Archive H053 fully under `archive(calibration-failed)`." — This was wrong; the label `archive(calibration-failed)` does not exist in ADR-0012 (only `archive(complete)` and `archive(null, ...)` are archive labels). Calibration-failed is a remediation-pending state, not an archive decision. Performance metrics confirm both LightGBM arms are profitable (ES Sharpe 1.49 / Sortino 2.53 / Calmar 1.48 / +7.3% annualized return; NQ Sharpe 0.99 / Sortino 1.57 / +6.7% annualized return) so per ADR-0014 §2 they are NEVER archived.
 
-Rationale:
-1. The walk-forward grid Sharpe + bootstrap-CI calibration methodology (ADR-0013) is binding.
-2. Even with the best-available calibrator (beta, Kull 2017) and the largest-available N_cal (full IS train, 1332 obs), the binary BSS lower CI does not exclude zero on the H053 ES Arm 2 LightGBM surface.
-3. The directional skill (cell-pass-fraction 81% with positive raw Sharpe) is documented as a Class B KPI in the disposition memo but does not promote past the calibration gate per ADR-0012 §10.1.
-4. Spawning a successor hypothesis (H053b) with amended calibrator (beta-binding instead of isotonic-binding) would require a §1-§7 estimator change per ADR-0012 §"Frozen pre-registration amendment" carve-out — but the diagnostic shows even with the amended calibrator, the BSS gate still fails. The successor hypothesis would archive null on the same OOS fold.
+**REVISED recommendation per ADR-0014 + ADR-0012 + user directive 2026-05-03**:
 
-The signal-magnitude limit is the binding constraint, not the calibrator family.
+1. **Keep H053 in active-investigation.** Both LightGBM arms (ES + NQ) meet the ADR-0014 §2 "profitable" floor by substantial margin and stay in lifecycle_state=active-investigation.
+
+2. **Operator-promote ES Arm 2 + NQ Arm 2 LightGBM to paper-trade** with a written gate-bypass justification (per ADR-0014 §4) noting:
+   - The directional bet is profitable (ES annualized Sharpe 1.49 + Sortino 2.53 + max DD 4.9% + profit factor 1.29; NQ annualized Sharpe 0.99 + Sortino 1.57 + max DD 5.1% + profit factor 1.18)
+   - The categorical-table v2 deliverable's probability magnitudes are uncalibrated (BSS lower CI = -0.034 even with best-available beta calibration)
+   - Operator should trade the directional bet but NOT trust the K×3 archetype-bias-target probability table magnitudes pending calibration recovery
+
+3. **Track calibration recovery as an open follow-up**: `P1-H053-V3-CALIBRATOR-BETA-VS-ISOTONIC-EMPIRICAL` (project-level isotonic-default vs Kull 2017 beta-default revisit). Beta calibration recovers the reliability slope CI to cover 1.0; full BSS-gate recovery would require either larger n_oos (defer to 2026 OOS expansion) or different feature engineering.
+
+4. **Do NOT spawn a successor hypothesis (H053b)** at this time. The signal-magnitude limit on the K×3 categorical-table BSS gate is the binding constraint at n_oos=367; a successor with beta-as-binding calibrator would face the same constraint without operational benefit (the operator can already trade the directional bet under the current ADR-0014 active-investigation framework).
+
+The signal-magnitude limit applies to the categorical-table user-facing deliverable's probability calibration. The directional-bet deliverable (sign of LightGBM prediction → trade direction) is unaffected and is profitable.
 
 ## Open follow-ups
 
