@@ -377,14 +377,25 @@ def evaluate_class_a_gates(
     if pit_canary_skip:
         _log.warning(
             "PIT canary suite SKIPPED via pit_canary_skip=True; this is operator-bypass "
-            "for fast iteration ONLY and must NOT be used for paper-trade-eligible runs."
+            "for fast iteration ONLY and must NOT be used for paper-trade-eligible runs. "
+            "Per F-2-9 closure: skip-PIT runs force pit_canary_passed=False so the "
+            "downstream disposition class is leakage-detected (paper-trade ineligible)."
         )
-        pit_passed, pit_n_tests, _ = (True, 0, "skipped")
+        pit_passed, pit_n_tests, _ = (False, 0, "skipped-PIT-forced-False-per-F-2-9")
     elif applicability.pit_canary_applicable:
         pit_passed, pit_n_tests, _ = assert_pit_canaries_green(pit_canary_test_path)
     else:
         pit_passed, pit_n_tests = True, 0  # vacuously passed
 
+    # Per plan v3-r3 §B (within ADR-0012 §"Frozen pre-registration amendment" carve-out;
+    # ADR-0013 documents this as a §10 procedural strengthening — lower-CI > 0 is
+    # MORE conservative than design.md §4.5.3 BSS > 0 point-test).
+    # Caller passes ``bss_value`` as the lower bound of the bootstrap CI on binary BSS;
+    # ``reliability_slope_value`` is the binary "1.0 ∈ CI" verdict re-encoded as
+    # a center-of-CI value mapped to a sentinel range [0.99, 1.01] when the gate
+    # passes (so the legacy [0.7, 1.3] range check still trips correctly without
+    # callers re-computing the band). The new disposition.py API will get a
+    # dedicated field in a follow-up; for now the v2 numeric API is preserved.
     bss_passed = (bss_value is not None and bss_value > 0.0) if applicability.bss_applicable else None
     reliability_passed = (
         reliability_slope_value is not None
