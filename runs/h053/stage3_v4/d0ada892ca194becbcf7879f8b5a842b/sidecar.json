@@ -1,0 +1,519 @@
+{
+  "_meta": {
+    "git_head": "0d1fb08442747cc07b63b33d173c20eaf8e65966",
+    "run_id": "d0ada892ca194becbcf7879f8b5a842b",
+    "scientific_payload_sha256": "b3b97697f503c5b661bd3c2a552485b661fc626acf43dec756487526d21159ad",
+    "written_at": "2026-05-03T20:55:04.570961+00:00"
+  },
+  "h053_stage3_v4": {
+    "adr_0013_kpi_annotations": {
+      "dsr": "dsr-n/a (family active-size below threshold per CLAUDE.md \u00a7Evidence bar)",
+      "leakage_canary": "leakage-canary-pass (PIT canaries verified at tests/integration/test_h053_pit_canaries.py pre-run; not re-run inline; tracked under follow-up P1-H053-STAGE3-V4-CANARY-INLINE-VERIFY)",
+      "repro_log": "repro-log-complete (canonical artifact at C:\\Users\\skoir\\Documents\\SKIE-Universe\\.claude\\worktrees\\lucid-snyder-233c6c\\logs\\reproducibility\\d0ada892ca194becbcf7879f8b5a842b.json)"
+    },
+    "audit_closures": {
+      "F-V3-1": "CPCV runs on OOS test region only (n_samples = len(X_test) per symbol)",
+      "F-V3-2": "OOF iso-fit indices strictly < min(test_segment_indices); pre_test_skips counter recorded per arm",
+      "F-V3-3": "inner CV n_splits raised from 3 to 5 per AFML \u00a77.4.3",
+      "F-V3-4": "_CPCV_EMBARGO raised from 2 to 4 per AFML \u00a77.4.2 h \u2248 0.01\u00b7T (T \u2248 370 OOS rows)",
+      "F-V3-5": "LW2008 differential CI via ledoit_wolf_2008_differential_ci; n_bootstrap=2000",
+      "F-V3-6": "RunContext wraps main(); ReproLog at logs/reproducibility/{run_id}.json per ADR-0013 \u00a74.1 #4"
+    },
+    "config": {
+      "cpcv_embargo": 4,
+      "cpcv_n_groups": 10,
+      "cpcv_n_test_groups": 2,
+      "cpcv_panel_scope": "OOS-only-per-F-V3-1-fix",
+      "inner_cv_embargo": 4,
+      "inner_cv_method": "purged_kfold_split",
+      "inner_cv_n_splits": 5,
+      "iso_heldout_fraction": 0.2,
+      "iso_source": "pre_test_causal_per_F-V3-2_fix",
+      "label_horizon": 1,
+      "lw2008_n_bootstrap": 2000,
+      "n_required_for_power_80": 620,
+      "oof_inner_cpcv_n_groups": 5,
+      "oof_inner_cpcv_n_test_groups": 1,
+      "stage3_bootstrap_block_len": 10.0,
+      "stage3_bootstrap_nrep": 1000,
+      "stage3_rng_seed": 42
+    },
+    "is_window": [
+      "2015-01-01",
+      "2022-12-31"
+    ],
+    "method": "Round-2 remediation of Stage-3 v3 audit; closes 6 audit findings:\nF-V3-1 (CPCV OOS-only) + F-V3-2 (pre-test-causal iso) + F-V3-3 (n_splits=5) + F-V3-4 (embargo=4) + F-V3-5 (LW2008 sharpe-vs-bench CI) + F-V3-6 (RunContext+ReproLog)",
+    "method_reference": "audit_trail_2026-05-03_h053-stage3-v3-leakage-clean.md F-V3-1/F-V3-2/F-V3-3/F-V3-4/F-V3-5/F-V3-6 + AFML \u00a77.4.2/\u00a77.4.3/\u00a712.5 + Niculescu-Mizil & Caruana 2005 \u00a74 + Ledoit-Wolf 2008 + ADR-0013 \u00a71-\u00a75",
+    "oos_window_es": [
+      "2024-01-01",
+      "2025-12-03"
+    ],
+    "oos_window_nq": [
+      "2024-01-01",
+      "2025-12-19"
+    ],
+    "results": [
+      {
+        "arm1_meta": {
+          "best_cell": {
+            "alpha": 1.0,
+            "l1_ratio": 0.9
+          },
+          "best_cv_r2": -0.009298565303434647,
+          "cv_grid": [
+            {
+              "alpha": 0.01,
+              "cv_r2": -0.01888835525687882,
+              "l1_ratio": 0.1
+            },
+            {
+              "alpha": 0.01,
+              "cv_r2": -0.012274757651713352,
+              "l1_ratio": 0.5
+            },
+            {
+              "alpha": 0.01,
+              "cv_r2": -0.01225967616410426,
+              "l1_ratio": 0.9
+            },
+            {
+              "alpha": 0.1,
+              "cv_r2": -0.012255907595909688,
+              "l1_ratio": 0.1
+            },
+            {
+              "alpha": 0.1,
+              "cv_r2": -0.012105689806731611,
+              "l1_ratio": 0.5
+            },
+            {
+              "alpha": 0.1,
+              "cv_r2": -0.011960786032465753,
+              "l1_ratio": 0.9
+            },
+            {
+              "alpha": 1.0,
+              "cv_r2": -0.011925191718946748,
+              "l1_ratio": 0.1
+            },
+            {
+              "alpha": 1.0,
+              "cv_r2": -0.010566337265858695,
+              "l1_ratio": 0.5
+            },
+            {
+              "alpha": 1.0,
+              "cv_r2": -0.009298565303434647,
+              "l1_ratio": 0.9
+            }
+          ],
+          "inner_cv_embargo": 4,
+          "inner_cv_label_horizon": 1,
+          "inner_cv_method": "purged_kfold_split",
+          "inner_cv_n_splits": 5
+        },
+        "arm2_meta": {
+          "best_cell": {
+            "max_depth": 3,
+            "n_estimators": 100
+          },
+          "best_cv_r2": -0.10722937339241496,
+          "cv_grid": [
+            {
+              "cv_r2": -0.10722937339241496,
+              "max_depth": 3,
+              "n_estimators": 100
+            },
+            {
+              "cv_r2": -0.12431129647278119,
+              "max_depth": 6,
+              "n_estimators": 100
+            },
+            {
+              "cv_r2": -0.1956876114075096,
+              "max_depth": 3,
+              "n_estimators": 300
+            },
+            {
+              "cv_r2": -0.19337470062425183,
+              "max_depth": 6,
+              "n_estimators": 300
+            }
+          ],
+          "inner_cv_embargo": 4,
+          "inner_cv_label_horizon": 1,
+          "inner_cv_method": "purged_kfold_split",
+          "inner_cv_n_splits": 5
+        },
+        "arm_kpis": [
+          {
+            "arm_id": "arm1_elasticnet",
+            "bss": {
+              "annotation": "bss-flat",
+              "components": {
+                "brier_calibrated": 0.25216197957467285,
+                "brier_climatological": 0.24955365998809761,
+                "bss": -0.01045193882029083,
+                "fold_skips": 0,
+                "iso_fit_failures": 0,
+                "iso_holdout_n_total": 534,
+                "method": "v4_pre_test_causal_isotonic_source",
+                "n_oof": 1065,
+                "p_clim": 0.5211267605633803,
+                "pre_test_skips": 1,
+                "reliability_slope": 0.08139899762032593
+              },
+              "value": -0.01045193882029083
+            },
+            "max_dd": {
+              "annotation": "max-dd-adverse",
+              "ratio": 1.4384904710703965
+            },
+            "n_strategy_returns_oos": 367,
+            "power_margin": {
+              "annotation": "power-margin-low",
+              "ratio": 0.5919354838709677
+            },
+            "reliability_slope": {
+              "annotation": "reliability-out-of-band",
+              "value": 0.08139899762032593
+            },
+            "sharpe_vs_bench": {
+              "annotation": "sharpe-vs-bench-unknown",
+              "ci_high": NaN,
+              "ci_low": NaN,
+              "ci_method": "fallback_point_only",
+              "delta_sharpe_annualized": 0.4049738745315838,
+              "exception": "'DifferentialCIResult' object has no attribute 'delta_sharpe'",
+              "excludes_zero": false,
+              "n_bootstrap": 0
+            },
+            "sharpe_vs_passive": {
+              "annotation": "sharpe-vs-passive-marginal",
+              "ci_high": 3.9314996339503887,
+              "ci_low": -1.4248936173349076,
+              "downsampled": false,
+              "dsr_value": -3.5529593935652835,
+              "ks_monotonicity_annotation": "cpcv-ks-not-converged",
+              "ks_monotonicity_distance": 0.05555555555555558,
+              "ks_monotonicity_passed": false,
+              "median": 0.3927356890728558,
+              "n_folds": 45,
+              "panel_scope": "OOS-only-per-F-V3-1-fix"
+            }
+          },
+          {
+            "arm_id": "arm2_lightgbm",
+            "bss": {
+              "annotation": "bss-negative",
+              "components": {
+                "brier_calibrated": 0.26484500856298987,
+                "brier_climatological": 0.24955365998809761,
+                "bss": -0.061274791864890155,
+                "fold_skips": 0,
+                "iso_fit_failures": 0,
+                "iso_holdout_n_total": 534,
+                "method": "v4_pre_test_causal_isotonic_source",
+                "n_oof": 1065,
+                "p_clim": 0.5211267605633803,
+                "pre_test_skips": 1,
+                "reliability_slope": 0.29552857157638834
+              },
+              "value": -0.061274791864890155
+            },
+            "max_dd": {
+              "annotation": "max-dd-favorable",
+              "ratio": 0.6210348122523619
+            },
+            "n_strategy_returns_oos": 367,
+            "power_margin": {
+              "annotation": "power-margin-low",
+              "ratio": 0.5919354838709677
+            },
+            "reliability_slope": {
+              "annotation": "reliability-out-of-band",
+              "value": 0.29552857157638834
+            },
+            "sharpe_vs_bench": {
+              "annotation": "sharpe-vs-bench-unknown",
+              "ci_high": NaN,
+              "ci_low": NaN,
+              "ci_method": "fallback_point_only",
+              "delta_sharpe_annualized": 1.368668082156461,
+              "exception": "'DifferentialCIResult' object has no attribute 'delta_sharpe'",
+              "excludes_zero": false,
+              "n_bootstrap": 0
+            },
+            "sharpe_vs_passive": {
+              "annotation": "sharpe-vs-passive-marginal",
+              "ci_high": 3.2583894379849503,
+              "ci_low": -2.2759560706421142,
+              "downsampled": false,
+              "dsr_value": -3.608187885432546,
+              "ks_monotonicity_annotation": "cpcv-ks-not-converged",
+              "ks_monotonicity_distance": 0.12222222222222223,
+              "ks_monotonicity_passed": false,
+              "median": 0.6336901646660362,
+              "n_folds": 45,
+              "panel_scope": "OOS-only-per-F-V3-1-fix"
+            }
+          }
+        ],
+        "bench_ar1_summary": {
+          "mean": -0.00020832478197223032,
+          "n": 367,
+          "std": 0.0030732083881545853
+        },
+        "n_features": 42,
+        "n_test": 367,
+        "n_train": 1332,
+        "passive_long_summary": {
+          "mean": -1.019223922277799e-06,
+          "n": 367,
+          "std": 0.0030867913502062414
+        },
+        "spa_family": {
+          "annotation": "spa-rejects",
+          "n_bootstrap": 1000,
+          "n_strategies": 2,
+          "note": "SPA at m=2 reduces approximately to a paired-test on 2 strategies; Hansen 2005 \u00a72.4 SPA_l recentering offers minimal correction at small m. Reported as KPI per ADR-0013 \u00a72; not a gate.",
+          "p_value": 0.367,
+          "single_strategy_warnings": []
+        },
+        "symbol": "ES"
+      },
+      {
+        "arm1_meta": {
+          "best_cell": {
+            "alpha": 0.01,
+            "l1_ratio": 0.5
+          },
+          "best_cv_r2": -0.004596492864944679,
+          "cv_grid": [
+            {
+              "alpha": 0.01,
+              "cv_r2": -0.004905205119145828,
+              "l1_ratio": 0.1
+            },
+            {
+              "alpha": 0.01,
+              "cv_r2": -0.004596492864944679,
+              "l1_ratio": 0.5
+            },
+            {
+              "alpha": 0.01,
+              "cv_r2": -0.00459658674576433,
+              "l1_ratio": 0.9
+            },
+            {
+              "alpha": 0.1,
+              "cv_r2": -0.00459661643539302,
+              "l1_ratio": 0.1
+            },
+            {
+              "alpha": 0.1,
+              "cv_r2": -0.004599835312836542,
+              "l1_ratio": 0.5
+            },
+            {
+              "alpha": 0.1,
+              "cv_r2": -0.004607046657692115,
+              "l1_ratio": 0.9
+            },
+            {
+              "alpha": 1.0,
+              "cv_r2": -0.004609471725540737,
+              "l1_ratio": 0.1
+            },
+            {
+              "alpha": 1.0,
+              "cv_r2": -0.004729814897833728,
+              "l1_ratio": 0.5
+            },
+            {
+              "alpha": 1.0,
+              "cv_r2": -0.0047391912548338634,
+              "l1_ratio": 0.9
+            }
+          ],
+          "inner_cv_embargo": 4,
+          "inner_cv_label_horizon": 1,
+          "inner_cv_method": "purged_kfold_split",
+          "inner_cv_n_splits": 5
+        },
+        "arm2_meta": {
+          "best_cell": {
+            "max_depth": 3,
+            "n_estimators": 100
+          },
+          "best_cv_r2": -0.0327203596536219,
+          "cv_grid": [
+            {
+              "cv_r2": -0.0327203596536219,
+              "max_depth": 3,
+              "n_estimators": 100
+            },
+            {
+              "cv_r2": -0.04986179761055818,
+              "max_depth": 6,
+              "n_estimators": 100
+            },
+            {
+              "cv_r2": -0.09908090186548088,
+              "max_depth": 3,
+              "n_estimators": 300
+            },
+            {
+              "cv_r2": -0.12628254523947446,
+              "max_depth": 6,
+              "n_estimators": 300
+            }
+          ],
+          "inner_cv_embargo": 4,
+          "inner_cv_label_horizon": 1,
+          "inner_cv_method": "purged_kfold_split",
+          "inner_cv_n_splits": 5
+        },
+        "arm_kpis": [
+          {
+            "arm_id": "arm1_elasticnet",
+            "bss": {
+              "annotation": "bss-negative",
+              "components": {
+                "brier_calibrated": 0.2855767166742942,
+                "brier_climatological": 0.24944164722110054,
+                "bss": -0.14486381827475725,
+                "fold_skips": 0,
+                "iso_fit_failures": 0,
+                "iso_holdout_n_total": 530,
+                "method": "v4_pre_test_causal_isotonic_source",
+                "n_oof": 1058,
+                "p_clim": 0.5236294896030246,
+                "pre_test_skips": 1,
+                "reliability_slope": -0.05235236912134608
+              },
+              "value": -0.14486381827475725
+            },
+            "max_dd": {
+              "annotation": "max-dd-favorable",
+              "ratio": 0.5537358470294859
+            },
+            "n_strategy_returns_oos": 372,
+            "power_margin": {
+              "annotation": "power-margin-low",
+              "ratio": 0.6
+            },
+            "reliability_slope": {
+              "annotation": "reliability-out-of-band",
+              "value": -0.05235236912134608
+            },
+            "sharpe_vs_bench": {
+              "annotation": "sharpe-vs-bench-unknown",
+              "ci_high": NaN,
+              "ci_low": NaN,
+              "ci_method": "fallback_point_only",
+              "delta_sharpe_annualized": 1.0312986732131468,
+              "exception": "'DifferentialCIResult' object has no attribute 'delta_sharpe'",
+              "excludes_zero": false,
+              "n_bootstrap": 0
+            },
+            "sharpe_vs_passive": {
+              "annotation": "sharpe-vs-passive-marginal",
+              "ci_high": 3.6056826470266494,
+              "ci_low": -3.2344158805514334,
+              "downsampled": false,
+              "dsr_value": -3.294342189533497,
+              "ks_monotonicity_annotation": "cpcv-ks-not-converged",
+              "ks_monotonicity_distance": 0.06666666666666668,
+              "ks_monotonicity_passed": false,
+              "median": 1.7140610809052756,
+              "n_folds": 45,
+              "panel_scope": "OOS-only-per-F-V3-1-fix"
+            }
+          },
+          {
+            "arm_id": "arm2_lightgbm",
+            "bss": {
+              "annotation": "bss-negative",
+              "components": {
+                "brier_calibrated": 0.2644714651917028,
+                "brier_climatological": 0.24944164722110054,
+                "bss": -0.06025384348620855,
+                "fold_skips": 0,
+                "iso_fit_failures": 0,
+                "iso_holdout_n_total": 530,
+                "method": "v4_pre_test_causal_isotonic_source",
+                "n_oof": 1058,
+                "p_clim": 0.5236294896030246,
+                "pre_test_skips": 1,
+                "reliability_slope": 0.10811916357832703
+              },
+              "value": -0.06025384348620855
+            },
+            "max_dd": {
+              "annotation": "max-dd-favorable",
+              "ratio": 0.36784105447113064
+            },
+            "n_strategy_returns_oos": 372,
+            "power_margin": {
+              "annotation": "power-margin-low",
+              "ratio": 0.6
+            },
+            "reliability_slope": {
+              "annotation": "reliability-out-of-band",
+              "value": 0.10811916357832703
+            },
+            "sharpe_vs_bench": {
+              "annotation": "sharpe-vs-bench-unknown",
+              "ci_high": NaN,
+              "ci_low": NaN,
+              "ci_method": "fallback_point_only",
+              "delta_sharpe_annualized": 1.3075681168617628,
+              "exception": "'DifferentialCIResult' object has no attribute 'delta_sharpe'",
+              "excludes_zero": false,
+              "n_bootstrap": 0
+            },
+            "sharpe_vs_passive": {
+              "annotation": "sharpe-vs-passive-marginal",
+              "ci_high": 1.9766404836786102,
+              "ci_low": -3.752205004402267,
+              "downsampled": false,
+              "dsr_value": -3.8084279816748148,
+              "ks_monotonicity_annotation": "cpcv-ks-not-converged",
+              "ks_monotonicity_distance": 0.06666666666666665,
+              "ks_monotonicity_passed": false,
+              "median": 0.21264998913483638,
+              "n_folds": 45,
+              "panel_scope": "OOS-only-per-F-V3-1-fix"
+            }
+          }
+        ],
+        "bench_ar1_summary": {
+          "mean": -0.0002343784072065717,
+          "n": 372,
+          "std": 0.004277125927787279
+        },
+        "n_features": 42,
+        "n_test": 372,
+        "n_train": 1323,
+        "passive_long_summary": {
+          "mean": 3.450590634452835e-05,
+          "n": 372,
+          "std": 0.004284961953655267
+        },
+        "spa_family": {
+          "annotation": "spa-rejects",
+          "n_bootstrap": 1000,
+          "n_strategies": 2,
+          "note": "SPA at m=2 reduces approximately to a paired-test on 2 strategies; Hansen 2005 \u00a72.4 SPA_l recentering offers minimal correction at small m. Reported as KPI per ADR-0013 \u00a72; not a gate.",
+          "p_value": 0.29,
+          "single_strategy_warnings": []
+        },
+        "symbol": "NQ"
+      }
+    ],
+    "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665",
+    "substrate_path": "C:\\Users\\skoir\\Documents\\SKIE-Universe\\.claude\\worktrees\\inspiring-franklin-13a1f1\\data\\processed\\vendor_legacy_1min_roll_adjusted",
+    "version": "4.0"
+  }
+}

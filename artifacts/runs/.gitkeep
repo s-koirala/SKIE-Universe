@@ -1,0 +1,7 @@
+# artifacts/runs/
+
+Canonical run-output root per [CLAUDE.md §"Implemented infrastructure"](../../CLAUDE.md). Each run lands at `artifacts/runs/{HID}/{run_id}/` with sidecar.json + scientific_payload artifacts.
+
+Per [ADR-0013](../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §4.1 #5, every run output is retained. Protected by §4.3 non-loss-guard.
+
+Files MUST NOT be deleted.

@@ -48,6 +48,17 @@ logs/**
 # refuses to re-include children of an excluded parent directory.
 !logs/crash_evidence/
 !logs/crash_evidence/**
+# ADR-0013 §5.3 + §6 promotion logs: append-only operator-decision record;
+# protected by the §4.3 non-loss-guard. Same un-ignore pattern as
+# crash_evidence: directory first, then contents.
+!logs/promotions/
+!logs/promotions/**
+# ADR-0013 §4.1 #4 ReproLogs: every run record retained; protected by the
+# §4.3 non-loss-guard. Per Round-2 audit R-2-16: without this exception the
+# protected-path was structurally unenforceable (gitignore'd files cannot
+# be tracked, and the guard only detects deletion of tracked files).
+!logs/reproducibility/
+!logs/reproducibility/**
 
 # NinjaTrader build output
 ninjascript/**/bin/

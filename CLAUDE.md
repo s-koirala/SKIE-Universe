@@ -18,36 +18,52 @@ Parallel tracks authorized by [ADR-0006](docs/decisions/ADR-0006-scope-extension
 - **Walk-forward only**. No k-fold. Time-ordered disjoint splits. Purge + embargo per Lopez de Prado. Sibling-repo CPCV + PBO acts as prior screen; our Hansen SPA is additive.
 
 ## Research philosophy
-This is a *longitudinal, exhaustive* research program — not a single-strategy project. Every hypothesis goes into [research/01_hypothesis_register/](research/01_hypothesis_register/) with a pre-registered design doc. Results enter the hypothesis register whether they succeed or fail; null results are as valuable as positive results and protect against later rediscovery.
+This is a *longitudinal, exhaustive, permanent-exploration* research program — not a single-strategy project. Every hypothesis goes into [research/01_hypothesis_register/](research/01_hypothesis_register/) with a pre-registered design doc. Results enter the hypothesis register whether they succeed or fail; null results are as valuable as positive results and protect against later rediscovery.
 
-**Aspirational-MVP framing (per ADR-0012, 2026-05-01)**: the project's purpose is aspirational innovation in intraday futures + 0DTE options trading. Strategies are tested broadly with the goal of bringing them to MVP (paper-trade-eligible) as fast as is consistent with methodological correctness. The disposition pipeline reports a multi-dimensional KPI report card per [ADR-0012](docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md); design-time gates are limited to the methodological-correctness floor (PIT/leakage + applicable calibration + reproducibility + DSR-when-active). Paper-trade Sharpe-within-CI per [§Execution bar](#execution-bar-for-live-amended-2026-05-01-per-adr-0012) is the load-bearing pre-live constraint.
+**Permanent-exploration framing (per [ADR-0013](docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md), 2026-05-03; supersedes ADR-0012)**: the project's purpose is aspirational innovation through exhaustive exploration. Strategies are tested broadly and **all strategies progress to NinjaScript implementation** regardless of any backtest KPI value — the C# implementation in [ninjascript/strategies/](ninjascript/strategies/) is the terminal state of the research loop, not the disposition memo. There is no `archive` state. There are no binding gates; every former gate is a KPI in the per-strategy report card. Operator review of the KPI report card governs paper-trade and live promotion at every stage transition (operator-discretionary, decision-logged).
 
-**Frozen-pre-reg amendment discipline (per ADR-0012 §"Frozen pre-registration amendment")**: project-level disposition-philosophy ADRs (ADR-0012 and any successor) MAY amend the §8 + §10 (gating tree + decision rule) of frozen `status: designed` pre-registrations WITHOUT requiring a successor hypothesis ID, subject to: (a) the amendment applies project-wide (not single-hypothesis carve-out); (b) it carries an audit-remediate-loop trail; (c) each affected design.md references the amending ADR explicitly; (d) §1-§7 (hypothesis statement, universe/sample, features, labels, splitter, cost model) remain immutable. This narrow exception preserves substantive hypothesis content while permitting cross-hypothesis disposition-philosophy evolution.
+**Non-loss mandate (per ADR-0013 §4)**: no audit trail, ReproLog, sidecar, KPI report card, promotion log, NinjaScript strategy, or design.md may be deleted, overwritten, or wiped. Corrections produce **versioned successors** (e.g., `kpi_report_v2.md` references `v1` verbatim). Retirement is a metadata transition, never a file delete. A pre-commit guard (per follow-up `P1-NON-LOSS-PRECOMMIT-GUARD`) enforces this fail-closed at the repository level. Every hypothesis carries an append-only `failure_log.md` recording every external kill, build defect, run failure, and operator override.
 
-## Evidence bar for any signal reaching paper-trade (AMENDED 2026-05-01 per ADR-0012)
+**Frozen-pre-reg amendment discipline (per ADR-0012 §"Frozen pre-registration amendment", preserved by ADR-0013)**: project-level disposition-philosophy ADRs MAY amend the §8 + §10 (gating tree + decision rule) of frozen `status: designed` pre-registrations WITHOUT requiring a successor hypothesis ID, subject to: (a) the amendment applies project-wide (not single-hypothesis carve-out); (b) it carries an audit-remediate-loop trail; (c) each affected design.md references the amending ADR explicitly; (d) §1-§7 (hypothesis statement, universe/sample, features, labels, splitter, cost model) remain immutable. ADR-0013 itself is such an amendment and adds §15 (NinjaScript Implementation) per §5.1 to every design.md.
 
-Per [ADR-0012 disposition-philosophy-aspirational-mvp](docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md), the design-time Sharpe-CI gate has been DOWNGRADED to a KPI; the load-bearing pre-paper-trade evidence bar is now **methodological correctness + calibration + reproducibility**, with Sharpe / SPA / Power / Max-DD reported as KPIs alongside.
+## KPI report card for every strategy (AMENDED 2026-05-03 per ADR-0013; supersedes prior §"Evidence bar")
 
-**Class A binding gates (ALL must pass for paper-trade eligibility)**:
+Per [ADR-0013 permanent-exploration](docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md), there are NO binding gates. Every former Class A item from ADR-0012 is now a KPI annotation in the per-strategy report card. The report card is the artifact-of-record for operator review at every stage transition.
 
-1. **PIT / leakage canary** green for all feature factory blocks the hypothesis consumes (per the Cycle-4 dual-fit-call observer + TracingArray patterns; H053-style NaN-poison structural detector for any new feature factory).
-2. **Calibration: BSS > 0** vs per-instrument climatological prior on the OOS fold (where applicable to the hypothesis output structure).
-3. **Calibration: reliability slope ∈ [0.7, 1.3]** per Niculescu-Mizil & Caruana 2005 (where applicable).
-4. **Reproducibility log present**: git HEAD, `uv pip freeze` sha, dataset checksum, RNG seed, model hash, scientific_payload_sha256.
-5. **Costs modeled with NinjaTrader-realistic fill assumptions** (per-contract commission, exchange fee, slippage distribution fit from paper-trade logs).
-6. **DSR / PSR above `dsr_activation_size`** per [config/gate.yaml](config/gate.yaml) once family ≥ 10 (currently no-op; H050 + H051 + H052a + H052b + H053×3 = 7).
+**Stage progression** (replaces disposition labels; per ADR-0013 §1):
 
-**Class B KPIs (reported in the disposition memo's report card; do NOT null the strategy)**: walk-forward out-of-sample Sharpe-vs-passive CI (Lo 2002 / Opdyke 2007 / Ledoit-Wolf 2008), Sharpe-vs-time-of-day-FE CI (or per-prior-day-same-bin for single-clock-time predictands), Hansen SPA family p (omega-corrected per ADR-0008), max-DD ratio (arm/passive), power-margin ratio (realized OOS n / `n_required_for_power_80`), mediation NIE / NDE point estimates, in-sample partial-R² (where applicable), cost-floor sensitivity (1-tick vs 2-tick).
+`exploration-in-progress` → `kpi-report-emitted` → `ninjascript-implemented` → `paper-trade-active` → `paper-trade-evaluated` → `live-promoted`
 
-**Class C documentation**: per-cycle audit-remediate-loop trail (3-round cap), substrate dataset_checksum binding, PIT canary suite green.
+No stage is terminal-archive. Every strategy progresses to `ninjascript-implemented` regardless of KPI values.
 
-**Cross-validation methodology**: CPCV is the canonical splitter for any hypothesis disposition that produces a Sharpe KPI per ADR-0012 §"Cross-validation methodology". Single train/test cuts are insufficient; `P1-BACKTEST-CPCV` full path-reconstruction is BLOCKING-BEFORE-ANY-NEW-HYPOTHESIS-DISPOSITION-OR-STAGE-3-RE-RUN.
+**KPI annotations (former Class A items, now reported as KPIs; per ADR-0013 §2)**:
 
-## Execution bar for live (AMENDED 2026-05-01 per ADR-0012)
+1. **PIT / leakage-canary**: `leakage-canary-pass` / `leakage-canary-fail` (with offending feature factory + canary path enumerated). A `fail` annotation does NOT exit the strategy; it is recorded and the operator decides remediation timing.
+2. **Calibration BSS** vs per-instrument climatological prior on OOS fold: `bss-positive` / `bss-flat` (\|BSS\| < 0.05) / `bss-negative` (numeric value reported).
+3. **Calibration reliability slope** (reliability-diagram concept per Niculescu-Mizil & Caruana 2005): `reliability-in-band` (∈ [0.7, 1.3]) / `reliability-out-of-band` (numeric value reported). The [0.7, 1.3] band is a project-operational threshold (NOT in NM&C 2005 primary text); empirical calibration tracked under `P1-RELIABILITY-SLOPE-EMPIRICAL-CALIBRATION`.
+4. **Reproducibility log**: `repro-log-complete` / `repro-log-incomplete` (with missing-fields list).
+5. **Cost-modeling realism**: NinjaTrader-realistic fill assumptions per [src/skie_ninja/backtest/](src/skie_ninja/backtest/) cost model; calibrated post-paper-trade per `P1-H050-COST-EMPIRICAL-CALIBRATION`. Annotation: `cost-{robust,conditional,flat}`.
+6. **DSR / PSR**: `dsr-positive` / `dsr-marginal` / `dsr-negative` (when family ≥ activation size; n/a otherwise per [config/gate.yaml](config/gate.yaml)).
 
-Passes paper-trade for at least 60 session-days with realized Sharpe within CI of backtested Sharpe. **This 60-session-day Sharpe-within-CI floor is the load-bearing pre-live constraint** under ADR-0012; the prior design-time Sharpe-CI gate is downgraded to a KPI. Kill-switch documented per the hypothesis's §11.1.
+**Performance KPIs (former Class B; preserved verbatim)**: walk-forward out-of-sample Sharpe-vs-passive CI (Lo 2002 / Opdyke 2007 / Ledoit-Wolf 2008), Sharpe-vs-time-of-day-FE CI or AR(1)-lag-1 bench (single-clock-time predictands), Hansen SPA family p (omega-corrected per ADR-0008; KPI only), max-DD ratio (arm/passive), power-margin ratio (realized OOS n / `n_required_for_power_80`), mediation NIE / NDE point estimates, in-sample partial-R² (where applicable), cost-floor sensitivity (1-tick vs 2-tick).
 
-**Operator gate**: a `archive(complete; KPI report)` disposition under ADR-0012 makes a strategy ELIGIBLE for paper-trade subject to operator review of the KPI report card. The operator retains discretion to defer paper-trade promotion based on KPI-report weaknesses (e.g., max-DD-adverse, sharpe-vs-passive-negative, calibration-marginal); this is operator judgment, not a mechanical gate.
+**Required documentation alongside KPI report card** (per ADR-0013 §3): per-cycle audit-remediate-loop trail (3-round cap), substrate dataset_checksum + scientific_payload_sha256 binding, full build / run history (every stage's run_id + sidecar SHA + per-stage findings), failure log entries (every external kill, build defect, audit finding, operator override).
+
+**MANDATORY Realized-OOS + Forward-Projection block** (per [ADR-0013 §3.1](docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md), 2026-05-03 amendment): every KPI report card MUST include a $10,000-starting-capital realized OOS equity curve + 1-year (252-session) bootstrap forward projection per arm × symbol. Reported metrics: realized end equity, realized max-DD, win/loss/zero counts, projected ending-equity distribution (median/mean/q05/q95), threshold probabilities (P(loss)/P(double)/P(<50%)), max-DD distribution, and explicit cost-model + position-sizing caveats. Reference implementation [scripts/simulate_h053_v4_10k_2026.py](scripts/simulate_h053_v4_10k_2026.py); H053 KPI report card v3 is the canonical first realization. Common forward-projection primitives consolidated under follow-up `P1-FORWARD-PROJECTION-PRIMITIVE` (refactor into `src/skie_ninja/inference/projection.py` so all hypotheses share the implementation).
+
+**Cross-validation methodology**: CPCV remains the canonical splitter for any hypothesis disposition that produces a Sharpe KPI per ADR-0012 §"Cross-validation methodology" (preserved by ADR-0013 §7). Single train/test cuts are insufficient; `P1-BACKTEST-CPCV` full path-reconstruction is BLOCKING-BEFORE-ANY-NEW-HYPOTHESIS-DISPOSITION-OR-STAGE-3-RE-RUN. The KS-monotonicity sub-criterion is preserved as a KPI annotation: `cpcv-ks-converged` / `cpcv-ks-not-converged` (does not gate).
+
+## NinjaScript implementation is mandatory (AMENDED 2026-05-03 per ADR-0013 §5)
+
+Every hypothesis MUST progress to a working C# NinjaScript strategy in [ninjascript/strategies/](ninjascript/strategies/) regardless of KPI report card values. This is the terminal state of the research loop. Each design.md gains a §15 enumerating: C# class name + file path; Python-prototype hyperparameter mapping; entry/exit logic 1:1 with Python signal generation; kill-switch parameters per design.md §11.1; fill-log schema matching plan §6.1; Sim101 smoke-test record (run_id + ScriptSubmission timestamps + position fills + final P/L); cross-reference to the canonical KPI report card.
+
+Python ↔ NinjaScript parity-check artifact required per ADR-0013 §5.2 (default convention: byte-equality on integer signal vector; per-strategy calibration via `P1-NINJASCRIPT-PARITY-TOLERANCE`).
+
+## Execution observations for paper-trade and live (AMENDED 2026-05-03 per ADR-0013 §6; supersedes prior §"Execution bar")
+
+Per ADR-0013, the 60-session-day paper-trade Sharpe-within-CI observation is a KPI (recorded as a row in KPI report card v2 at the `paper-trade-evaluated` stage transition), NOT a binding pre-live constraint. Operator MAY launch live capital on a strategy whose realized-Sharpe diverges from backtest, subject to operator-discretion + decision-logging at every transition (annotation: `paper-trade-live-{aligned,divergent}`). Kill-switch parameters per the hypothesis's §11.1 remain in effect during paper-trade and live.
+
+**Operator promotion** (every stage transition): operator-discretionary on the KPI report card. Promotion decision logged to `logs/promotions/{run_id}_{hypothesis_id}_{arm_id}_promotion.md` with: KPI report card values at promotion time, operator's rationale (≥ 1 sentence per KPI section), cross-link to ReproLog + sidecar + audit-remediate-loop trails. Same pattern for retirement decisions; retirement is recorded, never deletes the strategy file.
 
 ## Conventions
 - Python env: `uv`. Lint: `ruff`. Notebooks: `nbstripout` + `nbqa ruff`.
@@ -219,6 +235,31 @@ The autonomous Cycles 7-10 execution mandate per the user's 2026-04-30 directive
 - **Phase E** (LANDED 28f93ec): Cycle 10 Stage-3 first-pass — provisional `archive(null)` ⚠ DISPOSITION REVERSED 2026-05-01; H053 un-archived pending Stage-3 re-run on a fixed Daily-gate (or substrate fix).
 
 **H053 hypothesis status**: UN-ARCHIVED. The genuine Stage-1 NULL evidence (mediator alone insufficient on ES/NQ at this slice) holds. Cycle 10 Stage-3 first-pass disposition is NOT BINDING — re-run after `P1-H053-DAILY-405-GATE-RECONCILE` lands. The full Stages 1-3 first-pass artifact ships as a documented build-session record per CLAUDE.md §"Research philosophy" + the H050 post-mortem appendix on H053 build-session findings ([docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md](docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md) §H053 build-session findings).
+
+### Phase F: ADR-0013 + H053 Path B leakage-clean refactor + $10k 2026 projection (2026-05-03) — H053 at `kpi-report-emitted`
+
+ADR-0013 ([docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md](docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md)) adopted 2026-05-03 — supersedes ADR-0012; KPI-only evaluation; no binding gates; mandatory NinjaScript implementation as terminal research-loop state; non-loss / non-deletion mandate enforced via [scripts/_hooks/check_non_loss_deletion.py](scripts/_hooks/check_non_loss_deletion.py) pre-commit guard. 3-round audit-remediate-loop ([docs/audits/audit_trail_2026-05-03_adr-0013-permanent-exploration.md](docs/audits/audit_trail_2026-05-03_adr-0013-permanent-exploration.md)); all 4 critical findings closed inline.
+
+H053 Path B ([P1-H053-STAGE3-V2-ROUND-2-REMEDIATION] follow-up) executed 2026-05-03 to close the 3 critical leakage findings of Stage-3 v2 (F-2-1 CPCV runs over full panel, F-2-2 KFold-shuffle inner CV, F-2-3 in-sample isotonic source). 3-round audit-remediate-loop ([docs/audits/audit_trail_2026-05-03_h053-stage3-v3-leakage-clean.md](docs/audits/audit_trail_2026-05-03_h053-stage3-v3-leakage-clean.md)):
+
+- Stage-3 v3 ([scripts/run_h053_stage3_v3.py](scripts/run_h053_stage3_v3.py)): Round-1 audit BLOCK with 2 critical leakage residuals (F-V3-1 CPCV still over full panel; F-V3-2 held-out iso not pre-test causal). Sidecar 4cf291c0 preserved per ADR-0013 §4.1.
+- Stage-3 v4 ([scripts/run_h053_stage3_v4.py](scripts/run_h053_stage3_v4.py)): Round-2 remediation closing all 6 v3 audit findings (F-V3-1 CPCV OOS-only + F-V3-2 pre-test-causal iso + F-V3-3 inner CV n_splits=5 + F-V3-4 embargo=4 + F-V3-5 LW2008 sharpe-vs-bench CI + F-V3-6 RunContext/ReproLog). Round-3 verification ACCEPT. Canonical sidecar 4d5a826b at [runs/h053/stage3_v4/fe051383e6c146bea93051b816c7e0a1/sidecar.json](runs/h053/stage3_v4/fe051383e6c146bea93051b816c7e0a1/sidecar.json); canonical ReproLog at [logs/reproducibility/fe051383e6c146bea93051b816c7e0a1.json](logs/reproducibility/fe051383e6c146bea93051b816c7e0a1.json).
+
+**H053 stage**: `kpi-report-emitted` per ADR-0013 §1. KPI report cards: [v1](research/01_hypothesis_register/H053/H053_kpi_report_v1.md) (retroactive re-tag of Stage-3 v2), [v2](research/01_hypothesis_register/H053/H053_kpi_report_v2.md) (canonical Path B output), [v3](research/01_hypothesis_register/H053/H053_kpi_report_v3.md) (v2 + Realized-OOS + Forward-Projection block per ADR-0013 §3.1 amendment). Stage tracker [stage.md](research/01_hypothesis_register/H053/stage.md); failure log [failure_log.md](research/01_hypothesis_register/H053/failure_log.md).
+
+**Substantive v4 KPI summary** (substrate `bc06b4e1...`; 4 arms × 2 symbols):
+- Sharpe-vs-passive uniformly `marginal` on OOS-only CPCV (q05/q95 cover zero on all arms; medians +0.21 to +1.71)
+- Sharpe-vs-bench (AR(1) lag-1, LW2008 differential CI) uniformly `marginal` (Δ +0.63 to +1.95 annualized; CIs all cover zero)
+- BSS uniformly ≤ 0 under pre-test-causal isotonic calibration (-0.010 to -0.145; 1 flat, 3 negative)
+- Reliability slopes uniformly out-of-band ([-0.05, +0.30] vs project-operational [0.7, 1.3])
+- DSR uniformly strongly negative (-3.29 to -3.81) under CPCV path-Sharpe deflation
+- Strongest point-estimate: NQ ElasticNet (CPCV-OOS-median Sharpe +1.71); strongest |sharpe-vs-bench|: ES LightGBM (+1.95)
+
+**$10k 2026 projection** ([scripts/simulate_h053_v4_10k_2026.py](scripts/simulate_h053_v4_10k_2026.py); cost-free upper bound; 5,000 bootstrap MC paths × 252 sessions): NQ LightGBM strongest projected (median ending equity $10,713; P(loss)=15%; median DD 5.1%); ES ElasticNet weakest (median $9,772; P(loss)=69%). Realized-OOS over actual 2-year window: NQ LightGBM +10.8% / max-DD 3.7%; ES LightGBM +6.4% / max-DD 4.5%. Cost-aware variant tracked under `P1-H053-COST-EMPIRICAL`.
+
+**Project-wide canonical-deliverable amendment 2026-05-03**: every hypothesis's KPI report card now MUST include a Realized-OOS + Forward-Projection block per ADR-0013 §3.1. The reference implementation is the H053 v3 simulation; common forward-projection helpers consolidated under `P1-FORWARD-PROJECTION-PRIMITIVE`. Path B audit trail consolidates Round-1 + Round-2 + Round-3 at [docs/audits/audit_trail_2026-05-03_h053-stage3-v3-leakage-clean.md](docs/audits/audit_trail_2026-05-03_h053-stage3-v3-leakage-clean.md).
+
+**Next mandatory transition for H053**: `kpi-report-emitted` → `ninjascript-implemented` per ADR-0013 §5 (Path A). Operator-recommended starting arms (per v3 KPI report card v3 + 2026 projection): NQ ElasticNet (highest CPCV-OOS-median Sharpe +1.71; pure-C# implementable); ES LightGBM (largest |sharpe-vs-bench| +1.95; bridge-mediated). Tracked under `P1-H053-NINJASCRIPT-IMPL` (BLOCKING per ADR-0013 §5).
 
 ### H050 production-run comprehensive post-mortem (2026-04-30)
 

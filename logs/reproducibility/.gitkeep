@@ -1,0 +1,7 @@
+# logs/reproducibility/
+
+Per [ADR-0013](../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §4.1 #4, every ReproLog (run record) is retained here. Protected by §4.3 non-loss-guard.
+
+Schema: per [src/skie_ninja/utils/reproducibility.py](../../src/skie_ninja/utils/reproducibility.py) `ReproLog` frozen dataclass — git_head, dataset_checksum, RNG seed, model_hash, scientific_payload_sha256, pip_freeze_sha, run_id, hypothesis_id, created_at.
+
+Files MUST NOT be deleted.

@@ -1,0 +1,13 @@
+# logs/promotions/
+
+Per [ADR-0013](../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §5.3 + §6, every operator stage-transition decision (promote / defer / pull / retire) is logged here.
+
+Filename convention: `{run_id}_{hypothesis_id}_{arm_id}_promotion.md`
+
+Schema fields (per ADR-0013 §5.3):
+- KPI report card values at promotion time (or pointer to KPI report card v{N})
+- Operator's rationale (≥ 1 sentence per KPI section)
+- Cross-link to ReproLog + sidecar + audit-remediate-loop trails
+- Methodological-correctness acknowledgments per §2.1 (if `leakage-canary-fail` or `repro-log-incomplete` annotation present)
+
+Protected by §4.1 non-loss mandate + §4.3 pre-commit guard. Files MUST NOT be deleted.

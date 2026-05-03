@@ -1,8 +1,9 @@
 ---
 id: ADR-0012
 title: Disposition philosophy — aspirational-MVP, KPI-reported (Sharpe / ToD-FE / Max-DD / Power → KPIs; calibration + leakage + repro + SPA-at-promotion remain binding)
-status: accepted
-date: 2026-05-01
+status: superseded-by-ADR-0013
+superseded_by: ADR-0013
+superseded_date: 2026-05-03
 deciders: skoir
 amends:
   - ADR-0003 (SPA-vs-RomanoWolf — SPA's design-time gate role downgraded to KPI; SPA-at-operator-promotion role retained as binding family-wise-error control per Round-1 audit F-1-3 remediation)
@@ -17,6 +18,8 @@ amends:
 ---
 
 # ADR-0012 — Disposition philosophy: aspirational MVP, KPI-reported
+
+> **SUPERSEDED 2026-05-03 by [ADR-0013](ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md).** ADR-0013 dissolves the three-class disposition rubric below: all Class A binding gates become KPIs in a unified KPI report card; the `archive(complete)` / `calibration-failed` / `leakage-detected` / `reproducibility-incomplete` disposition labels are removed; every strategy progresses to a mandatory NinjaScript implementation regardless of KPI values; a non-loss / non-deletion mandate is added. This file is preserved verbatim per ADR-0013 §4.1 non-loss mandate.
 
 ## Context
 

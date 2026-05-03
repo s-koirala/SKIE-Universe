@@ -101,9 +101,13 @@ Per-trade P/L on the long QQQ 0DTE/1DTE call, following sibling repo `research/0
 - **Commissions**: retail broker schedule (Alpaca and IBKR per sibling `research/06-roadmap.md` Phase 4); per-contract fee + exchange fees, frozen at pre-reg.
 - **Slippage**: bid-ask crossing at entry and exit, walk-forward fit to sibling-repo paper-trade quote snapshots when available; widening-tail explicit.
 
-## 8. Gate thresholds (AMENDED 2026-05-01 per ADR-0012)
+## 8. Gate thresholds (AMENDED 2026-05-03 per ADR-0013; supersedes the 2026-05-01 ADR-0012 amendment)
 
-Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) (per Round-1 audit F-1-2 + F-1-6 remediations re: applicability), H052b's gating tree is restructured to the three-class rubric:
+> **AMENDED 2026-05-03 by [ADR-0013 permanent-exploration-no-archive-ninjascript-terminus](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md).** ADR-0013 dissolves all binding gates: every former Class A item becomes a KPI annotation in the canonical KPI report card per ADR-0013 §3, with methodological-correctness annotation banner per §2.1 (NOT a gate). H052b progresses through the stage progression of ADR-0013 §1; operator promotion at every transition is discretionary on the KPI report card (ADR-0013 §5.3). Full §10 + new §15 NinjaScript Implementation cascade lands under follow-up `P1-ADR-0013-DESIGN-MD-CASCADE`.
+>
+> **ALL TEXT BELOW THIS BANNER IS HISTORICAL RECORD** preserved verbatim per ADR-0013 §4.1 non-loss mandate (per Round-2 audit F-2-5 remediation). For the current disposition philosophy and authoritative gating semantics see ADR-0013 §1-§5. The legacy "binding gates" / "Class A" / "three-class rubric" / disposition labels referenced below are SUPERSEDED and exist solely for audit-trail provenance.
+
+Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) (now superseded by ADR-0013) (per Round-1 audit F-1-2 + F-1-6 remediations re: applicability), H052b's gating tree is restructured to the three-class rubric:
 
 ### 8.a Class A — Binding gates (per-hypothesis applicability)
 

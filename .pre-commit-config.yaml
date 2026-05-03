@@ -65,3 +65,11 @@ repos:
         entry: python scripts/_hooks/check_import_guard.py
         language: system
         types: [python]
+
+      - id: check-non-loss-deletion
+        name: ADR-0013 non-loss mandate (fail-closed on protected-path deletion)
+        entry: python scripts/_hooks/check_non_loss_deletion.py
+        language: system
+        always_run: true
+        pass_filenames: false
+        stages: [pre-commit]

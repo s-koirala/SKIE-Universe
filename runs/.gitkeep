@@ -1,0 +1,3 @@
+# runs/
+
+Per [ADR-0013](../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §4.1, this directory holds run-output sidecars that script convention places under `runs/{HID}/{stage}/{run_id}/` (used by some H053 stage scripts). The canonical run-output root is `artifacts/runs/{HID}/{run_id}/` (used by the walk-forward orchestrator). Both paths are protected by §4.3 non-loss-guard. Files MUST NOT be deleted.
