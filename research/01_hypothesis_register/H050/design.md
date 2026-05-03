@@ -137,3 +137,74 @@ The legacy §10 spec (Sharpe-CI null + SPA-fail null + underpowered null + HMM-s
 - Dataset checksums (frozen at pre-reg): captured in `data_requirements.md` alongside this file — the file is a pre-reg companion to be completed before `status=running`; its SHA256 checksum field is the binding artifact.
 - Reproducibility log path: `logs/reproducibility/{run_id}.json`
 - HMM selection trace path: `logs/reproducibility/{run_id}_hmm_selection.json` per ADR-0005.
+
+## 15. NinjaScript Implementation (NEW per [ADR-0013 §5.1](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md), 2026-05-03)
+
+Per ADR-0013 §5 + §5.1, every hypothesis design.md gains a §15 enumerating the NinjaScript C# implementation that is the terminal state of the research loop. H050's NinjaScript implementation is sequenced AFTER the production walk-forward Stage-3 KPI report card emission per follow-up `P1-H050-NINJASCRIPT-IMPL`.
+
+This section is also the venue for **citation-erratum acknowledgments** per ADR-0013 §"Frozen pre-registration amendment" (§1-§7 of this design.md are immutable; corrections to citation defects in §1-§7 are documented here without editing the original §-text).
+
+### 15.1 Citation errata (Round-1 audit-remediate-loop 2026-05-03 findings F-L-1, F-L-3, F-L-4)
+
+The following citation defects were surfaced by Round-1 of the H050 orchestrator leakage-clean audit-remediate-loop ([docs/audits/audit_trail_2026-05-03_h050-orchestrator-leakage-clean.md](../../../docs/audits/audit_trail_2026-05-03_h050-orchestrator-leakage-clean.md)). They are recorded here per the §1-§7 immutability discipline:
+
+#### Erratum-1 (F-L-1; severity = major): AFML §3.2 → §3.4
+
+**Frozen text** (design.md §4 line 53): "Triple-barrier per Lopez de Prado AFML §3.2."
+
+**Correct citation**: López de Prado, M. (2018). *Advances in Financial Machine Learning*, Wiley, ISBN 978-1-119-48208-6, **§3.4** "The Triple-Barrier Method" (p. 45). §3.2 is "The Fixed-Time Horizon Method" — a different, weaker labelling scheme. The triple-barrier is in §3.4.
+
+**Operational impact**: NONE. The orchestrator at [scripts/run_walk_forward.py:14-22](../../../scripts/run_walk_forward.py) cites AFML §3.4 correctly and explicitly flags the design.md §4 line 53 reference as "an inherited erratum, preserved by Path-A pre-reg immutability." The triple-barrier labels emitted by [src/skie_ninja/features/labels.py](../../../src/skie_ninja/features/labels.py) implement §3.4, NOT §3.2.
+
+**Disposition**: erratum-acknowledged-here; no §4 line 53 edit.
+
+#### Erratum-2 (F-L-3; severity = major): Hamilton 1989 scope
+
+**Frozen text** (design.md §1 line 28): "Mechanism: regime-dependent drift in equity-index futures... ([Hamilton 1989](https://doi.org/10.2307/1912559); ...)."
+
+**Verified scope**: Hamilton, J. D. (1989). *Econometrica* 57(2):357-384. The paper estimates Markov regime-switching on **quarterly US real GNP** (1951Q2-1984Q4) — a macroeconomic application. The intraday extrapolation to ES/NQ futures is NOT directly supported by Hamilton 1989 alone.
+
+**Mitigation**: design.md §1 line 28 also cites [Guidolin & Timmermann 2007, JEDC 31(11):3503-3544](https://doi.org/10.1016/j.jedc.2006.12.004) (multi-asset regime-switching at monthly frequency) and [Ryou-Bae-Lee-Oh 2020, Sustainability 12(17):7031](https://doi.org/10.3390/su12177031) (HMM momentum on equity returns). These co-citations bridge Hamilton's macro framework to financial-return regime-switching but at monthly-and-above frequencies. Intraday-1-min HMM stationarity is a project-level methodological commitment tracked under follow-up `P1-CYCLE6-FOLD-STATIONARITY`.
+
+**Disposition**: erratum-acknowledged-here; design.md §1 line 28 unchanged. Operator review at the KPI report card stage transition consults the empirical HMM stationarity diagnostic for the actual evidence on intraday regime-switching.
+
+#### Erratum-3 (F-L-4; severity = major): Bergstra & Bengio 2012 N=200 vs N=60
+
+**Frozen text** (design.md §5 line 66): "N_draws = 200 per walk-forward fold, chosen to give ≥95% expected coverage of the top-5% configuration per Bergstra & Bengio 2012, JMLR 13:281-305."
+
+**Verified derivation**: B&B 2012 §2.2's volume-coverage argument gives `N ≥ ceil(log(1-p) / log(1-v))` for top-fraction `v` and target probability `p`. For `(v=0.05, p=0.95)`, the threshold is **N ≥ 59** (the canonical "60-trial" B&B result). N=200 is heavy oversampling rather than a B&B-dictated coverage requirement. The argument is dimension-INDEPENDENT (a volume measure on the search space).
+
+**Operational note**: The H050 LightGBM grid is a 12-cell discrete product (`3 × 2 × 2`); over a 12-cell grid, N=200 random samples cover the grid with high replicate-density rather than B&B-style volume coverage of a continuous space. The orchestrator's docstring at [scripts/run_walk_forward.py:580-595](../../../scripts/run_walk_forward.py) already documents this gap; empirical N_draws calibration is tracked under follow-up `P1-H050-LGB-N-DRAWS-EMPIRICAL`.
+
+**Disposition**: erratum-acknowledged-here; N=200 preserved under pre-reg fidelity; calibration tracked separately.
+
+### 15.2 NinjaScript implementation plan (deferred to `P1-H050-NINJASCRIPT-IMPL`)
+
+H050's NinjaScript implementation is **deferred** to follow-up `P1-H050-NINJASCRIPT-IMPL`, which fires AFTER the production walk-forward Stage-3 KPI report card v1 emission per ADR-0013 §"Follow-ups". The C# strategy will be **bridge-mediated** per ADR-0013 §1.2 (the HMM regime-gate requires Python inference at runtime; no native C# HMM library covers the warm-start `filter_states_from_prior` causal path).
+
+Provisional structure (to be completed when the follow-up fires):
+
+- **C# class name**: `HmmRegimeConditionedDirectionalSignal` (provisional; final name TBD)
+- **C# file path**: `ninjascript/strategies/HmmRegimeConditionedDirectionalSignal.cs` (provisional)
+- **Strategy parameters**: mapped from H050.yaml `classifier.grid` (LightGBM hyperparameters chosen by inner-CV at the canonical run) + HMM cfg (`covariance_type`, `n_states`)
+- **Entry / exit logic**: 1:1 with Python signal generation per [scripts/run_walk_forward.py](../../../scripts/run_walk_forward.py) `_predict_fold` (line 1564-1653)
+- **Kill-switch parameters**: `max-drawdown-percent`, `max-position-duration-bars`, `max-loss-per-trade-ticks` (defaults per CLAUDE.md §Standing constraints retail-size ceiling)
+- **Fill-log schema**: matches plan §6.1
+- **Sim101 smoke-test record**: TBD when follow-up fires
+- **Cross-reference**: this design.md + the canonical KPI report card v1 (TBD)
+
+### 15.3 Sizing convention (per ADR-0013 §3.1.1)
+
+H050 archetype: **HMM-gated multi-bar intraday** (per ADR-0013 §3.1.1 table). Sizing convention: per-state position multiplier × 100%-of-equity-when-active; equity unchanged when state-gated-out. Specifically:
+- When the HMM forward-filter posterior places the high-mean state as the modal state at bar `t`, position size is `sign(2·p_classifier - 1) × 100%` of equity.
+- When the HMM forward-filter posterior places any other state as the modal state, position size is 0.
+- Equity is updated multiplicatively: `equity_{t+1} = equity_t × exp(r_t)` where `r_t` is the per-bar log return of the gated-vs-unconditional differential (test statistic per design.md §1).
+
+This sizing convention will inform the §3.1 Realized OOS + Forward-Projection block of the H050 KPI report card v1 when the production walk-forward run completes.
+
+### 15.4 Cross-references
+
+- ADR-0013 §5 — NinjaScript-mandate; §5.1 NinjaScript Implementation section requirement; §5.2 bridge-mediated parity check; §3.1 Realized-OOS + Forward-Projection mandate; §3.1.1 sizing-convention table
+- [research/01_hypothesis_register/H050/purge_rule_addendum_2026-05-03.md](purge_rule_addendum_2026-05-03.md) — per-cfg purge ratification (F-Q-2 closure)
+- [research/01_hypothesis_register/H050/embargo_pw2004_addendum_2026-05-03.md](embargo_pw2004_addendum_2026-05-03.md) — PW2004 embargo project-operational framing (F-L-2 closure)
+- [docs/audits/audit_trail_2026-05-03_h050-orchestrator-leakage-clean.md](../../../docs/audits/audit_trail_2026-05-03_h050-orchestrator-leakage-clean.md) — Round-1 + Round-2 + Round-3 audit-remediate-loop trail

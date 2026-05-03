@@ -32,7 +32,7 @@ classifier:
     num_leaves: [15, 31, 63]
     learning_rate: [0.01, 0.05]
     min_data_in_leaf: [20, 50]
-  search: {method: random, n_draws: 200, seed: 2026}
+  search: {method: random, n_draws: 200, seed: 20260420}  # ADR-0013-amend §F-R-2 fix: was 2026, corrected to match design.md §11 line 137 binding "RNG seed: 20260420"
 hmm:
   covariance_type: [diag, full]  # pre-reg per design.md §5; d=1 dedup at fit time per top-of-file addendum pointer
   selection: bic_plus_cv_ll
@@ -48,4 +48,4 @@ gates:
   power: {target: 0.80}
 cost_model: nt8_es_nq_rth_v1   # design.md §7; fallback constant-tick prior
 cost_sensitivity_mult: 1.0      # 1.0 = 1-tick prior; 2.0 for worst-case sensitivity
-random_seed: 2026
+random_seed: 20260420  # ADR-0013-amend §F-R-2 fix (Round-2 audit-remediate-loop 2026-05-03): was 2026, corrected to match design.md §11 line 137 binding "RNG seed: 20260420". Pre-reg fidelity invariant; do not edit without successor-hypothesis-ID per ADR-0013 §"Frozen pre-registration amendment".

@@ -53,7 +53,9 @@ def test_orchestrator_dry_run_produces_artifacts(tmp_path: Path) -> None:
         # ReproLog has valid JSON with the expected fields.
         repro = json.loads((out / "reprolog.json").read_text(encoding="utf-8"))
         assert repro["hypothesis_id"] == "H050"
-        assert repro["rng_seed"] == 2026
+        # F-R-2 fix Round-2 audit-remediate-loop 2026-05-03: was 2026,
+        # corrected to design.md §11 line 137 binding 20260420.
+        assert repro["rng_seed"] == 20260420
         # Universe is iterated per H050.yaml line 3 = [ES, NQ].
         # P1-H050-UNIVERSE-ES-ONLY closure: NQ MUST be present.
         run_summary = json.loads((out / "run_summary.json").read_text(encoding="utf-8"))

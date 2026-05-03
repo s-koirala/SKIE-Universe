@@ -57,7 +57,61 @@ def test_test_statistic_pre_reg() -> None:
 
 
 def test_random_seed_pinned() -> None:
-    """random_seed must be pinned for reproducibility."""
+    """random_seed must be pinned for reproducibility AND match the
+    design.md §11 line 137 binding "RNG seed: 20260420".
+
+    F-R-2 fix (Round-2 audit-remediate-loop 2026-05-03): prior YAML
+    value 2026 was a 6-orders-of-magnitude drift from the pre-reg
+    binding 20260420. Pre-reg fidelity invariant; do not edit without
+    successor-hypothesis-ID per ADR-0013 §"Frozen pre-registration
+    amendment".
+    """
     cfg = _load_h050()
     assert isinstance(cfg["random_seed"], int)
-    assert cfg["random_seed"] == 2026
+    assert cfg["random_seed"] == 20260420, (
+        f"random_seed must be 20260420 per design.md §11 line 137 "
+        f"frozen pre-reg binding; got {cfg['random_seed']!r}. "
+        "ADR-0013 §'Frozen pre-registration amendment' forbids editing "
+        "§11 reproducibility commitments without a successor hypothesis "
+        "ID. If a re-pin is operationally needed, open a successor "
+        "hypothesis ID; do not edit this test in isolation."
+    )
+
+
+def test_lgb_seed_matches_design_md_binding() -> None:
+    """classifier.search.seed must match the design.md §11 binding
+    (20260420). F-R-2 fix consistency: both random_seed and lgb_seed
+    are seed values; pre-reg binds the master to 20260420; both YAML
+    seeds inherit the same value to maintain consistent stochastic
+    streams across the pipeline.
+    """
+    cfg = _load_h050()
+    lgb_seed = cfg["classifier"]["search"]["seed"]
+    assert isinstance(lgb_seed, int)
+    assert lgb_seed == 20260420, (
+        f"classifier.search.seed must be 20260420 per F-R-2 fix; "
+        f"got {lgb_seed!r}."
+    )
+
+
+def test_design_md_rng_seed_binding_unedited() -> None:
+    """design.md §11 line 137 binds 'RNG seed: 20260420'; this test
+    pins that the binding text is preserved verbatim. Any future
+    successor-hypothesis-ID amendment must update both the design.md
+    binding AND this test in the same commit.
+    """
+    design_md = (
+        Path(__file__).resolve().parents[2]
+        / "research"
+        / "01_hypothesis_register"
+        / "H050"
+        / "design.md"
+    )
+    text = design_md.read_text(encoding="utf-8")
+    assert "RNG seed: 20260420" in text, (
+        "design.md §11 line 137 'RNG seed: 20260420' binding has been "
+        "edited or removed. Per ADR-0013 §'Frozen pre-registration "
+        "amendment' §1-§7 immutability discipline, §11 reproducibility "
+        "commitments cannot be edited. If a re-pin is operationally "
+        "needed, open a successor hypothesis ID."
+    )
