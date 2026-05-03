@@ -338,9 +338,24 @@ The 1-tick floor at 09:45 ET MOC entry is *not* uniformly conservative: 09:45 ET
 - **Decision-rule interaction (binds §10):** if the 2-tick result archives null while the 1-tick result archives positive for the same model arm, the 1-tick result archives as `archive(positive, conditional-on-cost-floor)` rather than unconditionally `archive(positive)`. This makes the cost-floor sensitivity explicit in the disposition rather than buried in the run summary.
 - Reference: [Almgren & Chriss 2001, *Journal of Risk* 3(2):5–39](https://www.smallake.kr/wp-content/uploads/2016/03/optliq.pdf) for transient impact upper-bound at MOC entry; [Frazzini, Israel & Moskowitz 2018, SSRN 2294498](https://doi.org/10.2139/ssrn.2294498) for empirical equity-index slippage scaling.
 
-## 8. Gate thresholds (AMENDED 2026-05-01 per ADR-0012)
+## 8. Gate thresholds (AMENDED 2026-05-01 per ADR-0012; FURTHER AMENDED 2026-05-03 per ADR-0014)
 
-Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) (this commit), the H053 gating tree is restructured from "Sharpe-CI gates plus annotations" to a **three-class rubric**: binding gates (Class A); KPIs reported but not nulling (Class B); documentation requirements (Class C). The original H053 gate enumeration is preserved below as the §8.b legacy reference.
+Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) (2026-05-01), the H053 gating tree is restructured from "Sharpe-CI gates plus annotations" to a **three-class rubric**: binding gates (Class A); KPIs reported but not nulling (Class B); documentation requirements (Class C). The original H053 gate enumeration is preserved below as the §8.b legacy reference.
+
+**AMENDMENT 2026-05-03 per [ADR-0014 never-archive-profitable-strategies](../../../docs/decisions/ADR-0014-never-archive-profitable-strategies.md)**:
+
+The disposition-class labels per ADR-0012 §10.1 strict precedence (`leakage-detected`, `reproducibility-incomplete`, `calibration-failed`, `prerequisite-not-met`) are STATES indicating remediation-pending status — they are NOT archive decisions. The ONLY archive labels are `archive(complete; KPI report)` and `archive(null, <reason>)`.
+
+A new `lifecycle_state` field is emitted alongside `disposition_class` per ADR-0014; lifecycle_state values:
+- `paper-trade-eligible` — Class A gates pass; auto-promotion eligible
+- `active-investigation` — Class A gate failure(s) AND/OR remediation-pending; **default state**
+- `archived` — set ONLY by operator decision via `compose_disposition(explicit_archive=True)` per ADR-0014 §8 NEVER ARCHIVE AUTONOMOUSLY
+
+Profitable strategies (annualized return > 0% AND Sortino > 0 AND profit factor > 1.0) STAY in `active-investigation` regardless of Class A gate failures per ADR-0014 §2 NEVER-ARCHIVE-PROFITABLE-STRATEGIES. The H053 v3 disposition (run_id `h053_stage3_v3_20260503T173742Z`) emitted `disposition_class=calibration-failed` on all 4 arms but `lifecycle_state=active-investigation` for ES Arm 2 + NQ Arm 2 LightGBM (annualized Sharpe 1.49 / 0.99; max DD ~5%; profit factor 1.29 / 1.18). Both LightGBM arms are eligible for operator paper-trade promotion subject to written gate-bypass justification per ADR-0014 §4.
+
+Phase-end summaries must report the strategy-performance dashboard per ADR-0014 §9 (annualized Sharpe + Sortino + Calmar + max DD + win rate + profit factor + Hansen SPA p + LW2008 ΔSharpe vs passive); canonical template at [research/_templates/phase_performance_report.md](../../_templates/phase_performance_report.md).
+
+§1-§7 of this design (hypothesis statement, universe/sample, features, labels, splitter, cost model) remain IMMUTABLE per ADR-0012 §"Frozen pre-registration amendment" carve-out conditions (d).
 
 ### 8.a Class A — Binding gates (a strategy fails the disposition iff one of these fails) (per-hypothesis applicability per Round-1 audit F-1-2 + F-1-6)
 

@@ -103,6 +103,21 @@ Sharpe-vs-passive CI (Lo 2002 / Mertens / Opdyke / LW2008), SPA family p (KPI at
 
 The H051 decision rule is restructured per [ADR-0012 §"Disposition labels under the new rubric"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) into the three-class disposition rubric (`leakage-detected` / `reproducibility-incomplete` / `calibration-failed` / `prerequisite-not-met` / `archive(complete; KPI report)`). All Sharpe / SPA / power outcomes are now Class B KPIs reported in the disposition memo's report card; they do NOT null the strategy. Johansen pre-screen failure is now `prerequisite-not-met` per ADR-0012 Class A.4.
 
+**AMENDMENT 2026-05-03 per [ADR-0014 never-archive-profitable-strategies](../../../docs/decisions/ADR-0014-never-archive-profitable-strategies.md)**:
+
+The disposition-class labels per [ADR-0012](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) §10.1 strict precedence (`leakage-detected`, `reproducibility-incomplete`, `calibration-failed`, `prerequisite-not-met`) are STATES indicating remediation-pending status — they are NOT archive decisions. The ONLY archive labels are `archive(complete; KPI report)` and `archive(null, <reason>)`.
+
+A new `lifecycle_state` field is emitted alongside `disposition_class` per ADR-0014; the lifecycle_state values are:
+- `paper-trade-eligible` — Class A gates pass; auto-promotion eligible
+- `active-investigation` — Class A gate failure(s) AND/OR remediation-pending; **default state**
+- `archived` — set ONLY by operator decision via `compose_disposition(explicit_archive=True)` per ADR-0014 §8 NEVER ARCHIVE AUTONOMOUSLY
+
+Profitable strategies (annualized return > 0% AND Sortino > 0 AND profit factor > 1.0) STAY in `active-investigation` regardless of Class A gate failures per ADR-0014 §2 NEVER-ARCHIVE-PROFITABLE-STRATEGIES. For H051 specifically, the Johansen pre-screen `prerequisite-not-met` STATE does NOT auto-archive; if downstream pairs-trade returns are profitable on alternative-cointegration-method runs, the strategy remains in `active-investigation`.
+
+Phase-end summaries must report the strategy-performance dashboard per ADR-0014 §9 (annualized Sharpe + Sortino + Calmar + max DD + win rate + profit factor + Hansen SPA p + LW2008 ΔSharpe vs passive); the canonical template is at [research/_templates/phase_performance_report.md](../../_templates/phase_performance_report.md).
+
+§1-§7 of this design (hypothesis statement, universe/sample, features, labels, splitter, cost model) remain IMMUTABLE per ADR-0012 §"Frozen pre-registration amendment" carve-out conditions (d).
+
 ## 11. Reproducibility commitments
 
 - git HEAD: TBD at run.

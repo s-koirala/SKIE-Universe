@@ -596,18 +596,25 @@ def determine_lifecycle_state(
 
     Returns (lifecycle_state, reason).
 
-    Rules:
-    1. If `explicit_archive` (set only on operator decision after explicit review),
-       return ARCHIVED.
+    Rules (in order of precedence):
+    1. If `explicit_archive` is True (set ONLY on operator decision per ADR-0014 §8
+       NEVER ARCHIVE AUTONOMOUSLY — Claude SHALL NOT pass this argument
+       autonomously), return ARCHIVED.
     2. If disposition_class == archive(complete) AND auto-promotion criteria,
        return PAPER_TRADE_ELIGIBLE.
     3. If raw Sharpe is positive (point estimate > 0) AND CI lower bound
        NOT catastrophically low (> -0.5 floor), return ACTIVE_INVESTIGATION
        regardless of any failed Class A gate. ADR-0014 §2 NEVER-ARCHIVE-PROFITABLE.
-    4. Else, return ACTIVE_INVESTIGATION (default; the DEFAULT IS NOT ARCHIVE per ADR-0014).
+    4. Else, return ACTIVE_INVESTIGATION (default per ADR-0014 §4: when in doubt,
+       active-investigation; the DEFAULT IS NEVER ARCHIVE).
+
+    The `explicit_archive` argument is the mechanism enforcement of ADR-0014 §8:
+    autonomous Claude code paths default to `explicit_archive=False` and CANNOT
+    emit the `archived` lifecycle_state. Operator-driven invocation may pass
+    `explicit_archive=True` after explicit review.
     """
     if explicit_archive:
-        return LIFECYCLE_ARCHIVED, "operator-explicit archive decision"
+        return LIFECYCLE_ARCHIVED, "operator-explicit archive decision (ADR-0014 §8 explicit_archive=True)"
     if disposition_class == DISPOSITION_ARCHIVE_COMPLETE:
         # Sharpe-positive Class-A-pass case → eligible for paper-trade
         return LIFECYCLE_PAPER_TRADE_ELIGIBLE, "Class A gates passed"
@@ -619,12 +626,12 @@ def determine_lifecycle_state(
     if sharpe_positive_at_alpha_10:
         return (
             LIFECYCLE_ACTIVE_INVESTIGATION,
-            f"ADR-0014 NEVER-ARCHIVE-PROFITABLE: Sharpe point={sharpe_vs_passive.point_estimate:.4f} CI=[{sharpe_vs_passive.ci_low:.4f}, {sharpe_vs_passive.ci_high:.4f}] passes positive-at-alpha-0.10 floor; disposition_class={disposition_class} indicates remediation-pending state (NOT archive)",
+            f"ADR-0014 §2 NEVER-ARCHIVE-PROFITABLE: Sharpe point={sharpe_vs_passive.point_estimate:.4f} CI=[{sharpe_vs_passive.ci_low:.4f}, {sharpe_vs_passive.ci_high:.4f}] passes positive-at-alpha-0.10 floor; disposition_class={disposition_class} indicates remediation-pending state (NOT archive)",
         )
-    # Default per ADR-0014 §4: ACTIVE_INVESTIGATION when in doubt
+    # Default per ADR-0014 §4 + §8: ACTIVE_INVESTIGATION when in doubt; never autonomous archive
     return (
         LIFECYCLE_ACTIVE_INVESTIGATION,
-        f"ADR-0014 default: disposition_class={disposition_class} is a remediation-pending state, NOT an archive decision; lifecycle_state stays active-investigation pending operator review",
+        f"ADR-0014 §4+§8 default: disposition_class={disposition_class} is a remediation-pending state, NOT an archive decision; lifecycle_state stays active-investigation pending operator review (autonomous archive prohibited per ADR-0014 §8)",
     )
 
 

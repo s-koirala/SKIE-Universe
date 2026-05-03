@@ -27,6 +27,8 @@ This memo was revised after user directive 2026-05-03: "make a note not to archi
 1. The directional bet is profitable (+7.3% / +6.7% annualized return, Sharpe 1.49 / 0.99, max DD ~5%)
 2. The categorical-table v2 deliverable's probability magnitudes are uncalibrated (BSS lower CI = -0.034 even with best-available beta calibration)
 3. Operator should trade the directional bet but NOT trust the K×3 archetype probability table magnitudes until calibration recovery is achieved (tracked under `P1-H053-V3-CALIBRATOR-BETA-VS-ISOTONIC-EMPIRICAL` follow-up).
+4. **ES is `cost-floor-conditional`** (profitable at 1-tick slippage, flips negative at 2-tick); paper-trade promotion of ES requires fill-quality monitoring with abort-trigger if observed slippage routinely exceeds 1 tick. NQ is `cost-robust` (positive Sharpe through 2-tick).
+5. **LW2008 ΔSharpe vs passive CI brackets zero** on both symbols — strategy alpha not statistically distinguishable from passive at α=0.05 with n_oos ≈ 370; the live 60-session-day paper-trade is the operational test of significance per ADR-0011.
 
 ## Performance dashboard (the un-archive evidence)
 
@@ -51,7 +53,25 @@ This memo was revised after user directive 2026-05-03: "make a note not to archi
 - 2024 ann return / Sharpe: +8.16% / 1.64
 - 2025 ann return / Sharpe: +1.75% / 0.35
 
-**Both strategies are profitable gross AND net of cost** (cost-c ES 1.74 bps/RT; NQ 0.76 bps/RT). The strategies meet the ADR-0014 §2 "profitable" floor (annualized return > 0% AND Sortino > 0 AND profit factor > 1.0) by substantial margin.
+**Both strategies are profitable gross AND net of 1-tick cost** (cost-c ES 1.74 bps/RT; NQ 0.76 bps/RT). The strategies meet the ADR-0014 §2 "profitable" floor (annualized return > 0% AND Sortino > 0 AND profit factor > 1.0) by substantial margin.
+
+### LW2008 paired-Sharpe vs passive long (multiple-testing-corrected per ADR-0008)
+
+| Symbol | Passive ann Sharpe | ΔSharpe (arm − passive) | LW2008 95% CI | Excludes zero |
+|---|---:|---:|---|---|
+| ES | -0.0052 | **+0.0945** | [-0.0652, +0.2578] | No (CI brackets 0) |
+| NQ | +0.1278 | +0.0543 | [-0.0989, +0.2153] | No (CI brackets 0) |
+
+Both LW2008 paired-Sharpe CIs bracket zero — at n_oos ≈ 370, the strategy's marginal alpha over passive long is positive in point estimate but not statistically distinguishable at α=0.05. This is consistent with weak signal at moderate sample size; live paper-trade verification (the ADR-0011 60-session-day floor) is the operational test.
+
+### Cost-floor sensitivity (1-tick + 2-tick per design.md §7.1)
+
+| Symbol | Cost-c (1-tick) | Net Sharpe (1-tick) | Cost-c (2-tick) | Net Sharpe (2-tick) | Cost-floor annotation |
+|---|---:|---:|---:|---:|---|
+| ES Arm 2 LightGBM | 1.74 bps | **+0.59** | 3.23 bps | **-0.18** | `cost-floor-conditional` (1-tick OK; 2-tick flips negative) |
+| NQ Arm 2 LightGBM | 0.76 bps | **+0.70** | 1.31 bps | **+0.50** | `cost-robust` (positive Sharpe through 2-tick) |
+
+**Operational implication for ES Arm 2 LightGBM**: profitability is conditional on execution slippage staying within ~1.5 ticks of the 09:45 ET MOC (entry) and 10:30 ET MOC (exit). At 2-tick slippage, ES net annualized return is -0.86%. NinjaTrader bridge needs to be fill-quality-monitored; if observed slippage routinely exceeds 1 tick, ES paper-trade promotion should be deferred. NQ has more headroom — even at 2-tick slippage, +3.4% annualized net return / Sharpe 0.50.
 
 ## Original (now-historical) TL;DR
 
@@ -178,10 +198,10 @@ Per ADR-0012 §"Operator-promotion rule" + design.md §10.1: H053 is **NOT paper
 
 ## SPA family slot consumption
 
-Per design.md §8 + ADR-0012, H053 contributes 3 ex-ante slots to the SPA family. Slot accounting:
-- Slot 1 (Arm 1 ElasticNet): consumed by `archive(calibration-failed)`
-- Slot 2 (Arm 2 LightGBM): consumed by `archive(calibration-failed)`
-- Slot 3 (Arm 3 LLM): consumed by `archive(prerequisite-not-met)` (design.md §11.4 prereq 7 deterministic-replay scaffolding never landed)
+Per design.md §8 + ADR-0012, H053 contributes 3 ex-ante slots to the SPA family. Slot accounting (per ADR-0014 §1 vocabulary correction — `calibration-failed` and `prerequisite-not-met` are remediation-pending STATES per ADR-0012, not archive labels; they consume their slot via state-emission, not via `archive(...)` notation):
+- Slot 1 (Arm 1 ElasticNet): consumed by `disposition_class = calibration-failed` (lifecycle_state = active-investigation per ADR-0014; archive ONLY by operator decision)
+- Slot 2 (Arm 2 LightGBM): consumed by `disposition_class = calibration-failed` (lifecycle_state = active-investigation per ADR-0014; archive ONLY by operator decision)
+- Slot 3 (Arm 3 LLM): consumed by `disposition_class = prerequisite-not-met` (design.md §11.4 prereq 7 deterministic-replay scaffolding never landed; archive ONLY by operator decision per ADR-0014 §8)
 
 Family size remains 3; not freed for additional arms. Per design.md §8 + Hansen 2005 §2.4 ex-ante-fixed-universe requirement.
 

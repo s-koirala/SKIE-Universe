@@ -135,6 +135,21 @@ The H052b decision rule is restructured per [ADR-0012 §"Disposition labels unde
 
 The **sibling-repo SKIE-ORB-CALL Phase-1 binomial pre-condition** remains binding as a `prerequisite-not-met` (Class A.4 per ADR-0012). Capacity breach is preserved as a `capacity-binding` annotation on the disposition (now operational, not a null verdict).
 
+**AMENDMENT 2026-05-03 per [ADR-0014 never-archive-profitable-strategies](../../../docs/decisions/ADR-0014-never-archive-profitable-strategies.md)**:
+
+The disposition-class labels per [ADR-0012](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) §10.1 strict precedence (`leakage-detected`, `reproducibility-incomplete`, `calibration-failed`, `prerequisite-not-met`) are STATES indicating remediation-pending status — they are NOT archive decisions. The ONLY archive labels are `archive(complete; KPI report)` and `archive(null, <reason>)`.
+
+A new `lifecycle_state` field is emitted alongside `disposition_class` per ADR-0014; the lifecycle_state values are:
+- `paper-trade-eligible` — Class A gates pass; auto-promotion eligible
+- `active-investigation` — Class A gate failure(s) AND/OR remediation-pending; **default state**
+- `archived` — set ONLY by operator decision via `compose_disposition(explicit_archive=True)` per ADR-0014 §8 NEVER ARCHIVE AUTONOMOUSLY
+
+Profitable strategies (annualized return > 0% AND Sortino > 0 AND profit factor > 1.0) STAY in `active-investigation` regardless of Class A gate failures per ADR-0014 §2 NEVER-ARCHIVE-PROFITABLE-STRATEGIES. The sibling-repo Phase-1 binomial pre-condition `prerequisite-not-met` STATE does NOT auto-archive H052b; if downstream HMM-gated long-call returns are profitable on alternative-prereq-method runs, the strategy remains in `active-investigation`. The `capacity-binding` annotation (long-premium structure) and `long-premium-bounded-downside` strength annotation are preserved as KPI-report-card entries under ADR-0014 §9.
+
+Phase-end summaries must report the strategy-performance dashboard per ADR-0014 §9 (annualized Sharpe + Sortino + Calmar + max DD + win rate + profit factor + Hansen SPA p + LW2008 ΔSharpe vs passive); the canonical template is at [research/_templates/phase_performance_report.md](../../_templates/phase_performance_report.md).
+
+§1-§7 of this design (hypothesis statement, universe/sample, features, labels, splitter, cost model) remain IMMUTABLE per ADR-0012 §"Frozen pre-registration amendment" carve-out conditions (d).
+
 ## 11. Reproducibility commitments
 
 - git HEAD: TBD at run (across this repo and the sibling repo [`s-koirala/SKIE-NINJA-0DTE`](https://github.com/s-koirala/SKIE-NINJA-0DTE)).

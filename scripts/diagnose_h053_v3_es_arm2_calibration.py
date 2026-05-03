@@ -15,9 +15,13 @@ walk-forward grid cells (median +0.04). Reliability slope point estimate is -0.0
 4. Is the directional skill (positive Sharpe) preserved under any calibrator that
    passes the binding gate?
 
-Findings inform the operator decision (archive H053 vs spawn a successor
-hypothesis with an amended calibrator per ADR-0012 §"Frozen pre-registration
-amendment" §1-§7 immutable rule).
+Findings inform the operator decision per ADR-0014 §8 (NEVER ARCHIVE
+AUTONOMOUSLY). Possible operator dispositions: keep H053 in
+lifecycle_state=active-investigation (default per ADR-0014 §4), spawn a
+successor hypothesis with an amended calibrator per ADR-0012 §"Frozen
+pre-registration amendment" §1-§7 immutable rule, or — if the operator
+explicitly chooses — emit `archive(null, <reason>)` with the full evidence
+package per ADR-0014 §8. Claude SHALL NOT propose archive autonomously.
 """
 
 from __future__ import annotations

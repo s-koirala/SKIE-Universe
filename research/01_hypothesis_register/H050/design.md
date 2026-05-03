@@ -125,6 +125,23 @@ The legacy §10 spec (Sharpe-CI null + SPA-fail null + underpowered null + HMM-s
 
 **Closure status**: H050 has no aggregate disposition; the legacy §10 was never reached. The ADR-0012 amendment is prospective for any future re-launch.
 
+**AMENDMENT 2026-05-03 per [ADR-0014 never-archive-profitable-strategies](../../../docs/decisions/ADR-0014-never-archive-profitable-strategies.md)**:
+
+The disposition-class labels per [ADR-0012](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) §10.1 strict precedence (`leakage-detected`, `reproducibility-incomplete`, `calibration-failed`, `prerequisite-not-met`) are STATES indicating remediation-pending status — they are NOT archive decisions. The ONLY archive labels are `archive(complete; KPI report)` and `archive(null, <reason>)`.
+
+A new `lifecycle_state` field is emitted alongside `disposition_class` per ADR-0014; the lifecycle_state values are:
+- `paper-trade-eligible` — Class A gates pass; auto-promotion eligible
+- `active-investigation` — Class A gate failure(s) AND/OR remediation-pending; **default state**
+- `archived` — set ONLY by operator decision via `compose_disposition(explicit_archive=True)` per ADR-0014 §8 NEVER ARCHIVE AUTONOMOUSLY
+
+Profitable strategies (annualized return > 0% AND Sortino > 0 AND profit factor > 1.0) STAY in `active-investigation` regardless of Class A gate failures per ADR-0014 §2 NEVER-ARCHIVE-PROFITABLE-STRATEGIES.
+
+**H050 SPA-slot special note**: H050 has 3 ex-ante-fixed SPA family slots (per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md) + §8 legacy spec). All 3 H050 slots may end in `disposition_class = calibration-failed` or similar STATE labels per ADR-0012, but per ADR-0014 `lifecycle_state` defaults to `active-investigation`; explicit archive is operator-only. SPA slot consumption discipline (a slot is consumed by a `prerequisite-not-met` record and not freed for a fourth arm) is preserved for Hansen 2005 §2.4 ex-ante-fixed-universe correctness, independent of lifecycle_state.
+
+Phase-end summaries must report the strategy-performance dashboard per ADR-0014 §9 (annualized Sharpe + Sortino + Calmar + max DD + win rate + profit factor + Hansen SPA p + LW2008 ΔSharpe vs passive); the canonical template is at [research/_templates/phase_performance_report.md](../../_templates/phase_performance_report.md).
+
+§1-§7 of this design (hypothesis statement, universe/sample, features, labels, splitter, cost model) remain IMMUTABLE per ADR-0012 §"Frozen pre-registration amendment" carve-out conditions (d).
+
 ## 11. Reproducibility commitments
 
 - git HEAD (at run): TBD at execution.

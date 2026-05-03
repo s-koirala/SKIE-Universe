@@ -22,6 +22,20 @@ Per [ADR-0014 never-archive-profitable-strategies](docs/decisions/ADR-0014-never
 
 7. **The H053 case study (2026-05-03)**: ES Arm 2 LightGBM had annualized Sharpe 1.49 + 7.3% return + 4.9% max DD + Sortino 2.53 + Calmar 1.48 + profit factor 1.29 + win rate 53.7% on the OOS fold, but `disposition_class = calibration-failed` because the binary BSS bootstrap CI lower bound did not exceed zero. This Claude instance authored a "archive H053 fully under archive(calibration-failed)" recommendation that the user correctly identified as wrong. The strategy is now in `lifecycle_state = active-investigation` per ADR-0014. **Do not repeat this error.**
 
+8. **NEVER ARCHIVE AUTONOMOUSLY (added 2026-05-03 per user directive)**. Even when ADR-0014 §2 profitability floor is NOT met AND the criteria for `archive(null, <reason>)` per design.md §10.1 appear satisfied, **the archive decision IS RESERVED FOR OPERATOR**. The `compose_disposition()` function in [src/skie_ninja/inference/disposition.py](src/skie_ninja/inference/disposition.py) accepts `explicit_archive: bool = False` — Claude SHALL NOT pass `explicit_archive=True` autonomously; this keyword argument is reserved for operator-driven invocation. The `lifecycle_state` default is `active-investigation`. If you believe a hypothesis warrants archive, **surface the question to the operator** with full evidence (PIT canary status, calibration metrics, complete strategy-performance dashboard per §9 below, multiple-testing-corrected p-values, recommended remediation paths) and let the operator decide. **The autonomy boundary is: Claude proposes; operator disposes.**
+
+9. **AT THE END OF EVERY PHASE, REPORT STRATEGY-PERFORMANCE METRICS (added 2026-05-03 per user directive)**. A "phase" is any unit of work that produces a binding artifact (a Cycle completion per `plan/h0XX_buildout_*.md`; a production run; a diagnostic that informs an operator decision; a remediation loop). Phase-end summaries that emit ONLY a `disposition_class` label without the strategy-performance dashboard are INSUFFICIENT and SHALL be rejected at audit. Required metrics (when the phase produces trading returns):
+   - Annualized return (% per year) + annualized vol
+   - Annualized Sharpe (with Lo 2002 / Opdyke 2007 / LW2008 CI)
+   - Sortino + Calmar ratios
+   - Max drawdown (bps + %; peak/trough/recovery dates)
+   - Win rate; avg win / avg loss; profit factor
+   - Net-of-cost performance (1-tick + 2-tick)
+   - Per-year breakdown (if multiple OOS years)
+   - Hansen SPA p (multiple-testing-corrected) + LW2008 paired Sharpe vs passive
+
+   Canonical template: [research/_templates/phase_performance_report.md](research/_templates/phase_performance_report.md). Canonical computation: [scripts/analyze_h053_v3_arm2_performance.py](scripts/analyze_h053_v3_arm2_performance.py) — reuse for any future hypothesis with strategy returns.
+
 ## Scope
 Intraday directional, volatility, breakout, and size trading on CME ES and NQ (and micro equivalents MES/MNQ) futures. Execution target: NinjaTrader 8 Desktop, automated via Python bridge or NinjaScript. ML/LLM inference may connect via MCP or REST.
 

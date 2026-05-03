@@ -48,11 +48,11 @@ A strategy meeting EITHER definition enters the **active-investigation** state i
 ### 3. Disposition framework code change (mechanism enforcement)
 
 `src/skie_ninja/inference/disposition.py` `compose_disposition` SHALL emit a new `lifecycle_state` field with three values:
-- `archived` — only for `archive(complete)` and `archive(null, <reason>)` after explicit operator decision
+- `archived` — only for `archive(complete)` and `archive(null, <reason>)` after **explicit operator decision via `explicit_archive=True` keyword argument**. Claude SHALL NOT pass `explicit_archive=True` autonomously; this argument is reserved for operator-driven invocation.
 - `active-investigation` — Class A gate(s) failed BUT raw Sharpe positive per §2 above
 - `paper-trade-eligible` — all Class A gates pass
 
-`paper_trade_eligible` boolean flag stays as-is (auto-eligibility under Class A pass + Sharpe-vs-passive + SPA + max-DD), but the new `lifecycle_state` field surfaces the never-archive-profitable invariant separately. The disposition class label remains for technical/audit purposes.
+`paper_trade_eligible` boolean flag stays as-is (auto-eligibility under Class A pass + Sharpe-vs-passive + SPA + max-DD), but the new `lifecycle_state` field surfaces the never-archive-profitable invariant separately. The disposition class label remains for technical/audit purposes. The `explicit_archive` keyword arg in `compose_disposition()` is the mechanism enforcing directive #8 (NO AUTONOMOUS ARCHIVE) — autonomous Claude code paths default to `explicit_archive=False` and CANNOT emit the `archived` lifecycle_state.
 
 ### 4. Operator-visible promotion path
 
@@ -81,6 +81,26 @@ When `lifecycle_state == "active-investigation"`, the promotion log SHALL includ
    - Surface the question to the user with the operational performance numbers attached.
 
 7. **The threshold for "profitable" is intentionally lower than statistical significance.** Annualized return > 0% + Sortino > 0 + profit factor > 1.0 is the floor. Strategies that pass this floor are kept alive even if their Sharpe-vs-passive paired CI does not exclude zero.
+
+8. **NEVER autonomously archive (added per user directive 2026-05-03).** Even when the criteria for `archive(null, <reason>)` per design.md §10.1 appear to be met (clean methodology + clear signal absence) AND the strategy is non-profitable, **the archive decision IS RESERVED FOR OPERATOR**. Claude SHALL NOT autonomously emit `archive(null, ...)` without explicit operator instruction. The lifecycle_state default is `active-investigation`; the archived state is set by operator decision via `explicit_archive=True` keyword arg in `compose_disposition()`. If you believe a hypothesis warrants archive, surface the question to the operator with full evidence (PIT canary status, calibration metrics, Sharpe + drawdown + win rate + profit factor, multiple-testing-corrected p-values, recommended remediation paths) and let the operator decide. **The autonomy boundary is: Claude proposes; operator disposes.**
+
+9. **AT THE END OF EVERY PHASE, REPORT PERFORMANCE METRICS THAT TRANSLATE TO STRATEGY PERFORMANCE (added per user directive 2026-05-03).** A "phase" is any unit of work that produces a binding artifact: completion of a Cycle (per `plan/h0XX_buildout_*.md`), completion of a production run, completion of a diagnostic that informs an operator decision, completion of a remediation loop, etc. The phase-end summary MUST include — at minimum — these strategy-performance metrics IF the phase produced trading returns:
+   - Annualized return (% per year)
+   - Annualized volatility
+   - Annualized Sharpe ratio (with Lo 2002 / Opdyke 2007 / LW2008 CI)
+   - Sortino ratio (downside-only)
+   - Calmar ratio (annualized return / max DD)
+   - Maximum drawdown (bps + %; with peak/trough/recovery dates if applicable)
+   - Win rate (% of sessions positive)
+   - Average win / average loss (bps)
+   - Profit factor
+   - Net-of-cost performance (gross + 1-tick + 2-tick)
+   - Per-year breakdown (if multiple OOS years)
+   - Multiple-testing-corrected significance (Hansen SPA p; LW2008 paired-Sharpe CI vs passive)
+
+   The canonical template is at [research/_templates/phase_performance_report.md](../../research/_templates/phase_performance_report.md). The canonical computation is at [scripts/analyze_h053_v3_arm2_performance.py](../../scripts/analyze_h053_v3_arm2_performance.py) (this script is the project-canonical performance analyzer; reuse it for any future hypothesis with strategy returns).
+
+   Phase summaries that emit ONLY a `disposition_class` label (e.g., "calibration-failed; paper_trade_eligible=False") WITHOUT the strategy-performance metrics above are INSUFFICIENT and SHALL be rejected at audit. The operator needs the strategy-performance numbers to make promotion decisions; the disposition_class alone does not provide them.
 
 ## Consequences
 
