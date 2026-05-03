@@ -338,18 +338,47 @@ The 1-tick floor at 09:45 ET MOC entry is *not* uniformly conservative: 09:45 ET
 - **Decision-rule interaction (binds §10):** if the 2-tick result archives null while the 1-tick result archives positive for the same model arm, the 1-tick result archives as `archive(positive, conditional-on-cost-floor)` rather than unconditionally `archive(positive)`. This makes the cost-floor sensitivity explicit in the disposition rather than buried in the run summary.
 - Reference: [Almgren & Chriss 2001, *Journal of Risk* 3(2):5–39](https://www.smallake.kr/wp-content/uploads/2016/03/optliq.pdf) for transient impact upper-bound at MOC entry; [Frazzini, Israel & Moskowitz 2018, SSRN 2294498](https://doi.org/10.2139/ssrn.2294498) for empirical equity-index slippage scaling.
 
-## 8. Gate thresholds
+## 8. Gate thresholds (AMENDED 2026-05-01 per ADR-0012)
 
-Defaults per [ADR-0004](../../../docs/decisions/ADR-0004-alpha-and-power-defaults.md). SPA family per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md) / [ADR-0008](../../../docs/decisions/ADR-0008-spa-omega.md).
+Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) (this commit), the H053 gating tree is restructured from "Sharpe-CI gates plus annotations" to a **three-class rubric**: binding gates (Class A); KPIs reported but not nulling (Class B); documentation requirements (Class C). The original H053 gate enumeration is preserved below as the §8.b legacy reference.
 
-- `alpha`: 0.05 (one-sided).
-- `bh_threshold`: 0.10.
-- `power_target`: 0.80.
-- **Primary gate (per arm, conjunctive against two benchmarks).** Sharpe-differential CI ([Ledoit & Wolf 2008](https://doi.org/10.1016/j.jempfin.2008.03.002) studentized circular-block bootstrap, paired by session date) excludes zero at 95% **against both** the passive-long benchmark **and** the time-of-day fixed-effects benchmark, AND realized max-DD non-worse than the passive-long benchmark. Conjunctive rule: both benchmarks must be dominated. Under conjunction, the family-wise α is bounded above by `min(α_passive, α_TOD-FE)`; no additional Bonferroni adjustment is required inside H053. The two benchmark comparisons are nested, not independent, in the SPA universe entry — only the harder-to-beat benchmark contributes to the omega correction. Reference: Hochberg-Tamhane 1987 *Multiple Comparison Procedures*, Wiley §1.3 (intersection-union tests), ISBN 978-0471822226.
-- **SPA universe (binding family-entry rule).** H053 enters the project's `universe_snapshot_id` alongside H050/H051/H052a/H052b with **exactly three slots pre-registered ex ante** (Arm 1, Arm 2, Arm 3). An arm whose §11 prerequisites do not land before `running` is recorded as `archive(null, prerequisite-not-met)` and **its slot is consumed by that null record** — the slot is not freed for a fourth arm and is not removed from the family. This eliminates the adversarial-drop loophole (selecting which arm to land based on pilot evidence) and preserves family size at exactly 3 for the Hansen 2005 §2.4 ex-ante-fixed-universe requirement and the ADR-0008 omega correction.
-- **DSR / PSR.** Gating above [config/gate.yaml](../../../config/gate.yaml) `dsr_activation_size` per [Bailey & López de Prado 2014, *Journal of Portfolio Management* 40(5):94–107](https://doi.org/10.3905/jpm.2014.40.5.094).
-- **Table-deliverable secondary gate.** `BSS > 0` against per-instrument climatological prior on the OOS fold; reliability slope ∈ [0.7, 1.3] (loose-band check per Niculescu-Mizil & Caruana 2005). This is a *secondary* gate on the §4.5 table, not on the Sharpe-differential.
-- **Mechanism-confound benchmark (component of the conjunctive rule).** The time-of-day fixed-effects benchmark is a constant-per-clock-bin model fitting `y_{i,t}` against a session-of-day fixed effect within the IS fold. It addresses the [Heston, Korajczyk & Sadka 2010](https://doi.org/10.1111/j.1540-6261.2010.01573.x) periodicity-confound risk identified in [lit_review_H053_2026-04-28.md](lit_review_H053_2026-04-28.md) §A by isolating the half-hour-grid intraday seasonality from genuine multi-timeframe-snapshot information.
+### 8.a Class A — Binding gates (a strategy fails the disposition iff one of these fails) (per-hypothesis applicability per Round-1 audit F-1-2 + F-1-6)
+
+Per [ADR-0012 §"Class A"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md):
+
+- **PIT / leakage-canary** (ALWAYS BINDING; `applicable: yes`). Binding test paths: [tests/integration/test_h053_pit_canaries.py](../../../tests/integration/test_h053_pit_canaries.py) (NaN-poison structural detector + dual-fit-call invariance + boundary-anchor inclusion) + Cycle-4 leak canary suite at [tests/unit/test_leak_canaries.py](../../../tests/unit/test_leak_canaries.py) (fold-boundary monotonicity + label-purge horizon + dual-fit observer + TracingArray). Methodological correctness; never negotiable.
+- **Calibration: Brier Skill Score (BSS) > 0** vs per-instrument climatological prior on the OOS fold (`applicable: yes` — H053 ships the §4.5 K×3 categorical-archetype-bias-target probability table).
+- **Calibration: reliability slope ∈ [0.7, 1.3]** per [Niculescu-Mizil & Caruana 2005](https://doi.org/10.1145/1102351.1102430) (loose-band; `applicable: yes` for the §4.5 categorical table).
+- **Reproducibility log present** (ALWAYS BINDING; `applicable: yes`). git_head + dataset_checksum + scientific_payload_sha256 + pip_freeze sha. Per CLAUDE.md user-global §Reproducibility (hook-enforced).
+- **DSR / PSR above `dsr_activation_size`** per [config/gate.yaml](../../../config/gate.yaml) (`applicable: when family ≥ 10`; currently no-op; family=7 < activation_size=10). Will bind once family ≥ 10.
+- **Hansen SPA family p ≤ α at operator-promotion** (`applicable: at-operator-promotion`; binding at the promotion gate per [ADR-0012 §"Operator-promotion rule"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md), NOT at design-time disposition).
+
+### 8.b Class B — KPIs (recorded; reported in disposition memo; do NOT null the disposition)
+
+Per [ADR-0012 §"Class B"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md). The disposition memo's KPI report card includes:
+
+- **Paired Sharpe-differential CI vs passive-long benchmark** (Lo 2002 §III HAC-adjusted SE / Mertens 2002 / Opdyke 2007 asymptotic with [Ledoit & Wolf 2008](https://doi.org/10.1016/j.jempfin.2008.03.002) studentized circular-block bootstrap). Annotation: `sharpe-vs-passive-{positive-strong, positive-weak, flat, negative}` per ADR-0012 thresholds.
+- **Paired Sharpe-differential CI vs time-of-day-FE benchmark**. For H053's single-clock-time predictand (09:45→10:30 ET per session), the canonical per-clock-bin spec collapses; re-spec'd per `P1-H053-STAGE1-HKS-BENCHMARK-RECONCILE` to **prior-day same-bin return**: `ŷ_{i,t} = y_{i,t-1}`. This addresses the [Heston, Korajczyk & Sadka 2010](https://doi.org/10.1111/j.1540-6261.2010.01573.x) periodicity-confound risk identified in [lit_review_H053_2026-04-28.md](lit_review_H053_2026-04-28.md) §A as a **descriptive comparison**, not a binding gate.
+- **Hansen 2005 SPA family p-value** with [ADR-0008](../../../docs/decisions/ADR-0008-spa-omega.md) omega correction across the SPA universe (H050 + H051 + H052a + H052b + H053). H053 contributes 3 ex-ante-fixed slots (Arm 1, Arm 2, Arm 3) per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md). Reported alongside per-arm Sharpe; readers can apply their own family-wise correction. CPCV path-reconstruction (`P1-BACKTEST-CPCV`) extends the SPA universe to per-path Sharpe distributions; **CPCV is now BLOCKING-BEFORE-ANY-STAGE-3-RE-RUN-OR-NEW-HYPOTHESIS-DISPOSITION** per ADR-0012 §"Cross-validation methodology".
+- **Realized max-DD ratio** (arm DD / passive DD).
+- **Power-margin ratio** (realized OOS n / `n_required_for_power_80` per Lo 2002 §III HAC-adjusted Sharpe MDE under option-3 conservative prior per [power_calibration_addendum_2026-04-30.md](power_calibration_addendum_2026-04-30.md)). The dataset envelope is fixed (per CLAUDE.md §Standing constraints + user 2026-05-01 directive); power-margin is a descriptor, not a gate.
+- **Mediation NIE / NDE point estimate + bootstrap CI** per design.md §5.4 (descriptive-only per §1).
+- **In-sample partial-R²** of multi-timeframe X over mediator alone (per Stage-2).
+- **Cost-floor sensitivity** (1-tick vs 2-tick slippage per design.md §7.1).
+
+### 8.c SPA-family slot consumption (preserved from §8 legacy)
+
+H053 enters the project's `universe_snapshot_id` alongside H050/H051/H052a/H052b with **exactly three slots pre-registered ex ante** (Arm 1, Arm 2, Arm 3). An arm whose §11 prerequisites do not land before `running` is recorded as `prerequisite-not-met` and **its slot is consumed by that record** — the slot is not freed for a fourth arm and is not removed from the family. This eliminates the adversarial-drop loophole and preserves family size at exactly 3 for the Hansen 2005 §2.4 ex-ante-fixed-universe requirement and the ADR-0008 omega correction. (NOTE: Hansen SPA itself is now a Class B KPI per ADR-0012, not a binding gate; the slot-consumption discipline remains because the SPA p-value is still computed and reported.)
+
+### 8.d Defaults (preserved from §8 legacy)
+
+- `alpha`: 0.05 (one-sided). Used only in the KPI-reported Hansen SPA p-value computation; no longer a binding gate.
+- `bh_threshold`: 0.10. Same — KPI-reported only.
+- `power_target`: 0.80. Used only in the `n_required_for_power_80` KPI computation; underpowered status is now an annotation, not a null verdict.
+
+### 8.e Legacy reference (the original H053 gate spec, retained for archival traceability)
+
+The pre-ADR-0012 H053 gate spec was a conjunctive Sharpe-differential CI rule: "Sharpe-differential CI excludes zero at 95% against both the passive-long benchmark and the time-of-day fixed-effects benchmark, AND realized max-DD non-worse than the passive-long benchmark." That spec is superseded by §8.a + §8.b above; the original is retained in git history at commit `b6df757` (design.md initial) for retrospective audits. The H053 Stage-1 first-pass `archive(null, sharpe-ci-not-clearing-conjunctive)` verdict per commit `76599bd` is retroactively re-tagged `archive(complete; KPI: sharpe-vs-passive-positive-weak)` per ADR-0012 §"Disposition labels under the new rubric"; see [docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md](../../../docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md).
 
 ## 9. Stopping rule + power
 
@@ -376,35 +405,53 @@ Defaults per [ADR-0004](../../../docs/decisions/ADR-0004-alpha-and-power-default
 - Sample-size precondition: realized OOS sample must meet `n_required_for_power_80` per arm; underpowered arms are recorded as `archive(null, underpowered)` per arm and the SPA slot is consumed by that null record (per §8; not freed for a fourth arm).
 - No HMM stationarity precondition (H053 has no HMM gate).
 
-## 10. Decision rule
+## 10. Decision rule (AMENDED 2026-05-01 per ADR-0012)
 
-The decision rule is a **strict precedence-ordered tree**, evaluated top-down per model arm `a`. The first matching rule terminates evaluation for that arm; lower rules are not consulted. Annotations (§10.1) are applied additively *after* the gating outcome is determined.
+The decision rule per ADR-0012 §"Disposition labels under the new rubric" produces one of four **disposition classes**, evaluated top-down per model arm `a`. Class C documentation requirements + Class B KPI report card accompany every disposition regardless of class.
 
-### 10.1 Gating tree (precedence-ordered)
+### 10.1 Disposition class (strict precedence)
 
-1. **Data-violation precondition.** Raw (non-roll-adjusted) data used in any promotion path on this run → `archive(null, data-violation)`. Terminates.
-2. **Prerequisite-not-met.** §11 prerequisites for arm `a` did not land before `running` → `archive(null, prerequisite-not-met)`. The SPA slot is consumed (per §8). Terminates.
-3. **Underpowered.** Realized OOS sample fails `n_required_for_power_80` per §9 for arm `a` → `archive(null, underpowered)`. The SPA slot is consumed. Terminates.
-4. **Sharpe-differential null.** Paired Ledoit-Wolf 2008 CI of `T_H053^{(a)}` against the passive-long benchmark covers zero → `archive(null)`. **This is the prior-consistent outcome** for an exploratory hypothesis at the 45-min horizon. Terminates.
-5. **Risk violation.** Sharpe-differential CI excludes zero against passive-long, but realized max-DD of arm `a` strategy worsens vs passive-long → `archive(null, risk-violation)`. Terminates.
-6. **Periodicity-confound.** Sharpe-differential CI excludes zero against passive-long but the time-of-day fixed-effects benchmark is *not* dominated (§8 conjunctive rule) → `archive(null, periodicity-confound)`. Terminates.
-7. **SPA family rejection.** All §10.1.1–§10.1.6 gates pass but the Hansen SPA result against the project's `universe_snapshot_id` rejects (omega correction per ADR-0008) → `archive(null, spa-rejected)`. Terminates.
-8. **Pass.** All gates above pass and DSR/PSR above `dsr_activation_size` per §8 → `archive(positive)`; promote to paper-trade subject to the §11.1 kill-switch and the capacity caps in [CLAUDE.md](../../../CLAUDE.md) §Standing constraints. Terminates.
+1. **`leakage-detected`** — PIT canary or any other §3.6 / §11.2-prereq-11 leakage gate failed for arm `a`. Disposition: `leakage-detected`. Not eligible for any further consideration without remediation. Terminates.
+2. **`reproducibility-incomplete`** — required §11 provenance fields (git_head, dataset_checksum, scientific_payload_sha256, pip_freeze sha) missing on arm `a`'s ReproLog. Disposition: `reproducibility-incomplete`. Terminates.
+3. **`calibration-failed`** — §4.5 table-deliverable BSS ≤ 0 vs per-instrument climatological prior on the OOS fold, OR reliability slope outside [0.7, 1.3]. Disposition: `calibration-failed`. The strategy is recorded but is NOT eligible for paper-trade. Terminates.
+4. **`prerequisite-not-met`** — §11.2 / §11.3 / §11.4 prerequisites for arm `a` did not land before `running`. Disposition: `prerequisite-not-met`. The SPA slot is consumed per §8.c. Terminates.
+5. **`archive(complete; KPI report)`** — passes Class A gates (PIT/leakage + BSS + reliability + reproducibility + DSR-when-active). The §8.b KPI report card is published. Eligible for paper-trade subject to operator review of the KPI report card and the [CLAUDE.md §Execution-bar](../../../CLAUDE.md) 60-session-day Sharpe-within-CI floor. Terminates.
 
-### 10.2 Annotations (additive; do not change the gating outcome)
+### 10.2 KPI report card (accompanies every disposition that reaches §10.1.5)
 
-Annotations are appended to the disposition string of the gating outcome, e.g. `archive(null, periodicity-confound; mediation-NIE-significant)`.
+Per [ADR-0012 §"Class B"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md), the KPI report card is published in the disposition memo with one **qualitative** annotation per KPI. Per Round-1 audit F-1-4 remediation, **numerical sub-classification thresholds (e.g., the "strong" vs "weak" 0.20 / 0.10 boundaries) are deferred to follow-up `P1-DISPOSITION-KPI-ANNOTATION-THRESHOLD-CALIBRATION`**; numeric values are reported alongside the qualitative annotation.
 
-- **Mediation-NIE-significant.** The §5.4 NIE bootstrap CI excludes zero → annotate `mediation-NIE-significant`. Does **not** change the gating outcome. Per §1 critical interpretive note this is descriptive evidence about predictability flow, not a causal-identification claim.
-- **Mediation-NDE-significant.** The §5.4 NDE bootstrap CI excludes zero → annotate `mediation-NDE-significant`. Same descriptive-only interpretation.
-- **Cost-floor-conditional positive.** §10.1.8 Pass under 1-tick slippage but `archive(null)` under §7.1 2-tick slippage sensitivity arm → annotate `archive(positive, conditional-on-cost-floor)` instead of unconditional `archive(positive)`.
-- **Table-no-calibration-improvement.** §4.5 table-deliverable Brier skill score ≤ 0 → annotate `table-null, no-calibration-improvement`. The Sharpe gate is independent of the table outcome.
-- **LLM-arm-only positive.** Arms 1 and 2 each archive null but Arm 3 archives Pass → annotate the Arm-3 disposition with `llm-arm-only`; in this case the H053 hypothesis as a whole does **not** promote to paper-trade and a successor hypothesis with a deterministic-replay artifact bundle is required for any LLM-driven paper-trade promotion.
+| KPI | Qualitative annotation values |
+|---|---|
+| Sharpe-vs-passive | `positive` (CI excl. 0, point > 0) / `marginal` (CI covers 0, point > 0) / `flat` (CI covers 0, point ≈ 0) / `negative` (point < 0) |
+| Sharpe-vs-bench | same; for H053 the bench is per-prior-day-same-bin (an AR(1) lag-1 baseline; the original HKS periodicity-confound benchmark is degenerate for single-clock-time predictands and is unaddressed under the AR(1) substitute per Round-1 audit F-1-11) |
+| SPA family p (omega-corrected) | `spa-passes` (p ≥ α) / `spa-rejects` (p < α). Re-evaluated as binding gate at operator-promotion per ADR-0012. |
+| Max-DD ratio (arm/passive) | `favorable` / `comparable` / `adverse` |
+| Power margin (n_oos / n_required_for_power_80) | `adequate` / `marginal` / `low`. Per ADR-0012 §"Class B" + Round-1 F-1-8: a `power-margin-low` arm requires an extended **120-session-day** paper-trade verification window. |
+| Mediation NIE | `significant` / `flat`. Per Round-1 F-1-14: NIE annotation does NOT entitle promotion absent corroborating Sharpe-vs-passive-positive AND partial-R²-positive evidence. |
+| Mediation NDE | `significant` / `flat` (same caveat as NIE). |
+| In-sample partial-R² (multi-tf X over mediator) | `positive` (CI excl. 0) / `flat` (CI covers 0). Magnitude sub-classification deferred. |
+| Cost-floor sensitivity (1-tick vs 2-tick) | `cost-robust` / `cost-floor-conditional` / `cost-flat` |
+
+The disposition string format: `{disposition_class} | {KPI report card} | {strengths/weaknesses summary}`.
 
 ### 10.3 Example combined dispositions
 
-- Sharpe excludes zero vs passive-long, fails vs time-of-day-FE, mediation NIE significant → `archive(null, periodicity-confound; mediation-NIE-significant)`.
-- Sharpe passes both benchmarks, max-DD non-worse, SPA passes, DSR passes, Brier ≤ 0 → `archive(positive; table-null, no-calibration-improvement)`.
+- All Class A gates pass; Sharpe-vs-passive positive-weak; Sharpe-vs-todfe flat; SPA passes; max-DD favorable; power-margin adequate; mediation NIE significant; partial-R² moderate; cost-robust → `archive(complete; KPI: sharpe-vs-passive-positive-weak, sharpe-vs-todfe-flat, spa-passes, max-dd-favorable, power-margin-adequate, mediation-NIE-significant, partial-r2-moderate, cost-robust)`.
+- BSS = -0.02 (calibration failed) → `calibration-failed; KPI: ...` (KPI report still published; strategy recorded but not paper-trade-eligible).
+- PIT canary detects post-cutoff bar contamination → `leakage-detected` (KPI report NOT published; remediate-then-rerun).
+
+### 10.4 Eligibility for paper-trade promotion
+
+A `archive(complete; KPI report)` disposition makes arm `a` **eligible for paper-trade** subject to:
+- Operator review of the KPI report card (the strengths-and-weaknesses summary informs the operator's decision; per ADR-0012 the design-time gate no longer mechanically auto-promotes).
+- The [CLAUDE.md §Execution bar](../../../CLAUDE.md) 60-session-day paper-trade Sharpe-within-CI floor (this is the load-bearing pre-live constraint; the prior design-time Sharpe-CI gate is downgraded to a KPI per ADR-0012).
+- The [§11.1 kill-switch](#111-kill-switch-design-binding-before-paper-trade) (binding before paper-trade, per the original §11.1 spec).
+- Capacity caps in [CLAUDE.md §Standing constraints](../../../CLAUDE.md).
+
+### 10.5 Legacy reference (the original H053 §10 gating tree, retained for archival traceability)
+
+The pre-ADR-0012 H053 §10 was a strict precedence-ordered tree with rules 1-8 producing `archive(null, ...)` outcomes including: data-violation, prerequisite-not-met, underpowered, Sharpe-differential null vs passive, risk-violation, periodicity-confound, SPA family rejection. The Stage-1 first-pass `archive(null, sharpe-ci-not-clearing-conjunctive)` verdict from commit `76599bd` was per the legacy §10.1.4 rule (Sharpe-differential null vs passive-long). Under the new rubric §10.1.5 this becomes `archive(complete; KPI: sharpe-vs-passive-positive-weak, sharpe-vs-todfe-flat-degenerate-bench, max-dd-favorable, power-margin-adequate, partial-r2-not-applicable-stage-1, cost-robust)`. Retroactive re-tag is documented in [docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md](../../../docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md).
 
 ## 11. Reproducibility commitments
 

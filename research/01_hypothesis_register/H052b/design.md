@@ -101,34 +101,39 @@ Per-trade P/L on the long QQQ 0DTE/1DTE call, following sibling repo `research/0
 - **Commissions**: retail broker schedule (Alpaca and IBKR per sibling `research/06-roadmap.md` Phase 4); per-contract fee + exchange fees, frozen at pre-reg.
 - **Slippage**: bid-ask crossing at entry and exit, walk-forward fit to sibling-repo paper-trade quote snapshots when available; widening-tail explicit.
 
-## 8. Gate thresholds
+## 8. Gate thresholds (AMENDED 2026-05-01 per ADR-0012)
 
-Defaults per [ADR-0004](../../../docs/decisions/ADR-0004-alpha-and-power-defaults.md). SPA family per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md).
+Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) (per Round-1 audit F-1-2 + F-1-6 remediations re: applicability), H052b's gating tree is restructured to the three-class rubric:
 
-- `alpha`: 0.05.
-- `bh_threshold`: 0.10.
-- Power target: 0.80.
-- **Primary gate**: Sharpe-differential CI (Ledoit-Wolf 2008 studentized time-series bootstrap, paired) excludes zero at 95%.
-- **Secondary gate**: realized max-DD of the HMM-gated strategy ≤ max-DD of the unconditional SKIE-ORB-CALL strategy.
-- **Monitoring (not a gate)**: Expected Shortfall at 97.5% per [BCBS 2019 FRTB](https://www.bis.org/bcbs/publ/d457.htm) is reported as a monitoring metric. This is **long-premium** (long gamma, long delta, negative theta, near-zero vega), not short-vol — so Sharpe-plus-max-DD is the appropriate joint gate; ES is tracked to surveil tail behavior but does not block promotion.
+### 8.a Class A — Binding gates (per-hypothesis applicability)
+
+- **PIT / leakage-canary** (ALWAYS BINDING). Binding test paths: Cycle-4 leak canary suite + per-hypothesis integration test [tests/integration/test_h052b_pit.py](../../../tests/integration/test_h052b_pit.py) to be authored as §11.2 prereq before next H052b launch (tracked under `P1-H052B-PIT-CANARY-INTEGRATION-TEST-LANDED`).
+- **Calibration: BSS / reliability** — `applicable: WHERE` for the HMM-state posterior (same as H052a §8.a).
+- **Reproducibility log present** (ALWAYS BINDING).
+- **DSR/PSR above `dsr_activation_size`** — `applicable: when family ≥ 10`.
+- **Hansen SPA family p ≤ α at operator-promotion** per ADR-0012 §"Operator-promotion rule".
+
+### 8.b KPIs (Class B; reported, not binding at design-time)
+
+Sharpe-vs-passive CI, Sharpe-vs-unconditional, SPA family p (KPI at design-time, BINDING at promotion), max-DD ratio, ES at 97.5% (BCBS 2019 FRTB), power margin, HMM-state coverage statistics. Defaults preserved (`alpha=0.05`, `bh_threshold=0.10`, `power_target=0.80`) — KPI-reported only. SPA universe entry preserved per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md). Long-premium structural property recorded as `long-premium-bounded-downside` strength annotation.
+
+The legacy primary gate (Sharpe-differential CI), secondary gate (max-DD non-worse), and ES monitoring metric are all reported in the disposition memo's KPI report card per ADR-0012 §"Class B".
+
+**Note on long-premium specification**: H052b's long-premium structure (long gamma, long delta, negative theta) gives the strategy bounded downside per-position; this property is preserved as a strength annotation in the KPI report card under ADR-0012 §"Class B" (`long-premium-bounded-downside`).
 
 ## 9. Stopping rule
 
-- CPCV `n_groups` selected per de Prado 2018 §12 rule.
+- CPCV `n_groups` selected per de Prado 2018 §12 rule. **CPCV becomes BLOCKING-BEFORE-DISPOSITION per ADR-0012 §"Cross-validation methodology"**; `P1-BACKTEST-CPCV` full path-reconstruction follow-up is the load-bearing implementation.
 - Random search budget `N_draws = 200` per [Bergstra & Bengio 2012, JMLR 13:281–305](https://www.jmlr.org/papers/v13/bergstra12a.html).
 - Max-iter EM = 500; tol = 1e-4.
 - Max wall-clock: 72 hours.
-- HMM stationarity pre-check failure per ADR-0005 → halt with `archived(null, precondition-failed)`.
+- HMM stationarity pre-check failure per ADR-0005 → `prerequisite-not-met` (Class A.4 per ADR-0012), not `archived(null, precondition-failed)`.
 
-## 10. Decision rule
+## 10. Decision rule (AMENDED 2026-05-01 per ADR-0012)
 
-- Pass (Sharpe-differential CI excludes zero AND max-DD non-worse AND SPA passes) → archive(positive); promote to paper-trade under the pre-registered delta-equivalent position cap.
-- Sharpe-differential passes but max-DD worsens → archive(null, risk-violation).
-- Sharpe-differential passes, SPA fails → archive(null).
-- CI covers zero → archive(null).
-- Underpowered → archive(null, underpowered).
-- Capacity breach on a material fraction of session days → archive(null, capacity-binding).
-- **Precondition-failed auto-archive (Round-3):** if the sibling-repo SKIE-ORB-CALL **Phase-1 binomial test** fails (empirical P(green) ≤ 0.50 at its pre-registered α), H052 auto-archives as `null, precondition-failed` — no HMM gate can rescue a non-existent underlying signal.
+The H052b decision rule is restructured per [ADR-0012 §"Disposition labels under the new rubric"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) into the three-class disposition rubric (`leakage-detected` / `reproducibility-incomplete` / `calibration-failed` / `prerequisite-not-met` / `archive(complete; KPI report)`). All Sharpe / SPA / power / max-DD outcomes are now Class B KPIs reported in the disposition memo's report card; they do NOT null the strategy.
+
+The **sibling-repo SKIE-ORB-CALL Phase-1 binomial pre-condition** remains binding as a `prerequisite-not-met` (Class A.4 per ADR-0012). Capacity breach is preserved as a `capacity-binding` annotation on the disposition (now operational, not a null verdict).
 
 ## 11. Reproducibility commitments
 

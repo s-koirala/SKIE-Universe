@@ -79,16 +79,37 @@ Triple-barrier per Lopez de Prado AFML §3.2.
 - Commission: per-contract commission from [config/instruments.yaml](../../../config/instruments.yaml) (CME-cited fees).
 - Slippage: regime-conditional (RTH only for H050), fit walk-forward from paper-trade logs once the TrivialSmokeTest run completes; until then, a conservative constant-tick slippage prior is used with sensitivity analysis.
 
-## 8. Gate thresholds
+## 8. Gate thresholds (AMENDED 2026-05-01 per ADR-0012)
 
-Defaults from [config/gate.yaml](../../../config/gate.yaml) per [ADR-0004](../../../docs/decisions/ADR-0004-alpha-and-power-defaults.md).
+Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md), H050's gating tree is restructured to the three-class rubric: binding gates (Class A: PIT/leakage + BSS + reliability + reproducibility + DSR-when-active), KPIs (Class B: Sharpe-vs-passive, SPA family p, max-DD ratio, power margin, etc.), and documentation requirements (Class C). See ADR-0012 for the full rubric specification.
 
-- `alpha`: 0.05 (one-sided).
-- `bh_threshold`: 0.10.
-- `dsr_activation_size`: project default.
-- Power target: 0.80.
+**Closure note**: H050 has no aggregate disposition (per [docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md](../../../docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md) §2 — 6 of 7 prod-run-ids have zero on-disk aggregate artifacts; all 6 production walk-forward attempts failed for infrastructure reasons before reaching the disposition tree). The ADR-0012 amendment is **prospective**: any future H050 re-launch (e.g., after the H050 BLOCKING follow-ups close per `P1-PREFLIGHT-USOSVC-TASK-DISABLE` + ADR-0010 framing) will use the three-class disposition rubric, not the legacy Sharpe-CI gating tree retained in §8.b below.
 
-Enters the SPA family per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md).
+### 8.a Class A — Binding gates (per ADR-0012; per-hypothesis applicability)
+
+Per ADR-0012 §"Class A" + Round-1 audit F-1-2 + F-1-6 remediations:
+
+- **PIT / leakage-canary** (ALWAYS BINDING). Binding integration test paths for H050: [tests/unit/test_leak_canaries.py](../../../tests/unit/test_leak_canaries.py) (Cycle-4 fold-boundary monotonicity + label-purge horizon + dual-fit observer + TracingArray detectors). Binding feature-factory test path: [tests/integration/test_h050_pit.py](../../../tests/integration/test_h050_pit.py) (to be authored as a §11.2 prereq before next H050 launch; tracked under new follow-up `P1-H050-PIT-CANARY-INTEGRATION-TEST-LANDED`).
+- **Calibration: BSS > 0** — `applicable: NO` for H050. H050's pre-registered output is a continuous trading-rule directional signal, not a calibrated probability forecast. The underlying classifier (LightGBM logistic in §5) MAY be calibrated as a KPI annotation but does not bind.
+- **Calibration: reliability slope ∈ [0.7, 1.3]** — `applicable: NO` for H050 (same rationale).
+- **Reproducibility log present** (ALWAYS BINDING). git_head + dataset_checksum + scientific_payload_sha256 + pip_freeze sha.
+- **DSR/PSR above `dsr_activation_size`** — `applicable: when family ≥ 10`. Currently no-op (family=7).
+- **Hansen SPA family p ≤ α at operator-promotion** (BINDING at promotion-gate per ADR-0012 §"Operator-promotion rule"; not at design-time disposition).
+
+### 8.b KPIs (per ADR-0012; reported, not nulling)
+
+Sharpe-vs-passive CI (Lo 2002 / Mertens / Opdyke / LW2008), Hansen SPA family p, max-DD ratio, power margin, HMM stationarity diagnostic, regime-state coverage statistics.
+
+### 8.c Defaults (preserved from legacy)
+
+- `alpha`: 0.05 (one-sided). KPI-reported only; no longer a binding gate.
+- `bh_threshold`: 0.10. Same.
+- `dsr_activation_size`: project default per [config/gate.yaml](../../../config/gate.yaml).
+- Power target: 0.80. KPI-reported only.
+
+### 8.d Legacy reference (the original H050 §8 + §10 spec, retained for archival traceability)
+
+The pre-ADR-0012 H050 §8 + §10 was a Sharpe-CI gating tree archiving null on: CI covers zero, SPA fails, underpowered, HMM stationarity precondition fails. None of these gates were ever evaluated (per the post-mortem); the ADR-0012 amendment is therefore prospective. The H050 SPA family entry per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md) is preserved for KPI-reporting purposes.
 
 ## 9. Stopping rule
 
@@ -96,13 +117,13 @@ Enters the SPA family per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-rom
 - Max folds: computed at pre-reg time from pilot; bounded above by calendar-window limit.
 - Search budget exceedance (per §5 random-search cap) is recorded as right-censoring in the selection log, not a halt.
 
-## 10. Decision rule
+## 10. Decision rule (AMENDED 2026-05-01 per ADR-0012)
 
-- `passed=True` → `archive(positive)`; promote to paper-trade eligibility.
-- `passed=False` with CI excluding zero but SPA failing → `archive(null)` with multiple-testing note.
-- `passed=False` with CI covering zero → `archive(null)`.
-- Realized folds < `n_required_for_power_80` → `archive(null, underpowered)`.
-- HMM stationarity pre-check failure per [ADR-0005](../../../docs/decisions/ADR-0005-hmm-regime-toolkit.md) → `archive(null, precondition-failed)`.
+The H050 decision rule is restructured per [ADR-0012 §"Disposition labels under the new rubric"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) into the three-class disposition rubric (`leakage-detected` / `reproducibility-incomplete` / `calibration-failed` / `prerequisite-not-met` / `archive(complete; KPI report)`).
+
+The legacy §10 spec (Sharpe-CI null + SPA-fail null + underpowered null + HMM-stationarity-precondition-failed null) is superseded. All Sharpe / SPA / power / max-DD outcomes are now Class B KPIs reported in the disposition memo's report card; they do NOT null the strategy. The HMM stationarity pre-check remains a precondition (per ADR-0005) but failure now produces `prerequisite-not-met` (Class A.4 per ADR-0012), not `archive(null, precondition-failed)`.
+
+**Closure status**: H050 has no aggregate disposition; the legacy §10 was never reached. The ADR-0012 amendment is prospective for any future re-launch.
 
 ## 11. Reproducibility commitments
 

@@ -1,14 +1,16 @@
 ---
-title: H053 Cycle 8 Stage-1 mediator-only walk-forward — disposition memo
+title: H053 Cycle 8 Stage-1 mediator-only walk-forward — disposition memo (RETAGGED 2026-05-01 per ADR-0012)
 date: 2026-05-01
 type: stage1_disposition
-status: NULL — Sharpe-differential CI excludes zero on neither ES nor NQ
+status: ⚠ RETAGGED — per ADR-0012 the original "archive(null) per Sharpe-CI gate" disposition is reframed as "calibration-failed" because the Stage-1 categorical-table BSS is strongly negative (-0.89 ES, -1.03 NQ). The retag honours the new Class A binding gate (BSS > 0); it is NOT a goalpost-move.
+status_first_pass: NULL — Sharpe-differential CI excludes zero on neither ES nor NQ (under legacy gating tree, now superseded by ADR-0012)
 substrate_dataset_checksum: bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665
 sidecar: runs/h053/stage1/h053_stage1_20260501T111348Z/sidecar.json
 sidecar_scientific_payload_sha256: 316266d848dadcbffa67cd276aa86718d456831da396b77212379e9ee2c0b7fb
 git_head_at_authoring: ec11f3a
-recommendation_per_design_md_section_10_1: archive(null, descriptive-mediation-only)
-go_criterion_to_cycle_9: NOT MET (per the strict reading); proceed under autonomous-mandate to gather descriptive evidence anyway
+recommendation_per_design_md_section_10_1_legacy: archive(null, descriptive-mediation-only)
+recommendation_per_adr_0012: calibration-failed; KPI: sharpe-vs-passive-marginal (point=+0.043 ES, +0.030 NQ; CI covers zero), bss-strongly-negative (BSS=-0.89 ES, -1.03 NQ), reliability-not-evaluated, max-dd-favorable, power-margin-adequate, mediation-deferred-to-stage-2, partial-r2-not-applicable-stage-1, cost-not-evaluated
+go_criterion_to_cycle_9: NOT MET (per the strict reading); proceeded under autonomous-mandate to Stages 2 + 3
 ---
 
 # H053 Stage-1 mediator-only walk-forward — disposition memo

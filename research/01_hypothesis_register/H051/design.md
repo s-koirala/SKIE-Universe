@@ -77,27 +77,31 @@ Triple-barrier applied to the basis (not to either leg).
 - Commission: two legs, per-contract fee from [config/instruments.yaml](../../../config/instruments.yaml).
 - Slippage: regime-conditional, walk-forward fit; constant-tick prior until paper-trade logs accumulate.
 
-## 8. Gate thresholds
+## 8. Gate thresholds (AMENDED 2026-05-01 per ADR-0012)
 
-Defaults per [ADR-0004](../../../docs/decisions/ADR-0004-alpha-and-power-defaults.md). SPA family per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md).
+Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) (per Round-1 audit F-1-2 + F-1-6 remediations re: applicability), H051's gating tree is restructured to the three-class rubric:
 
-- `alpha`: 0.05.
-- `bh_threshold`: 0.10.
-- Power target: 0.80.
+### 8.a Class A — Binding gates (per-hypothesis applicability)
+
+- **PIT / leakage-canary** (ALWAYS BINDING). Binding test paths: Cycle-4 leak canary suite at [tests/unit/test_leak_canaries.py](../../../tests/unit/test_leak_canaries.py); per-hypothesis integration test [tests/integration/test_h051_pit.py](../../../tests/integration/test_h051_pit.py) to be authored as §11.2 prereq before next H051 launch (tracked under `P1-H051-PIT-CANARY-INTEGRATION-TEST-LANDED`).
+- **Calibration: BSS / reliability** — `applicable: NO`. H051's pre-registered output is a Kalman-filtered hedge-ratio z-score gating a continuous pairs-trade entry; not a probability forecast.
+- **Reproducibility log present** (ALWAYS BINDING).
+- **DSR/PSR above `dsr_activation_size`** — `applicable: when family ≥ 10`.
+- **Hansen SPA family p ≤ α at operator-promotion** per ADR-0012 §"Operator-promotion rule".
+
+### 8.b KPIs (Class B; reported, not binding at design-time)
+
+Sharpe-vs-passive CI (Lo 2002 / Mertens / Opdyke / LW2008), SPA family p (KPI at design-time, BINDING at promotion), max-DD ratio, power margin, Johansen pre-screen statistic. Defaults preserved (`alpha=0.05`, `bh_threshold=0.10`, `power_target=0.80`) — KPI-reported only.
 
 ## 9. Stopping rule
 
-- Stop: fixed walk-forward fold count from `n_required_for_power_80` pilot.
+- Stop: fixed walk-forward fold count from `n_required_for_power_80` pilot. Underpowered status now recorded as a `power-margin-low` KPI annotation per ADR-0012, not an `archive(null)` verdict.
 - Max wall-clock: 72 hours.
-- Pre-screen failure → halt with `archived(null, precondition-failed)`.
+- Johansen pre-screen failure → `prerequisite-not-met` (Class A.4 per ADR-0012), not `archived(null, precondition-failed)`.
 
-## 10. Decision rule
+## 10. Decision rule (AMENDED 2026-05-01 per ADR-0012)
 
-- `passed=True` → archive(positive); paper-trade eligibility.
-- `passed=False` with CI excluding zero, SPA failing → archive(null) with multiple-testing note.
-- `passed=False` with CI covering zero → archive(null).
-- Underpowered → archive(null, underpowered).
-- Johansen pre-screen rejects → archive(null, precondition-failed).
+The H051 decision rule is restructured per [ADR-0012 §"Disposition labels under the new rubric"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) into the three-class disposition rubric (`leakage-detected` / `reproducibility-incomplete` / `calibration-failed` / `prerequisite-not-met` / `archive(complete; KPI report)`). All Sharpe / SPA / power outcomes are now Class B KPIs reported in the disposition memo's report card; they do NOT null the strategy. Johansen pre-screen failure is now `prerequisite-not-met` per ADR-0012 Class A.4.
 
 ## 11. Reproducibility commitments
 

@@ -104,17 +104,23 @@ Per-session P/L on a **futures ORB long-only directional trade**:
 - **Slippage**: 1-tick floor on market orders at entry and exit (conservative), upgraded to regime-wise empirical fit once NT paper-trade logs accumulate per implementation-plan §6. The static floor is diagnostic-only; evidence-bar submission of H052a must include the empirical cost-model fit.
 - **No borrow cost**: futures don't have one.
 
-## 8. Gate thresholds
+## 8. Gate thresholds (AMENDED 2026-05-01 per ADR-0012)
 
-Defaults per [ADR-0004](../../../docs/decisions/ADR-0004-alpha-and-power-defaults.md). Multiple-testing per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md).
+Per [ADR-0012 disposition-philosophy-aspirational-mvp](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) (per Round-1 audit F-1-2 + F-1-6 remediations re: applicability), H052a's gating tree is restructured to the three-class rubric:
 
-- `alpha`: 0.05.
-- `bh_threshold`: 0.10 (placeholder; tracked for Phase-1 empirical calibration per implementation-plan follow-up F-3-1).
-- Power target: 0.80 (`power` block populated in §9).
-- **Primary gate**: Sharpe-differential CI (Ledoit-Wolf 2008 studentized circular-block bootstrap, paired by session date) excludes zero at 95%.
-- **Secondary gate**: realized max-DD of HMM-gated strategy ≤ realized max-DD of unconditional strategy.
-- **SPA universe**: H052a enters the same `universe_snapshot_id` as H050/H051/H052b per implementation-plan §5 Universe snapshot.
-- **Deflated Sharpe / PSR**: gating above [config/gate.yaml](../../../config/gate.yaml) `dsr_activation_size`.
+### 8.a Class A — Binding gates (per-hypothesis applicability)
+
+- **PIT / leakage-canary** (ALWAYS BINDING). Binding test paths: Cycle-4 leak canary suite + per-hypothesis integration test [tests/integration/test_h052a_pit.py](../../../tests/integration/test_h052a_pit.py) to be authored as §11.2 prereq before next H052a launch (tracked under `P1-H052A-PIT-CANARY-INTEGRATION-TEST-LANDED`).
+- **Calibration: BSS / reliability** — `applicable: WHERE` for the HMM-state posterior. The HMM emits per-state posterior probabilities on the OOS fold; these MAY be calibrated as a binding gate on the posterior-output KPI table if H052a ships such a deliverable. Until then, calibration is `applicable: NO` for the binary HMM-gated entry decision.
+- **Reproducibility log present** (ALWAYS BINDING).
+- **DSR/PSR above `dsr_activation_size`** — `applicable: when family ≥ 10`.
+- **Hansen SPA family p ≤ α at operator-promotion** per ADR-0012 §"Operator-promotion rule".
+
+### 8.b KPIs (Class B; reported, not binding at design-time)
+
+Sharpe-vs-passive CI, Sharpe-vs-unconditional, SPA family p (KPI at design-time, BINDING at promotion), max-DD ratio, power margin, HMM-state coverage statistics. Defaults preserved (`alpha=0.05`, `bh_threshold=0.10`, `power_target=0.80`) — KPI-reported only. SPA universe entry preserved per [ADR-0003](../../../docs/decisions/ADR-0003-spa-vs-romanowolf.md).
+
+The legacy primary gate (Sharpe-differential CI vs unconditional excludes zero at 95%), secondary gate (max-DD non-worse), and DSR/PSR gating are all downgraded to Class B KPIs per ADR-0012 §"Class B".
 
 ## 9. Stopping rule + power
 
@@ -132,16 +138,12 @@ Defaults per [ADR-0004](../../../docs/decisions/ADR-0004-alpha-and-power-default
     variance_formula: lo2002_hac_adjusted
     n_required: ...         # computed by inference/power.py::required_n
   ```
-- HMM stationarity pre-check failure per ADR-0005 → halt with `archived(null, precondition-failed)`.
-- Sample-size precondition: realized OOS sample must meet `n_required_for_power_80`; underpowered → halt with `archived(null, underpowered)`.
+- HMM stationarity pre-check failure per ADR-0005 → `prerequisite-not-met` (Class A.4 per ADR-0012), not `archived(null, precondition-failed)`.
+- Sample-size precondition: realized OOS sample failing `n_required_for_power_80` is now a `power-margin-low` KPI annotation per ADR-0012, not an `archive(null)` verdict.
 
-## 10. Decision rule
+## 10. Decision rule (AMENDED 2026-05-01 per ADR-0012)
 
-- Pass (Sharpe-differential CI excludes zero AND max-DD non-worse AND SPA passes AND DSR/PSR pass where gating) → `archive(positive)`; promote to paper-trade subject to the capacity caps in §4.
-- Sharpe-differential CI covers zero → `archive(null)`. **This is the prior-consistent outcome.** Archive remains in [plan/hypothesis_backlog.md](../../../plan/hypothesis_backlog.md) as a documented null.
-- Sharpe-differential passes, max-DD worsens → `archive(null, risk-violation)`.
-- Sharpe-differential passes, SPA fails → `archive(null, spa-rejected)`.
-- Underpowered → `archive(null, underpowered)`.
+The H052a decision rule is restructured per [ADR-0012 §"Disposition labels under the new rubric"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) into the three-class disposition rubric (`leakage-detected` / `reproducibility-incomplete` / `calibration-failed` / `prerequisite-not-met` / `archive(complete; KPI report)`). All Sharpe / SPA / power / max-DD outcomes are now Class B KPIs reported in the disposition memo's report card; they do NOT null the strategy.
 - Raw (non-roll-adjusted) data used for any promotion decision → automatic `archive(null, data-violation)`. Roll-adjusted derivative is a hard prerequisite per §2.
 
 ## 11. Reproducibility commitments

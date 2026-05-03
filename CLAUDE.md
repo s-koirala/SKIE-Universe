@@ -20,14 +20,34 @@ Parallel tracks authorized by [ADR-0006](docs/decisions/ADR-0006-scope-extension
 ## Research philosophy
 This is a *longitudinal, exhaustive* research program — not a single-strategy project. Every hypothesis goes into [research/01_hypothesis_register/](research/01_hypothesis_register/) with a pre-registered design doc. Results enter the hypothesis register whether they succeed or fail; null results are as valuable as positive results and protect against later rediscovery.
 
-## Evidence bar for any signal reaching paper-trade
-1. Walk-forward out-of-sample Sharpe CI (Lo 2002 or Opdyke 2007) excludes zero at 95%.
-2. Passes Hansen SPA (2005) against the strategy universe accumulated to date.
-3. Costs modeled with NinjaTrader-realistic fill assumptions (per-contract commission, exchange fee, slippage distribution fit from paper-trade logs).
-4. Reproducibility log present: git HEAD, `uv pip freeze`, dataset checksum, RNG seed, model hash.
+**Aspirational-MVP framing (per ADR-0012, 2026-05-01)**: the project's purpose is aspirational innovation in intraday futures + 0DTE options trading. Strategies are tested broadly with the goal of bringing them to MVP (paper-trade-eligible) as fast as is consistent with methodological correctness. The disposition pipeline reports a multi-dimensional KPI report card per [ADR-0012](docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md); design-time gates are limited to the methodological-correctness floor (PIT/leakage + applicable calibration + reproducibility + DSR-when-active). Paper-trade Sharpe-within-CI per [§Execution bar](#execution-bar-for-live-amended-2026-05-01-per-adr-0012) is the load-bearing pre-live constraint.
 
-## Execution bar for live
-Passes paper-trade for at least 60 session-days with realized Sharpe within CI of backtested Sharpe. Kill-switch documented.
+**Frozen-pre-reg amendment discipline (per ADR-0012 §"Frozen pre-registration amendment")**: project-level disposition-philosophy ADRs (ADR-0012 and any successor) MAY amend the §8 + §10 (gating tree + decision rule) of frozen `status: designed` pre-registrations WITHOUT requiring a successor hypothesis ID, subject to: (a) the amendment applies project-wide (not single-hypothesis carve-out); (b) it carries an audit-remediate-loop trail; (c) each affected design.md references the amending ADR explicitly; (d) §1-§7 (hypothesis statement, universe/sample, features, labels, splitter, cost model) remain immutable. This narrow exception preserves substantive hypothesis content while permitting cross-hypothesis disposition-philosophy evolution.
+
+## Evidence bar for any signal reaching paper-trade (AMENDED 2026-05-01 per ADR-0012)
+
+Per [ADR-0012 disposition-philosophy-aspirational-mvp](docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md), the design-time Sharpe-CI gate has been DOWNGRADED to a KPI; the load-bearing pre-paper-trade evidence bar is now **methodological correctness + calibration + reproducibility**, with Sharpe / SPA / Power / Max-DD reported as KPIs alongside.
+
+**Class A binding gates (ALL must pass for paper-trade eligibility)**:
+
+1. **PIT / leakage canary** green for all feature factory blocks the hypothesis consumes (per the Cycle-4 dual-fit-call observer + TracingArray patterns; H053-style NaN-poison structural detector for any new feature factory).
+2. **Calibration: BSS > 0** vs per-instrument climatological prior on the OOS fold (where applicable to the hypothesis output structure).
+3. **Calibration: reliability slope ∈ [0.7, 1.3]** per Niculescu-Mizil & Caruana 2005 (where applicable).
+4. **Reproducibility log present**: git HEAD, `uv pip freeze` sha, dataset checksum, RNG seed, model hash, scientific_payload_sha256.
+5. **Costs modeled with NinjaTrader-realistic fill assumptions** (per-contract commission, exchange fee, slippage distribution fit from paper-trade logs).
+6. **DSR / PSR above `dsr_activation_size`** per [config/gate.yaml](config/gate.yaml) once family ≥ 10 (currently no-op; H050 + H051 + H052a + H052b + H053×3 = 7).
+
+**Class B KPIs (reported in the disposition memo's report card; do NOT null the strategy)**: walk-forward out-of-sample Sharpe-vs-passive CI (Lo 2002 / Opdyke 2007 / Ledoit-Wolf 2008), Sharpe-vs-time-of-day-FE CI (or per-prior-day-same-bin for single-clock-time predictands), Hansen SPA family p (omega-corrected per ADR-0008), max-DD ratio (arm/passive), power-margin ratio (realized OOS n / `n_required_for_power_80`), mediation NIE / NDE point estimates, in-sample partial-R² (where applicable), cost-floor sensitivity (1-tick vs 2-tick).
+
+**Class C documentation**: per-cycle audit-remediate-loop trail (3-round cap), substrate dataset_checksum binding, PIT canary suite green.
+
+**Cross-validation methodology**: CPCV is the canonical splitter for any hypothesis disposition that produces a Sharpe KPI per ADR-0012 §"Cross-validation methodology". Single train/test cuts are insufficient; `P1-BACKTEST-CPCV` full path-reconstruction is BLOCKING-BEFORE-ANY-NEW-HYPOTHESIS-DISPOSITION-OR-STAGE-3-RE-RUN.
+
+## Execution bar for live (AMENDED 2026-05-01 per ADR-0012)
+
+Passes paper-trade for at least 60 session-days with realized Sharpe within CI of backtested Sharpe. **This 60-session-day Sharpe-within-CI floor is the load-bearing pre-live constraint** under ADR-0012; the prior design-time Sharpe-CI gate is downgraded to a KPI. Kill-switch documented per the hypothesis's §11.1.
+
+**Operator gate**: a `archive(complete; KPI report)` disposition under ADR-0012 makes a strategy ELIGIBLE for paper-trade subject to operator review of the KPI report card. The operator retains discretion to defer paper-trade promotion based on KPI-report weaknesses (e.g., max-DD-adverse, sharpe-vs-passive-negative, calibration-marginal); this is operator judgment, not a mechanical gate.
 
 ## Conventions
 - Python env: `uv`. Lint: `ruff`. Notebooks: `nbstripout` + `nbqa ruff`.
