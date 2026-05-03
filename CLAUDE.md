@@ -220,6 +220,49 @@ The autonomous Cycles 7-10 execution mandate per the user's 2026-04-30 directive
 
 **H053 hypothesis status**: UN-ARCHIVED. The genuine Stage-1 NULL evidence (mediator alone insufficient on ES/NQ at this slice) holds. Cycle 10 Stage-3 first-pass disposition is NOT BINDING — re-run after `P1-H053-DAILY-405-GATE-RECONCILE` lands. The full Stages 1-3 first-pass artifact ships as a documented build-session record per CLAUDE.md §"Research philosophy" + the H050 post-mortem appendix on H053 build-session findings ([docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md](docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md) §H053 build-session findings).
 
+### Phase F: H053 Stage-3 v2 BLOCK + v3 walk-forward grid + ADR-0013 (2026-05-03)
+
+**Stage-3 v2 BLOCK (2026-05-03 morning)**: post-Daily-gate-fix re-run with ADR-0012-compliant disposition framework was BLOCKed by Round-1 audit returning 12 findings (3 critical: F-2-1 CPCV time-ordering violation; F-2-2 KFold(shuffle=True) inner CV; F-2-3 in-sample isotonic; 6 majors; 3 minors). Disposition `calibration-failed; paper_trade_eligible=False` on all 4 arms (ES/NQ × Arm 1/2) with OOF-isotonic BSS in [-0.207, -0.010]. Audit trail: [docs/audits/audit_trail_2026-05-03_h053-stage3-v2.md](docs/audits/audit_trail_2026-05-03_h053-stage3-v2.md).
+
+**Stage-3 v3 (2026-05-03 afternoon)**: walk-forward grid + bootstrap-CI calibration per [ADR-0013](docs/decisions/ADR-0013-walk-forward-grid-and-calibration-CI.md). Plan v3-r3 ([plan/h053_stage3_v3_plan_2026-05-03.md](plan/h053_stage3_v3_plan_2026-05-03.md)) audit-remediated through 2-round loop on the IMPLEMENTATION PLAN before module-build began (Round-1 quant `a16d183bace2fccbc` + lit `a3f8c6ba917768288`: 4 critical + 9 major + 2 minor quant + 2 critical + 3 major + 5 minor lit; v3-r2 closed all 33; Round-2 quant `aa8e69f9abd678ab7` + lit `a96d9974b83dbe851`: ALL 4 R1 quant criticals closed + 2 NEW R2 lit criticals — Politis-Romano JTSA→JASA mis-cite regression of project Cycle-5 work; Riley 2019 Part II→Part I — both fixed in v3-r3; 9 R2 minors accepted as residuals per CLAUDE.md §"Agentic Iteration" 3-round cap with 5 new follow-ups).
+
+**Methodology shift (canonical per ADR-0013)**:
+- Walk-forward grid Sharpe replaces CPCV-path-Sharpe for hypotheses with single-horizon time-ordered predictands. CPCV preserved for hypotheses with valid CPCV semantics.
+- 8-point geometric W_train grid `[630, 684, 743, 807, 876, 951, 1033, 1122]` (ratio (1122/630)^(1/7) ≈ 1.0857). Floor 15·k=15·42=630 per [Riley et al. 2019 'Part I — Continuous outcomes' *Stat Med* 38(7):1262-1275 doi:10.1002/sim.7993](https://doi.org/10.1002/sim.7993). Ceiling 1122 per inner-CV reservation analysis.
+- W_test=63 sessions (calendar choice ≈ 3 trading months; PW2004+PPW2009 floor 25-60 satisfied).
+- Both rolling AND expanding modes per Pesaran-Pick-Pranovich 2013.
+- 16 cells per arm × symbol; SPA stacked (n_oos, m) loss-differential matrix passed jointly to hansen_spa_test with shared bootstrap indices preserving cross-cell dependence per Hansen 2005 §2.
+- LW2008 paired-cell Sharpe CIs replace ±0.1 placeholder.
+- Bootstrap-CI calibration gates: binary `BSS_lower_CI > 0` (binding) + reliability slope `1.0 ∈ CI` (binding); multinomial K_arch×3 Brier + cost-aware binary BSS + beta calibration as Class B KPI exhibits.
+- Inner walk-forward CV replaces v2 KFold-shuffle (F-2-2 closure).
+- Calibrator selection preserved per design.md §4.5.3 binding rule (isotonic primary; Platt fallback at N_cal<500; 3-way Platt/beta/isotonic selector REJECTED at R1 plan-audit F-1-7).
+- Multinomial-as-binding-gate REJECTED at R1 plan-audit F-1-12 (exceeded ADR-0012 §"Frozen pre-registration amendment" carve-out scope; design.md §1-§7 immutable).
+
+**Module package**: 4 new + 1 updated source modules (~1175 LoC) + 44 unit tests green:
+- [src/skie_ninja/backtest/costs/h053_cost_c.py](src/skie_ninja/backtest/costs/h053_cost_c.py) (~125 LoC)
+- [src/skie_ninja/inference/calibration.py](src/skie_ninja/inference/calibration.py) (~430 LoC; binary BSS bootstrap CI + reliability slope CI + multinomial KPI + cost-aware KPI + beta KPI)
+- [src/skie_ninja/backtest/walk_forward_grid_sharpe.py](src/skie_ninja/backtest/walk_forward_grid_sharpe.py) (~340 LoC; 8-cell geometric × 2 modes; HAC-CI sensitivity; LW2008 pair CIs; SPA matrix)
+- [src/skie_ninja/inference/disposition.py](src/skie_ninja/inference/disposition.py) (F-2-9: skip-PIT now force-False)
+- [scripts/run_h053_stage3_v3.py](scripts/run_h053_stage3_v3.py) (~720 LoC; --skip-cpcv preserved as deprecated alias)
+
+**Cost-c arithmetic correction (R1 F-1-1 closure)**: ES 1.06 bps / NQ 0.35 bps at 1-tick; ES 1.97 bps / NQ 0.60 bps at 2-tick. (Plan v3-r1 had it 10× too large.)
+
+**Production run** (2026-05-03 12:37→12:55 CT, 18 min wall-clock): full ES + NQ × 16-cell walk-forward grid × 2 arms × bootstrap-CI calibration × LW2008 paired CIs × Hansen SPA × PIT canary. run_id `h053_stage3_v3_20260503T173742Z`; sidecar `scientific_payload_sha256` = `5da28988aa1b5ecae7b6f3b8198df41662c08bff19827b92aba20e9b68ea5b55`; substrate dataset checksum `bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665`.
+
+**Disposition (BINDING)**: `calibration-failed; paper_trade_eligible=False` on **all 4 arms** (ES Arm 1+2; NQ Arm 1+2). Per ADR-0012 §10.1 strict precedence: PIT canary 14/14 PASS each symbol; ReproLog complete; binary BSS bootstrap CI lower-bound > 0 FAILED on all 4 arms (ES Arm 1: -0.049; ES Arm 2: -0.432; NQ Arm 1: -0.024; NQ Arm 2: -0.465); reliability slope CI covers 1.0 also FAILED on all 4 arms (slopes centered near 0, not 1; LightGBM CIs narrow + centered ≈ 0; ElasticNet CIs wide + ranging through ±1.5).
+
+**Substantive empirical finding** (Class B KPI, not promoting): **ES Arm 2 LightGBM walk-forward grid produces positive Sharpe on 81% of 16 cells (median +0.04, mean +0.03, max +0.09)** — directional skill survives across most W_train sizes. NQ Arm 2 LightGBM 56% cell-pass; ElasticNet arms much weaker (25% ES / 6% NQ). Hansen SPA p ES=0.12, NQ=0.30 (both rejects). The dichotomy — **positive raw Sharpe + failed calibration gate** — means the LightGBM probability surface is near-constant after isotonic calibration on OOS, so directional skill exists but probabilistic skill (forecast-to-frequency mapping) does not. Methodologically-correct null at the calibration gate per ADR-0012.
+
+**v2-vs-v3 calibration of magnitude**: v2 first-pass (BLOCKed on F-2-1 CPCV time-ordering + F-2-2 KFold-shuffle inner CV + F-2-3 in-sample isotonic) reported leakage-inflated CPCV median Sharpes ES=+0.428, NQ=+0.422; v3 honest walk-forward grid medians ES=+0.040, NQ=+0.015. **Order-of-magnitude collapse** when methodology corrects for leakage — confirms the v2 magnitude was 10× inflated by the CPCV leakage path.
+
+Disposition memo: [reports/h053/stage3_v3_full_disposition.md](reports/h053/stage3_v3_full_disposition.md). Audit trail: [docs/audits/audit_trail_2026-05-03_h053-stage3-v3.md](docs/audits/audit_trail_2026-05-03_h053-stage3-v3.md).
+
+**SPA family slot accounting** (per design.md §8 + ADR-0012): all 3 ex-ante slots consumed (Arm 1 + Arm 2 by `archive(calibration-failed)`; Arm 3 LLM by `archive(prerequisite-not-met)`). Family size remains 3.
+
+**Cycle 11 paper-trade scaffolding NOT FIRED.** Cycle 12 LLM Arm 3 SKIPPED. The 60-session-day paper-trade clock does not start.
+
+7 follow-ups registered (2 v3-disposition + 5 R2 plan-audit residuals): `P1-H053-V3-NCAL-EMPIRICAL-CALIBRATION`, `P1-H053-V3-KPI-EXHIBIT-INTEGRATION`, `P1-PLAN-V3-INNER-FOLD-SENSITIVITY-N-REFITS-CALIBRATE`, `P1-PLAN-V3-CITATION-PIN-VERIFY`, `P1-ADR-0013-BSS-LOWER-CI-PROCEDURAL-AMENDMENT-DOC`, `P1-MODULE-WALK-FORWARD-GRID-CELL-ORDERING-DOCSTRING`, `P1-DISPOSITION-KPI-ANNOTATION-THRESHOLD-CALIBRATION`.
+
 ### H050 production-run comprehensive post-mortem (2026-04-30)
 
 Canonical record of every H050 production walk-forward attempt to date (runs 1–6 attempt-2): [docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md](docs/research_notes/memo_h050-prodrun-postmortem_2026-04-30.md). Audit-remediate-loop trail (Round-1 with parallel quant-auditor + literature-check + reproducibility-verifier; verdict `accept-with-residuals`): [docs/audits/audit_trail_2026-04-30_h050-prodrun-postmortem.md](docs/audits/audit_trail_2026-04-30_h050-prodrun-postmortem.md). Supersedes the 2026-04-29 retrospective ([memo_h050-prodrun-retrospective_2026-04-29.md](docs/research_notes/memo_h050-prodrun-retrospective_2026-04-29.md)) on three dimensions: (1) coverage extends to run-6 attempt-2 + 2026-04-30 closures, (2) value-of-information audit on 16 reactively-built infrastructure artifacts (verdict distribution: NEEDED 12, NEEDED-BUT-OVERBUILT 1, DEFENSIVE 2; total 15 artifact-rows × verdicts plus the wake-lock framing-defect orthogonal dimension), (3) primary-source verifications correcting load-bearing claims in ADR-0010 (`SetThreadExecutionState` does not block reboots, only idle sleep), in the H-B / WUfB framing (WUfB compliance-deadline policy is GPO/MDM-only; not exposed on Windows 11 Home — the reboot path is the internal UsoSvc Task Scheduler tree, not WUfB), and in ADR-0005 (AFML §7.4.1 = "Purging the Training Set", not HMM warm-start; AFML has no HMM chapter — retarget to Cappé-Moulines-Rydén 2005 Ch.10 or Rabiner 1989 §III.C).
