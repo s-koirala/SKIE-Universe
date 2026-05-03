@@ -413,3 +413,22 @@ User-prompted post-design-audit on the H053 gating tree (2026-05-01) led to [ADR
 **CPCV restoration**: the H053 Stage-1/2/3 first-pass implementations used a single train/test cut (2015-2022 IS, 2024-2025 OOS), NOT CPCV. Per ADR-0012 §"Cross-validation methodology", `P1-BACKTEST-CPCV` is promoted to BLOCKING-BEFORE-ANY-STAGE-3-RE-RUN. The Cycle-4 scaffolding at [src/skie_ninja/backtest/splits.py](../../src/skie_ninja/backtest/splits.py) `cpcv_split` is the implementation foundation; full path-reconstruction is the load-bearing follow-up.
 
 **Audit trail**: [docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md](../audits/audit_trail_2026-05-01_disposition-philosophy-shift.md).
+
+### H. H053 Stage-3 v2 production run (appended 2026-05-03)
+
+Phase 1 (refactor) + Phase 2 (production run) under ADR-0012; full audit trail at [docs/audits/audit_trail_2026-05-03_h053-stage3-v2.md](../audits/audit_trail_2026-05-03_h053-stage3-v2.md).
+
+**Phase 2 result summary** (4 arms × 2 symbols, all `calibration-failed; paper_trade_eligible=False`):
+
+| Symbol | Arm | CPCV median Sharpe | DSR | OOF-iso BSS | Disposition |
+|---|---|---:|---:|---:|---|
+| ES | ElasticNet | -0.112 | -1.36 | -0.013 | calibration-failed |
+| ES | LightGBM | +0.428 | -1.04 | -0.176 | calibration-failed |
+| NQ | ElasticNet | +0.472 | -1.07 | -0.010 | calibration-failed |
+| NQ | LightGBM | +0.422 | -1.39 | -0.207 | calibration-failed |
+
+Train n=1332 (ES) / 1323 (NQ) — Daily-gate fix verified. PIT canary 14/14 PASS both symbols. Hansen SPA p=0.37/0.31 (KPI; not binding). Wall-clock 2 min 27 sec.
+
+**Round-1 audit on Phase 1 returned BLOCK** (3 critical: CPCV time-ordering violation, KFold-shuffle inner-CV, in-sample isotonic source; 6 majors). Critical findings INFLATE Sharpe + calibration metrics, so the `calibration-failed` disposition is robust to leakage direction (BSS<0 despite leakage means honest BSS would also be <0). Sharpe KPIs (3/4 positive median) are leakage-upper-bounds and should not inform operator-promotion until Round-2 remediation lands.
+
+**Tracker for Round-2**: `P1-H053-STAGE3-V2-ROUND-2-REMEDIATION` (BLOCKING-BEFORE-PAPER-TRADE-ELIGIBILITY).
