@@ -128,10 +128,11 @@ The honest walk-forward Sharpes are an order of magnitude smaller than the leaka
 
 Per ADR-0012 §"Operator-promotion rule" + design.md §10.1: H053 is **NOT paper-trade-eligible** at this run. The 60-session-day paper-trade clock does not start.
 
-Operator may consider:
-1. **Investigate the calibration gap on ES Arm 2 LightGBM specifically.** The walk-forward Sharpe is positive on 81% of cells — this is suggestive of a real directional signal. Recalibrating the LightGBM probability surface (e.g., longer N_cal window, beta calibration as binding rather than KPI exhibit, or a different isotonic-fitting strategy) could shift the BSS lower CI above zero. This requires a successor hypothesis ID (would amend design.md §4.5.3 §1-§7).
-2. **Accept the calibration-failed disposition.** H053 archives at this stage; the directional signal observed on ES Arm 2 LightGBM is documented as a Class B KPI exhibit but not promoted.
-3. **Re-run with longer N_cal** (e.g., expand the calibration sub-fold). Tracked under follow-up `P1-H053-V3-NCAL-EMPIRICAL-CALIBRATION` (new this disposition).
+**Calibration-recovery diagnostic complete (2026-05-03)**: per [docs/research_notes/note_h053-v3-es-arm2-calibration-diagnostic_2026-05-03.md](../../docs/research_notes/note_h053-v3-es-arm2-calibration-diagnostic_2026-05-03.md), tested 4 calibrators × full-IS-train N_cal on the ES Arm 2 LightGBM surface. **Beta calibration (Kull 2017) outperforms isotonic** on this near-constant-raw-prediction surface (BSS point +0.003, slope CI [-0.85, 1.02] **passes** the binding gate; isotonic produces slope = 0). However, **even beta calibration's BSS lower CI = -0.034 fails the binding `BSS_lower_CI > 0` gate** at n_oos = 367 — the signal magnitude is too small to clear the bootstrap-CI noise floor. The BSS standard error at n_oos = 367 is ~0.03-0.05; the signal-effect-size budget on this OOS fold cannot beat the bootstrap CI even under the best-available calibrator.
+
+**Operator decision: ARCHIVE H053 fully under `archive(calibration-failed)` per ADR-0012 §10.1.** Spawning a successor hypothesis (H053b) with beta-as-binding calibrator would require a §1-§7 estimator change per ADR-0012 §"Frozen pre-registration amendment" carve-out, and the diagnostic confirms the successor would archive null on the same OOS fold. The signal-magnitude limit, not the calibrator family, is the binding constraint.
+
+The directional skill (cell-pass-fraction 81% with positive raw Sharpe +0.09) is documented as a Class B KPI exhibit but does not promote past the calibration gate per ADR-0012.
 
 ## SPA family slot consumption
 
@@ -152,11 +153,13 @@ The plan v3-r3 §B specified four Class B KPI exhibits: (1) multinomial K_arch×
 
 ## Follow-ups registered
 
-- `P1-H053-V3-NCAL-EMPIRICAL-CALIBRATION` (NEW) — empirical calibration of N_cal threshold per arm; consider N_cal ≥ 800 for isotonic stability on H053 OOS-size folds
-- `P1-H053-V3-KPI-EXHIBIT-INTEGRATION` (NEW) — wire multinomial + cost-aware + beta KPI exhibits into the per-arm payload
-- `P1-PLAN-V3-INNER-FOLD-SENSITIVITY-N-REFITS-CALIBRATE` (R2 plan-audit residual) — calibrate n_refits ≥ 10 if the 5-refit version is noisy
-- `P1-PLAN-V3-CITATION-PIN-VERIFY` (R1 plan-audit residual) — verify §-pin gaps L-1, L-4, L-13, L-15, L-18 before ADR-0013 freeze
-- `P1-ADR-0013-BSS-LOWER-CI-PROCEDURAL-AMENDMENT-DOC` (R2 plan-audit residual) — explicit procedural-amendment documentation in ADR-0013
+- `P1-H053-V3-NCAL-EMPIRICAL-CALIBRATION` — **CLOSED 2026-05-03** by [diagnostic note](../../docs/research_notes/note_h053-v3-es-arm2-calibration-diagnostic_2026-05-03.md): full-IS N_cal tested; recovers slope but not BSS gate.
+- `P1-H053-V3-KPI-EXHIBIT-INTEGRATION` (NEW) — wire multinomial + cost-aware + beta KPI exhibits into the per-arm payload (operational; non-blocking).
+- `P1-H053-V3-CALIBRATOR-BETA-VS-ISOTONIC-EMPIRICAL` (NEW from diagnostic) — beta calibration empirically superior to isotonic on near-constant-raw-prediction surfaces; design.md §4.5.3 binding rule should be revisited at the project level (Niculescu-Mizil & Caruana 2005 §4.2 vs Kull 2017 §3 dominance regime per project canon).
+- `P1-H053-CHECK-RAW-PREDICTION-MAGNITUDE-CANARY` (NEW from diagnostic) — add a structural check to the v3 calibration module that flags raw-prediction-magnitude / predictand-magnitude < 0.1 as a calibration-recoverability warning.
+- `P1-PLAN-V3-INNER-FOLD-SENSITIVITY-N-REFITS-CALIBRATE` (R2 plan-audit residual) — calibrate n_refits ≥ 10 if the 5-refit version is noisy.
+- `P1-PLAN-V3-CITATION-PIN-VERIFY` (R1 plan-audit residual) — verify §-pin gaps L-1, L-4, L-13, L-15, L-18 before ADR-0013 freeze.
+- `P1-ADR-0013-BSS-LOWER-CI-PROCEDURAL-AMENDMENT-DOC` (R2 plan-audit residual) — explicit procedural-amendment documentation in ADR-0013.
 
 ## References
 
