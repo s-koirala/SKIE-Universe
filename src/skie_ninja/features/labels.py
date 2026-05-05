@@ -522,16 +522,38 @@ class OpeningRangeBreakoutLabeller:
         hardclose_t = self.config.hard_close_et
 
         results: list[dict[str, Any]] = []
-        # Group by session_date_et and process each session in isolation.
-        unique_sessions = session_dates_et.drop_duplicates().tolist()
-        for session_date in unique_sessions:
-            session_mask = (session_dates_et == session_date).to_numpy()
-            if not session_mask.any():
-                continue
-            sess_idx = np.flatnonzero(session_mask)
-            sess_tod = time_of_day_et.to_numpy()[sess_idx]
-            sess_closes = closes[sess_idx]
-            sess_ts_utc = ts_utc.to_numpy()[sess_idx]
+        # Performance fix (post-Round-2 stall investigation 2026-05-05):
+        # Build per-session index slices ONCE via a single sort + groupby
+        # rather than recomputing `(session_dates_et == session_date)` masks
+        # for every session iteration (the prior O(N · S) implementation
+        # produced ~7B ops on the H052a substrate at 2710 sessions × 2710 ×
+        # 390 bars per symbol; ran > 27 min before kill). Now O(N) total.
+        session_dates_arr = session_dates_et.to_numpy()
+        time_of_day_arr = time_of_day_et.to_numpy()
+        ts_utc_arr = ts_utc.to_numpy()
+        # `pd.factorize` returns codes (per-row session group id) + uniques
+        # (the actual session_date_et values). The data is already sorted by
+        # ts_utc per the `group.sort(time_col)` above, so codes are also
+        # contiguous-by-session — we can build per-session contiguous slices
+        # with `np.diff(codes).nonzero()` boundaries.
+        codes, unique_sessions_arr = pd.factorize(
+            session_dates_et.dt.tz_convert("UTC"), sort=True
+        )
+        # Boundaries where codes change → per-session slice [start, end).
+        n_total = codes.size
+        if n_total == 0:
+            return results
+        change_points = np.concatenate(
+            [[0], np.flatnonzero(np.diff(codes) != 0) + 1, [n_total]]
+        )
+        for k in range(len(change_points) - 1):
+            start = int(change_points[k])
+            end = int(change_points[k + 1])
+            session_date = unique_sessions_arr[codes[start]]
+            sess_idx = np.arange(start, end)
+            sess_tod = time_of_day_arr[start:end]
+            sess_closes = closes[start:end]
+            sess_ts_utc = ts_utc_arr[start:end]
 
             # Find entry bar: first bar at or after entry_time_et.
             entry_local_idx = self._first_index_at_or_after(sess_tod, entry_t)
@@ -572,15 +594,10 @@ class OpeningRangeBreakoutLabeller:
                 )
                 continue
 
-            pt_price = float(entry_price * np.exp(self.config.pt_mult * sigma_annualised / np.sqrt(252.0 * _RTH_BARS_PER_SESSION)))
-            sl_price = float(entry_price * np.exp(-self.config.sl_mult * sigma_annualised / np.sqrt(252.0 * _RTH_BARS_PER_SESSION)))
-            # Note: σ_annualised was inflated by the annualisation factor;
-            # for the per-session price target we want the per-session σ.
-            # Equivalently: pt_price = entry_price × exp(pt_mult × σ_per_bar
-            # × √n_bars_remaining_in_horizon). For ORB, the horizon is
-            # bounded by hard_close_et − entry_time_et. The simplest faithful
-            # implementation per design.md §4 uses the same per-bar σ scaled
-            # by √(remaining session bars to hard close):
+            # σ_horizon = σ_per_bar × √(remaining session bars to hard close)
+            # per design.md §4. F-Q-10 fix (Round-2 audit-remediate-loop
+            # 2026-05-04): removed dead σ_annualised pt_price/sl_price
+            # computation that was overwritten in the original v1 code.
             n_remaining_bars = float(self._n_bars_between(entry_t, hardclose_t))
             sigma_horizon = sigma_per_bar * float(np.sqrt(n_remaining_bars))
             pt_price = float(entry_price * np.exp(self.config.pt_mult * sigma_horizon))
