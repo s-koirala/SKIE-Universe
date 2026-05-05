@@ -473,7 +473,12 @@ def _process_symbol(
         vix_daily=vix_daily_pdf,
     )
 
-    # Inner-join labels + features on session.
+    # Normalise session_date_et precision (post-stall fix #3 2026-05-05):
+    # labeller output is μs precision; feature_panel is ns precision.
+    # Polars `join` refuses cross-precision joins → cast both to ns first.
+    _norm = pl.col("session_date_et").cast(pl.Datetime("ns", "UTC"))
+    labels_best = labels_best.with_columns(_norm)
+    feature_panel = feature_panel.with_columns(_norm)
     joined = labels_best.join(
         feature_panel, on=["symbol", "session_date_et"], how="inner"
     )
