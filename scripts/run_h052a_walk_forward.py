@@ -707,10 +707,11 @@ def _process_symbol(
         "n_train_sessions": int(train_idx.size),
         "n_test_sessions": int(test_idx.size),
         "hmm": {
-            "n_states": int(hmm.params_.n_states),
+            "n_states": int(hmm.params_.n_states()),
             "covariance_type": str(hmm.params_.covariance_type),
             "nonstress_state": int(nonstress_state),
-            "selected_bic": float(selection.best_bic),
+            "selected_n_states": int(selection.best_n_states),
+            "selected_covariance_type": str(selection.best_covariance_type),
         },
         "performance": {
             "annualised_sharpe_unconditional": float(sr_uncond) if np.isfinite(sr_uncond) else None,
