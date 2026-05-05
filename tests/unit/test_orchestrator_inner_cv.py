@@ -92,6 +92,8 @@ def test_inner_cv_returns_finite_selection() -> None:
         label_horizon=1,
         embargo=1,
         n_inner_folds=2,
+        fold_id=0,  # F-Q-3 fix Round-2 audit-remediate-loop 2026-05-03
+        cfg_idx=0,  # added required kwargs for per-(fold, cfg) seed independence
     )
     assert best_params is not None
     # Logistic loss is bounded below by 0; selection metric must be finite.
@@ -125,6 +127,8 @@ def test_inner_cv_returns_no_selection_when_train_too_small() -> None:
         label_horizon=1,
         embargo=1,
         n_inner_folds=3,
+        fold_id=0,  # F-Q-3 fix Round-2 audit-remediate-loop 2026-05-03
+        cfg_idx=0,  # added required kwargs for per-(fold, cfg) seed independence
     )
     assert best_params is None
     assert best_logloss == np.inf
@@ -275,6 +279,8 @@ def test_inner_cv_outof_sample_beats_in_sample_when_signal_is_real() -> None:
         label_horizon=1,
         embargo=1,
         n_inner_folds=2,
+        fold_id=0,  # F-Q-3 fix Round-2 audit-remediate-loop 2026-05-03
+        cfg_idx=0,  # added required kwargs for per-(fold, cfg) seed independence
     )
     assert best_params is not None
     assert np.isfinite(best_logloss)

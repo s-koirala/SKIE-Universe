@@ -73,12 +73,19 @@ ignore = ["PLR0913"]
 [tool.pytest.ini_options]
 addopts = "-ra --strict-markers"
 testpaths = ["tests"]
-# justify: pythonpath ['.'] makes the canonical `pytest` invocation
-# discover the `scripts/` package (CLI entrypoints used by tests).
-# Without this, `pytest tests/unit/test_h053_stage0_hks_sanity.py`
-# fails with ModuleNotFoundError; `python -m pytest …` works because
-# cwd auto-prepends to sys.path. Closes Round-1 R-9 finding.
-pythonpath = ["."]
+# justify: pythonpath ['.', 'src'] makes the canonical `pytest`
+# invocation discover the `scripts/` package (CLI entrypoints used by
+# tests) AND the `skie_ninja` src-layout package. Without `src`,
+# fresh `.venv` worktrees fail to import `from skie_ninja...` because
+# the project does not declare `[build-system]` (tracked under
+# `P1-PYPROJECT-BUILD-SYSTEM-DECLARE`). Adding `src` to pythonpath is
+# the minimum-blast-radius workaround until the build-system migration
+# lands. Earlier closure of Round-1 R-9 retained the `.` entry.
+# F-R-3-related (Round-2 audit-remediate-loop 2026-05-03 H050
+# orchestrator leakage-clean): with src on pythonpath, the regression
+# test suite at tests/unit/test_h050_orchestrator_leakage_clean.py
+# runs in fresh worktrees alongside test_orchestrator_*.py / others.
+pythonpath = [".", "src"]
 markers = [
     "integration: marks tests that hit the network or external services",
 ]

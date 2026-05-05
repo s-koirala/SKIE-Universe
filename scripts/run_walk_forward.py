@@ -347,6 +347,78 @@ class _HmmCacheStats:
         }
 
 
+def _h050_fold_model_hash(fitted: dict[str, Any]) -> str:
+    """Deterministic per-fold model-identity hash for the engine's hash_fn.
+
+    F-R-6 fix (Round-2 audit-remediate-loop 2026-05-03): without this
+    callback, ``WalkForwardEngine.run`` defaults to the literal string
+    ``"no-hash"`` for every fold, so the rolled-up model_hash carries
+    no information about the actual fitted models. Two runs with
+    different LightGBM hyperparameters or different HMM parameters
+    would produce identical rolled-up hashes and the ReproLog's
+    cryptographic chain to the substrate would be broken.
+
+    The hash binds:
+      - LightGBM ``selected_hp`` (the chosen hyperparameters from inner-CV)
+      - HMM emission means + log_pi + log_transmat + covars (full params)
+      - Inner-CV selection metrics (inner_cv_logloss, inner_cv_sharpe)
+
+    Degenerate folds where ``classifier`` is ``None`` (the y-degenerate
+    short-circuit at :func:`_fit_fold_body`) still hash deterministically:
+    HMM is always fitted; ``selected_hp`` is ``None`` which serialises
+    deterministically; inner-CV metrics are ``np.inf`` / ``-np.inf``
+    which also serialise deterministically.
+    """
+    h = hashlib.sha256()
+    selected_hp = fitted.get("selected_hp") or {}
+    h.update(b"selected_hp=")
+    h.update(
+        json.dumps(selected_hp, sort_keys=True, default=str).encode("utf-8")
+    )
+    hmm_obj = fitted.get("hmm")
+    params = getattr(hmm_obj, "params_", None) if hmm_obj is not None else None
+    if params is not None:
+        h.update(b"|hmm_means=")
+        h.update(np.ascontiguousarray(params.means).tobytes())
+        h.update(b"|hmm_log_pi=")
+        h.update(np.ascontiguousarray(params.log_pi).tobytes())
+        h.update(b"|hmm_log_transmat=")
+        h.update(np.ascontiguousarray(params.log_transmat).tobytes())
+        h.update(b"|hmm_covars=")
+        h.update(np.ascontiguousarray(params.covars).tobytes())
+        h.update(b"|hmm_cov_type=")
+        h.update(str(params.covariance_type).encode("utf-8"))
+    else:
+        h.update(b"|hmm=NA")
+    h.update(
+        f"|inner_logloss={fitted.get('inner_cv_logloss', 'NA')}".encode("utf-8")
+    )
+    h.update(
+        f"|inner_sharpe={fitted.get('inner_cv_sharpe', 'NA')}".encode("utf-8")
+    )
+    h.update(
+        f"|regime_high_mean={fitted.get('regime_high_mean', 'NA')}".encode("utf-8")
+    )
+    return h.hexdigest()
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write text to ``path`` atomically via temp-file + ``os.replace``.
+
+    F-R-5 fix (Round-2 audit-remediate-loop 2026-05-03): raw
+    ``Path.write_text`` is not atomic — a crash mid-write leaves a
+    truncated file on disk, which compounds the ReproLog flush-on-crash
+    semantics handled by :class:`RunContext`. Mirrors the
+    ``ReproLog.write`` atomic pattern at
+    :func:`src.skie_ninja.utils.reproducibility.ReproLog.write`.
+    """
+    import os as _os
+
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    _os.replace(str(tmp), str(path))
+
+
 def _validate_cache_invariant(
     cached: _CachedHmmFit,
     train_idx: np.ndarray,
@@ -728,6 +800,8 @@ def _inner_cv_select_hp(
     label_horizon: int,
     embargo: int,
     n_inner_folds: int,
+    fold_id: int,
+    cfg_idx: int,
 ) -> tuple[dict[str, Any] | None, float, float]:
     """Inner walk-forward CV over LightGBM HP draws.
 
@@ -739,6 +813,19 @@ def _inner_cv_select_hp(
     logistic loss (matches the LightGBM training objective per
     design.md §5). The inner-OOS Sharpe is also returned so the
     caller can use it for label-grid selection (P1-H050-LABEL-CV).
+
+    F-Q-3 fix (Round-2 audit-remediate-loop 2026-05-03): the random
+    search seed is derived per-``(fold_id, cfg_idx)`` from the master
+    ``lgb_seed`` via ``np.random.SeedSequence([lgb_seed, fold_id,
+    cfg_idx])`` so that each ``(fold, cfg)`` combination samples
+    INDEPENDENT hyperparameter draws. This applies the
+    Bergstra & Bengio 2012 §2.2 volume-coverage argument correctly:
+    repeated independent sampling at every (fold, cfg) tuple produces
+    the union of independent samples instead of repeating the SAME
+    200-draw fixed-permutation. Combined with the existing pre-reg
+    discrete grid (12 cells per H050.yaml `classifier.grid`), this
+    accelerates per-fold convergence to the grid-optimum without
+    altering the pre-reg-frozen master seed.
     """
     import lightgbm as lgb
 
@@ -751,7 +838,14 @@ def _inner_cv_select_hp(
     if not inner_folds:
         return None, np.inf, -np.inf
 
-    rng = np.random.default_rng(lgb_seed)
+    # F-Q-3 fix: derive a per-(fold_id, cfg_idx) sub-seed via
+    # SeedSequence so the random-search draws are INDEPENDENT across
+    # (fold, cfg) tuples. The master `lgb_seed` is the pre-reg-bound
+    # value (H050.yaml `classifier.search.seed = 20260420` per F-R-2
+    # fix); fold_id + cfg_idx are non-negative integers that decorrelate
+    # the streams.
+    seed_seq = np.random.SeedSequence([int(lgb_seed), int(fold_id), int(cfg_idx)])
+    rng = np.random.default_rng(seed_seq)
     draws = _draw_random_lgb_params(rng, lgb_grid, lgb_n_draws)
 
     best_params: dict[str, Any] | None = None
@@ -1462,6 +1556,17 @@ def _fit_fold_body(  # noqa: PLR0912, PLR0915
         global _LGB_INNER_CV_CURRENT_CTX
         if _LGB_INNER_CV_CURRENT_CTX is not None:
             _LGB_INNER_CV_CURRENT_CTX["fold_id"] = int(fold_id)
+        # F-Q-3 fix (Round-2 2026-05-03): pass fold_id + cfg_idx so the
+        # inner-CV random search seeds INDEPENDENTLY per (fold, cfg).
+        # cfg_idx is set by the cfg loop into _LGB_INNER_CV_CURRENT_CTX
+        # before _run_symbol_label_cfg is called (line ~2545); fall back
+        # to 0 only on the dry-run / smoke path that bypasses the cfg
+        # loop (single-cfg evaluation).
+        _cfg_idx_for_seed = (
+            int(_LGB_INNER_CV_CURRENT_CTX["cfg_idx"])
+            if (_LGB_INNER_CV_CURRENT_CTX is not None and "cfg_idx" in _LGB_INNER_CV_CURRENT_CTX)
+            else 0
+        )
         best_params, best_logloss, best_sharpe = _inner_cv_select_hp(
             X_train_outer=X_tr,
             y_train_outer=y_tr,
@@ -1473,6 +1578,8 @@ def _fit_fold_body(  # noqa: PLR0912, PLR0915
             label_horizon=label_horizon,
             embargo=embargo,
             n_inner_folds=n_inner_folds,
+            fold_id=int(fold_id) if fold_id is not None else 0,
+            cfg_idx=_cfg_idx_for_seed,
         )
         _inner_cv_done_ctx["best_logloss"] = f"{best_logloss:.4g}"
         _inner_cv_done_ctx["best_sharpe"] = f"{best_sharpe:.4g}"
@@ -1897,19 +2004,35 @@ def _load_output_sha256(paths: Any) -> dict[str, str]:
     files = sorted(_glob.glob(pattern))
     if not files:
         return {}
+    # F-R-4 fix (Round-2 audit-remediate-loop 2026-05-03): narrow the
+    # except clause to (OSError, json.JSONDecodeError) so a corrupt
+    # provenance JSON or schema regression surfaces as an unhandled
+    # exception instead of silently returning {}. Recreates the exact
+    # regression P1-CYCLE6-REPRO-DATASET-CHECKSUM was opened to close.
+    # Other unexpected exceptions (KeyError on a renamed schema key,
+    # unicode decode errors, etc.) propagate so the operator can
+    # diagnose the schema drift rather than running with an empty
+    # checksum binding.
     try:
         with open(files[-1], encoding="utf-8") as fh:
             prov = json.load(fh)
-        # output_frame_sha256 is the post-roll-adjustment combined hash;
-        # source_dataset_frame_sha256 is the pre-adjustment input hash.
-        sha = prov.get(
-            "output_frame_sha256",
-            prov.get("source_dataset_frame_sha256", ""),
+    except (OSError, json.JSONDecodeError) as exc:
+        _LOG.warning(
+            "Could not load provenance JSON %s: %s; "
+            "dataset_checksum binding will be empty. This will surface "
+            "in the ReproLog and trigger a post-run audit gate finding.",
+            files[-1],
+            exc,
         )
-        if sha:
-            return {"vendor_legacy_1min_roll_adjusted": sha}
-    except Exception:
-        pass
+        return {}
+    # output_frame_sha256 is the post-roll-adjustment combined hash;
+    # source_dataset_frame_sha256 is the pre-adjustment input hash.
+    sha = prov.get(
+        "output_frame_sha256",
+        prov.get("source_dataset_frame_sha256", ""),
+    )
+    if sha:
+        return {"vendor_legacy_1min_roll_adjusted": sha}
     return {}
 
 
@@ -2076,11 +2199,12 @@ def _run_symbol_label_cfg_body(  # noqa: PLR0915
     r_bar[1:] = np.diff(np.log(closes))
 
     n = sym_frame.shape[0]
+    # `bar_duration` is hardcoded to 1m to match the
+    # `vendor_legacy_1min_roll_adjusted` substrate's base grid (design.md §2
+    # line 35 "1-minute bars as the base grid"). If a successor hypothesis
+    # uses a different cadence, derive this from the panel's timestamp deltas.
     bar_duration = pd.Timedelta(minutes=1)
     label_horizon = labeler.label_horizon_bars(bar_duration)
-
-    bl = choose_block_length(r_bar, bootstrap_type="stationary")
-    embargo = int(max(1, np.ceil(bl.block_length)))
 
     if args.dry_run:
         initial_train = max(200, n // 3)
@@ -2116,10 +2240,34 @@ def _run_symbol_label_cfg_body(  # noqa: PLR0915
                 f"H050.yaml §data.test."
             )
 
+    # F-Q-1 fix (Round-2 audit-remediate-loop 2026-05-03 — F-V3-1 analog):
+    # Compute the Politis-White 2004 stationary-bootstrap block length on
+    # the TRAIN-ONLY slice of `r_bar`. The block length is then used as
+    # the splitter embargo (project-operational substitution; see also
+    # research/01_hypothesis_register/H050/embargo_pw2004_addendum_2026-05-03.md
+    # for the full project-operational framing per F-L-2). Slicing
+    # excludes the OOS test fold so test-fold serial correlation cannot
+    # inform the splitter geometry. `r_bar[0] == 0` by construction (no
+    # log-return for the first bar); the slice [1:initial_train) excludes
+    # that and the OOS region. The leading bar is excluded so the bootstrap
+    # estimator sees only true log-return increments.
+    if initial_train > 1:
+        r_bar_train_only = r_bar[1:initial_train]
+    else:
+        r_bar_train_only = r_bar[:0]
+    if r_bar_train_only.size > 0:
+        bl = choose_block_length(r_bar_train_only, bootstrap_type="stationary")
+        embargo = int(max(1, np.ceil(bl.block_length)))
+    else:
+        embargo = 1
+
     # Round-2 §F-2 fix: outer purge == per-cfg label_horizon, matching
     # the inner-CV purge in `_build_inner_folds`. AFML §7.4 mandates
     # purge_window == label horizon to remove training labels that are
-    # co-determined by post-test observations.
+    # co-determined by post-test observations. See
+    # research/01_hypothesis_register/H050/purge_rule_addendum_2026-05-03.md
+    # for the full ratification of per-cfg purge over the design.md §6
+    # "max(vertical_barrier) across CV-selected folds" grid-max wording.
     split = walk_forward_split(
         n_samples=n,
         initial_train_size=initial_train,
@@ -2185,6 +2333,11 @@ def _run_symbol_label_cfg_body(  # noqa: PLR0915
             warm_cold_diagnostic=warm_cold_diag,
         ),
         keep_fitted=True,
+        # F-R-6 fix (Round-2 audit-remediate-loop 2026-05-03): pass the
+        # H050 per-fold model-identity hash function so the engine's
+        # rolled-up model_hash carries actual model-identity content
+        # rather than the literal "no-hash" sentinel string.
+        hash_fn=_h050_fold_model_hash,
     )
 
     inner_sharpes = [
@@ -2684,9 +2837,10 @@ def _run_symbol_body(  # noqa: PLR0912, PLR0915
         ledger_path_for(sym_run_id, logs_reproducibility_dir=paths.logs_reproducibility),
     )
     for rec in result.fold_records:
-        (folds_dir / f"fold_{rec.fold_id:03d}.json").write_text(
+        # F-R-5 fix: atomic write per ADR-0010 multi-hour run safety.
+        _atomic_write_text(
+            folds_dir / f"fold_{rec.fold_id:03d}.json",
             json.dumps(dataclasses.asdict(rec), sort_keys=True, indent=2),
-            encoding="utf-8",
         )
 
     pl.DataFrame(
@@ -2858,6 +3012,14 @@ def run(argv: list[str] | None = None) -> Path:
     Q-1-1) — distinguishes a crashed run from a hung run in the
     JSON log stream. The exception is re-raised so the caller's
     error handling is unchanged.
+
+    F-R-7 fix (Round-2 audit-remediate-loop 2026-05-03): on exception
+    we also write a marker file to ``logs/crash_evidence/{run_id}/``
+    so the post-mortem record is preserved on direct invocation paths
+    (the supervisor already does this; the orchestrator did not).
+    The model_hash PENDING sentinel set inside ``_run_inner`` survives
+    the crash via :class:`RunContext` ``__exit__`` flush so downstream
+    verifiers can detect the crash from the ReproLog alone.
     """
     args = _parse_args(argv)
     cfg = load_config(args.config)
@@ -2872,8 +3034,13 @@ def run(argv: list[str] | None = None) -> Path:
     try:
         return _run_inner(args, cfg, paths)
     except BaseException as exc:
+        last_phase = (
+            next(reversed(list(_PROGRESS._t0)))
+            if _PROGRESS._t0
+            else "unknown"
+        )
         _PROGRESS.failed(
-            "run", exc_type=type(exc).__name__, **_run_start_ctx
+            "run", exc_type=type(exc).__name__, last_phase=last_phase, **_run_start_ctx
         )
         raise
 
@@ -2896,6 +3063,18 @@ def _run_inner(args: argparse.Namespace, cfg: RunConfig, paths: ProjectPaths) ->
         assert (  # noqa: S101
             ctx.log is not None and ctx.log.config_resolved_sha256 == cfg.config_resolved_sha256
         ), "RunContext failed to persist config_resolved_sha256 onto ReproLog"
+        # F-R-7 fix (Round-2 audit-remediate-loop 2026-05-03): set a
+        # PENDING sentinel as the model_hash IMMEDIATELY on RunContext
+        # entry so a mid-run crash flushes a model_hash field that is
+        # unambiguously distinguishable from a valid model_hash. Without
+        # this, the canonical RunContext.flush at __exit__ writes
+        # model_hash=None, which a downstream verifier cannot
+        # distinguish from "no-hash by design". The success path
+        # overwrites this with the final scientific_payload-bound hash
+        # at the end of the with-block. The exception path (caught at
+        # the run() level) overwrites with f"CRASHED-AT={phase}-exc=..."
+        # via the wrapper at run().
+        ctx.set_model_hash("PENDING")
         run_id = ctx.log.run_id  # type: ignore[union-attr]
         run_dir = paths.artifacts_runs / cfg.hypothesis_id / run_id
         paths.ensure(run_dir)
@@ -2988,14 +3167,15 @@ def _run_inner(args: argparse.Namespace, cfg: RunConfig, paths: ProjectPaths) ->
         else:
             combined_universe = "no-symbol-ran"
 
-        new_log = with_model_hash(ctx.log, combined_universe)  # type: ignore[arg-type]
-        ctx.log = new_log
-
-        (run_dir / "reprolog.json").write_text(
-            json.dumps(ctx.log.to_dict(), sort_keys=True, indent=2),
-            encoding="utf-8",
-        )
-
+        # F-R-1 fix (Round-2 audit-remediate-loop 2026-05-03): build the
+        # scientific_payload BEFORE binding model_hash so the SHA
+        # cryptographically pins the run-summary outputs (per-symbol
+        # status, n_folds, hmm_cache stats) to the ReproLog. Mirrors
+        # the H053 v4 reference implementation at
+        # scripts/run_h053_stage3_v4.py:921-926. Without this, the
+        # ReproLog.model_hash binds only the per-fold model rollup +
+        # warm-cold-diag — leaving an undetectable tampering window on
+        # the run_summary / per-symbol metrics_summary.json bytes.
         run_summary = {
             "hypothesis_id": cfg.hypothesis_id,
             "run_id": run_id,
@@ -3014,9 +3194,32 @@ def _run_inner(args: argparse.Namespace, cfg: RunConfig, paths: ProjectPaths) ->
                 for k, v in per_symbol_results.items()
             },
         }
-        (run_dir / "run_summary.json").write_text(
+        scientific_bytes = json.dumps(
+            run_summary, sort_keys=True, indent=2, default=str
+        ).encode("utf-8")
+        scientific_sha = hashlib.sha256(scientific_bytes).hexdigest()
+        # Combine the per-fold model rollup (already binds LightGBM HP +
+        # HMM params via _h050_fold_model_hash per F-R-6) with the
+        # scientific_payload SHA. The resulting model_hash binds BOTH
+        # model identity AND scientific outputs into one canonical value.
+        final_model_hash = hashlib.sha256(
+            f"model_rollup={combined_universe};scientific_payload={scientific_sha}".encode()
+        ).hexdigest()
+        new_log = with_model_hash(ctx.log, final_model_hash)  # type: ignore[arg-type]
+        ctx.log = new_log
+
+        # F-R-5 fix: atomic_write_text instead of raw write_text.
+        _atomic_write_text(
+            run_dir / "reprolog.json",
+            json.dumps(ctx.log.to_dict(), sort_keys=True, indent=2),
+        )
+        _atomic_write_text(
+            run_dir / "run_summary.json",
             json.dumps(run_summary, sort_keys=True, indent=2, default=str),
-            encoding="utf-8",
+        )
+        _atomic_write_text(
+            run_dir / "scientific_payload_sha256.txt",
+            scientific_sha + "\n",
         )
 
     _PROGRESS.done(
@@ -3032,9 +3235,12 @@ def _run_inner(args: argparse.Namespace, cfg: RunConfig, paths: ProjectPaths) ->
 
 
 def _write_aggregate(agg_dir: Path, metrics: dict[str, Any]) -> None:
-    (agg_dir / "metrics_summary.json").write_text(
+    # F-R-5 fix (Round-2 audit-remediate-loop 2026-05-03): atomic
+    # write so a crash mid-write leaves either the prior version OR
+    # the new version on disk, never a truncated/partial file.
+    _atomic_write_text(
+        agg_dir / "metrics_summary.json",
         json.dumps(metrics, sort_keys=True, indent=2, default=str),
-        encoding="utf-8",
     )
 
 
@@ -3052,6 +3258,44 @@ if __name__ == "__main__":
     from skie_ninja.utils.process_protection import system_required_wakelock
 
     setup_logging()
+
+    # F-R-3 fix (Round-2 audit-remediate-loop 2026-05-03): enforce BLAS
+    # single-threaded execution per ADR-0009 at the orchestrator entry
+    # point. The supervised launch path (scripts/supervised_run.py) sets
+    # the env vars via setdefault, but direct invocation of this script
+    # (advertised in the docstring lines 5-8 as a valid path) bypasses
+    # that. Without single-threaded BLAS the HMM EM produces results
+    # that are non-byte-reproducible across machines, breaking the
+    # ReproLog's contract. We assert env vars first (cheaper, propagates
+    # to subprocesses if any) and use threadpoolctl as a defence-in-depth
+    # in-process limiter (catches any thread pool that the env vars
+    # don't reach, e.g. Apple Accelerate on macOS).
+    import os as _os
+    _required_thread_pinning = (
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+    )
+    _missing_pinning = [
+        k for k in _required_thread_pinning if _os.environ.get(k) != "1"
+    ]
+    if _missing_pinning:
+        raise RuntimeError(
+            f"BLAS thread-pinning env vars {_missing_pinning!r} must be "
+            "set to '1' per ADR-0009 (BLAS thread pinning). The canonical "
+            "launch path is `scripts/supervised_run.py` which sets these "
+            "automatically. For direct invocation of run_walk_forward.py "
+            "prefix with: "
+            "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 "
+            "(closes follow-up P1-BLAS-PIN-ORCHESTRATOR-WRAPPER)."
+        )
+    try:
+        from threadpoolctl import threadpool_limits as _threadpool_limits
+    except ImportError:  # threadpoolctl is in pyproject; this is defence-in-depth
+        _threadpool_limits = None
+    if _threadpool_limits is not None:
+        _threadpool_limits(limits=1)
+
     with system_required_wakelock():
         out = run(sys.argv[1:])
     print(out)
