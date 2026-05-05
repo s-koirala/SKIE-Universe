@@ -323,10 +323,23 @@ def compute_h052a_features(
     dow = compute_dow_onehot(panel)
     eth = compute_eth_pre_rth(panel)
 
+    # Normalise session_date_et precision across all feature panels to a
+    # common datetime[ns, UTC] (post-stall fix #2 2026-05-05): the polars-
+    # to-pandas-to-polars round-trips inside individual feature factories
+    # yield mixed μs / ns precisions which fail polars `join` with
+    # SchemaError. Cast every panel's session_date_et to ns before join.
+    _norm = pl.col("session_date_et").cast(pl.Datetime("ns", "UTC"))
+    rv = rv.with_columns(_norm)
+    fhs = fhs.with_columns(_norm)
+    gap = gap.with_columns(_norm)
+    dow = dow.with_columns(_norm)
+    eth = eth.with_columns(_norm)
+
     sessions = (
         rv.select(["symbol", "session_date_et"]).unique(maintain_order=True)
     )
     vix = compute_vix_daily_join(sessions, vix_daily)
+    vix = vix.with_columns(_norm)
 
     out = (
         rv.join(fhs, on=["symbol", "session_date_et"], how="inner")
