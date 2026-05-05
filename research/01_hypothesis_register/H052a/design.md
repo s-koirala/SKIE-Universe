@@ -168,3 +168,110 @@ The H052a decision rule is restructured per [ADR-0012 §"Disposition labels unde
 ## 12. Relationship to H052b and other Tier-2b hypotheses
 
 H052a and [H052b](../H052b/design.md) share: HMM toolkit, first-hour directional timing signal, emission-feature family, gate logic. They differ in: execution instrument (futures vs QQQ 0DTE calls), payoff structure (linear vs long-convex), capacity mapping (direct vs delta-equivalent), data dependency (live raw 1-min vs vendor-gated option chain). Both enter the same Hansen SPA universe. [H050](../H050/) and [H051](../H051/) likewise share the HMM toolkit but carry distinct economic content.
+
+## 15. NinjaScript Implementation (NEW per [ADR-0013 §5.1](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md), 2026-05-04)
+
+Per ADR-0013 §5 + §5.1, every hypothesis design.md gains a §15 enumerating the NinjaScript C# implementation. H052a's NinjaScript implementation is sequenced AFTER the production walk-forward Stage-3 KPI report card emission per follow-up `P1-H052A-NINJASCRIPT-IMPL`.
+
+**Operator-discretionary per 2026-05-04 user directive**: per the user 2026-05-04 directive following H050 v1's definitive negative result, NinjaScript implementation past `kpi-report-emitted` is **operator-discretionary on the canonical KPI report card values** (per ADR-0013 §5.3 + §1 stage-progression operator-promotion semantics). H052a's `kpi-report-emitted` → `ninjascript-implemented` transition is therefore not auto-triggered; the operator decides upon review of the §3.2 canonical 9-table summary at end-of-simulation per [ADR-0014 §3.2](../../../docs/decisions/ADR-0014-canonical-end-of-simulation-results-summary-tables.md).
+
+This section is also the venue for **citation-erratum acknowledgments** per ADR-0013 §"Frozen pre-registration amendment" (§1-§7 of this design.md are immutable; corrections to citation defects in §1-§7 are documented here without editing the original §-text).
+
+### 15.1 Citation errata (Phase-0 ORB lit-check 2026-05-04 findings L-1 through L-4)
+
+The following citation + framing defects were surfaced by the Phase-0 ORB lit-check audit ([docs/audits/audit_trail_2026-05-04_h052a-orb-lit-check.md](../../../docs/audits/audit_trail_2026-05-04_h052a-orb-lit-check.md)). They are recorded here per the §1-§7 immutability discipline:
+
+#### Erratum-1 (L-1; severity = critical): "Zarattini / Galli / Pagani / Saavedra" citation chain
+
+**Frozen text** (design.md §1 line 34): "ORB literature (Zarattini / Galli / Pagani / Saavedra) flagged UNVERIFIED pending primary-source retrieval — will be addressed in a `lit-check` audit before `designed` → `running`."
+
+**Verified primary sources** (Phase-0 lit-check 2026-05-04):
+- **Zarattini ✓ VERIFIED**: Carlo Zarattini, Concretum Group / Swiss Finance Institute. Three SSRN papers verified:
+  - Zarattini, C., Barbon, A. & Aziz, A. (2024). "A Profitable Day Trading Strategy For The U.S. Equity Market." [SSRN 4729284](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4729284) (SFI Research Paper No. 24-98).
+  - Zarattini, C. & Aziz, A. (2023). "Can Day Trading Really Be Profitable?" [SSRN 4416622](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4416622).
+  - Zarattini, C., Aziz, A. & Barbon, A. (2024). "Beat the Market: An Effective Intraday Momentum Strategy for SPY." [SSRN 4824172](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4824172).
+- **Pagani — PARTIAL MISATTRIBUTION**: Alberto Pagani is a real Concretum Group co-author of Zarattini, but on **NON-ORB** papers (trend-following on stocks SSRN 5084316; crypto trend SSRN 5209907; factor-portfolio rebalancing SSRN 5747964; QuanTip intraday-trend overlay SSRN 6391638). No Pagani-authored ORB paper exists. Pagani is correctly recognized as a Zarattini collaborator but is NOT part of the ORB primary-literature chain.
+- **Galli — UNVERIFIABLE**: searches across SSRN, ResearchGate, Concretum publication list, Semantic Scholar, IEEE Xplore, ScienceDirect returned no ORB-related paper authored by anyone named "Galli". Likely a hallucinated citation.
+- **Saavedra — UNVERIFIABLE**: searches returned no ORB-related paper by "Saavedra". Likely a hallucinated citation.
+
+**Replacement primary-source citation chain** for the ORB literature underpinning H052a (use these going forward):
+- **Crabel, T. (1990).** *Day Trading with Short Term Price Patterns and Opening Range Breakout.* Greenville, SC: Traders Press. ISBN 0934380171. (Historical primary; pre-electronic-trading universe.)
+- **Holmberg, U., Lönnbark, C. & Lundström, C. (2013).** "Assessing the profitability of intraday opening range breakout strategies." *Finance Research Letters* 10(1):27-33. [doi:10.1016/j.frl.2012.09.001](https://doi.org/10.1016/j.frl.2012.09.001). (Tier-1 peer-reviewed; S&P-500 + crude oil futures; significantly positive returns.)
+- **Lundström, C.** (Umeå Economic Studies WP 845; [DiVA 732318](https://www.diva-portal.org/smash/get/diva2:732318/FULLTEXT02.pdf)). S&P-500 futures volatility-state conditioning; reports ~150 bp/day differential between high-vs-low-vol states. **CLOSEST PUBLISHED ANALOGUE** to the H052a HMM-regime composition.
+- **Zarattini, C., Barbon, A. & Aziz, A. (2024).** [SSRN 4729284](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4729284). (Tier-2 SSRN working paper; ~7,000 single-name US equities; 5-min ORB primary with 15/30/60-min comparison.)
+- **Tsai, Y.-C., Wu, M.-E., Syu, J.-H., Lei, C.-L., Wu, C.-S., Ho, J.-M. & Wang, C.-J. (2019).** "Assessing the Profitability of Timely Opening Range Breakout on Index Futures Markets." *IEEE Access* 7:32061-32071. [doi:10.1109/ACCESS.2019.2899852](https://doi.org/10.1109/ACCESS.2019.2899852). (Tier-1 peer-reviewed; DJIA, SP500, NASDAQ, HSI, TAIEX index futures 2003-2013; >8% annual / p<0.03 in all five markets.)
+
+**Operational impact**: design.md §1 line 34 retains its frozen text for pre-reg-fidelity; this §15.1 erratum is the canonical citation chain going forward. Implementation code + KPI report card v1 (when emitted) MUST cite the verified primaries from this section, NOT the original four-name string.
+
+**Disposition**: erratum-acknowledged-here; no §1 line 34 edit.
+
+#### Erratum-2 (L-2; severity = major): "Unconditional ORB-on-futures is pre-supposed to be ≈null"
+
+**Frozen text** (design.md §1 line 33): "H052a is NOT a rediscovery of ORB-on-futures. Unconditional ORB-on-futures is pre-supposed to be ≈null. H052a tests whether **regime-conditioning rescues an otherwise null signal**. A positive result would be surprising and carry large evidentiary weight against prior-art; a null is the expected outcome."
+
+**Lit-check finding**: this pre-supposition is **CONTRADICTED by the peer-reviewed primary literature**:
+- Holmberg-Lönnbark-Lundström 2013 (FRL doi:10.1016/j.frl.2012.09.001) reports significantly positive ORB returns on S&P-500 + crude oil futures.
+- Tsai et al. 2019 (IEEE Access doi:10.1109/ACCESS.2019.2899852) reports >8% annual / p<0.03 on five index futures including S&P 500.
+
+The "≈50% AUC" cite in §1 line 32 is to an internal SKIE Ninja README — Tier-5 evidence, not peer-reviewed.
+
+**Reconciliation as project-internal prior** (per audit recommendation Path A): the §1 line 33 pre-supposition is **reframed** as a project-internal prior specific to the SKIE Ninja cost-aware constant-tick-slippage setup. The peer-reviewed lit reports gross-of-cost or modest-cost positive returns; the SKIE Ninja prior expects the per-tick slippage + commission overhead to attenuate the gross effect to ≈null on retail-size positions. The HMM-regime-conditioning is then the empirical content tested.
+
+**Implications for H_1**: H_1 (T_H052a = SR_gated − SR_uncond > 0) is unchanged. The reconciliation affects only the §1 motivational framing — H_1 still tests whether HMM-gating adds value, regardless of whether the unconditional baseline is ≈null (project prior) or modestly positive (peer-reviewed lit). A positive T_H052a establishes "HMM-gating adds value over unconditional ORB" REGARDLESS of which baseline framing is correct.
+
+**Disposition**: erratum-acknowledged-here; design.md §1 line 33 unchanged. Operator review at the KPI report card stage transition consults the realized unconditional ORB Sharpe (computed alongside the gated Sharpe per the design.md §1 paired-differential test statistic) for the actual baseline magnitude on H052a's substrate.
+
+#### Erratum-3 (L-3; severity = major): Lundström vol-state-conditioning prior-art uncited
+
+**Frozen text** (design.md §1 line 32): "Mechanism: ... [HMM emission state filtering of] high-noise days where even a true drift is swamped by microstructure noise."
+
+**Closest published analogue** (uncited in §1): Lundström S&P-500 futures volatility-state conditioning (Umeå Economic Studies WP 845 / DiVA 732318) reports ~150 bp/day differential between high-vol and low-vol states on S&P-500 futures. This is the closest published analogue to the H052a HMM-regime composition: ORB profitability is regime-conditional at the volatility-state grain.
+
+**Implications**: the H052a HMM-gate is **novel as a Gaussian-HMM composition** but stands on **Lundström's vol-state-conditioning prior-art**. This **strengthens** H052a's mechanistic motivation, NOT weakens it. The HMM-gate is a multi-state generalization (Gaussian-HMM with `n_states ≥ 2` per ADR-0005) of Lundström's binary-vol-state cut; the project's contribution is methodological (HMM toolkit replaces ad-hoc vol percentile cut) rather than mechanistic-novelty.
+
+**Disposition**: erratum-acknowledged-here; design.md §1 line 32 unchanged. Implementation code + KPI report card MUST cite Lundström as prior-art alongside the H_1 test.
+
+#### Erratum-4 (L-4; severity = minor): 60-min "first hour" OR window vs literature-canonical 5-min
+
+**Frozen text** (design.md §1 line 31, §4 line 65, §11.5 prereq): "first-hour ORB long-only directional trade ... 10:30 ET ..."
+
+**Lit-check finding**: the literature-canonical OR window is shorter than 60 minutes:
+- Crabel 1990: 5/15/30-min OR
+- Zarattini 2024 primary: 5-min OR (with 15/30/60-min comparison)
+- Holmberg 2013: not pinned to 60-min
+- Tsai 2019 TORB: volatility-pinned, not strict 60-min
+
+The H052a 60-min OR window is operator-anchored to the **09:30-10:30 ET sibling QQQ-call window** (H052b first-hour 0DTE long-call scalp; documented in [research/01_hypothesis_register/H052b/design.md](../H052b/design.md)). It is **not** literature-canonical.
+
+**Disposition**: erratum-acknowledged-here; the 60-min choice is preserved under pre-reg fidelity. A future successor hypothesis (or a `P1-H052A-OR-WINDOW-ROBUSTNESS-EXHIBIT` follow-up) MAY add 5/15/30-min OR robustness exhibits as ex-post diagnostics; this v1 reports the 60-min OR per the frozen pre-reg.
+
+### 15.2 ADR-0014 §3.2 canonical end-of-simulation results-summary tables (MANDATORY)
+
+Every H052a KPI report card from `kpi-report-emitted` forward MUST include the §"End-of-simulation results summary" section per [ADR-0014 §3.2](../../../docs/decisions/ADR-0014-canonical-end-of-simulation-results-summary-tables.md): 9 tables + bottom-line prose at the top of the report card (between H1 + preamble and §"Methodological-correctness annotations"). Template at [research/_templates/kpi_results_summary_template.md](../../../research/_templates/kpi_results_summary_template.md). Reference realization: [H050 KPI report card v1](../H050/H050_kpi_report_v1.md) §"End-of-simulation results summary".
+
+H052a sizing convention per ADR-0013 §3.1.1 row "First-hour ORB futures (H052a)": 100%-of-equity at ORB-trigger; position closed at end-of-first-hour or stop-out. The §3.2 simulator (forward 1-year projection) is daily-cleared session-cadence (sessions = trading days; n_sessions = 252) per ADR-0013 §3.1 + §3.1.2 — **avoids the bar-vs-session horizon mismatch that complicated H050's §3.1 forward projection** (per H050 v1 audit-remediate-loop F-Q-2 critical finding).
+
+### 15.3 NinjaScript implementation plan (deferred to `P1-H052A-NINJASCRIPT-IMPL`)
+
+H052a's NinjaScript implementation is **deferred** to follow-up `P1-H052A-NINJASCRIPT-IMPL`, which fires per **operator-discretionary review** of the canonical §3.2 9-table summary at end-of-simulation per the 2026-05-04 user directive.
+
+Provisional structure (to be completed when the follow-up fires):
+
+- **C# class name**: `HmmRegimeGatedFirstHourORB` (provisional)
+- **C# file path**: `ninjascript/strategies/HmmRegimeGatedFirstHourORB.cs` (provisional)
+- **Strategy parameters**: mapped from H052a.yaml — `or_window_minutes=60` + `pt_multiplier ∈ {0.5, 1.0, 1.5}` + `sl_multiplier ∈ {0.5, 1.0, 1.5}` + HMM cfg (`covariance_type ∈ {diag, full}`, `n_states` per ADR-0005 adaptive rule)
+- **Entry logic**: long market order at 10:30 ET when (a) price > opening-range high AND (b) HMM forward-filter posterior `P(s_t = state_0 | y_{1:t_0}) > τ`; flat otherwise
+- **Exit logic**: PT at `entry + k_pt × σ_60m`, SL at `entry - k_sl × σ_60m`, time-stop 14:00 ET, hard-close 15:55 ET (mirrors design.md §4)
+- **Kill-switch parameters**: per design.md §11.1 (TBD)
+- **Fill-log schema**: matches plan §6.1
+- **Sim101 smoke-test record**: TBD when follow-up fires
+- **Bridge-mediated implementation** per [ADR-0002](../../../docs/decisions/ADR-0002-bridge-selection.md) (HMM forward-filter requires Python inference at decision time per [ADR-0005 §"Fold-boundary state continuity"](../../../docs/decisions/ADR-0005-hmm-regime-toolkit.md))
+- **Cross-reference**: this design.md + the canonical KPI report card v1 (TBD)
+
+### 15.4 Cross-references
+
+- ADR-0013 §5 (NinjaScript-mandate; 2026-05-04 operator-discretionary amendment) + §5.1 (NinjaScript Implementation section requirement) + §5.2 (bridge-mediated parity check) + §3.1 (Realized-OOS + Forward-Projection mandate) + §3.1.1 (sizing-convention table row "First-hour ORB futures")
+- [ADR-0014 §3.2](../../../docs/decisions/ADR-0014-canonical-end-of-simulation-results-summary-tables.md) — canonical 9-table + bottom-line summary
+- [docs/audits/audit_trail_2026-05-04_h052a-orb-lit-check.md](../../../docs/audits/audit_trail_2026-05-04_h052a-orb-lit-check.md) — Phase-0 ORB lit-check audit-remediate-loop trail (this commit)
+- [research/01_hypothesis_register/H050/H050_kpi_report_v1.md](../H050/H050_kpi_report_v1.md) §15 — H050 erratum precedent (AFML §3.2 → §3.4 + Hamilton 1989 quarterly-GNP scope + B&B 2012 N=200 vs N=60)
+- [research/01_hypothesis_register/H052b/design.md](../H052b/design.md) — sibling 0DTE QQQ first-hour long-call scalp (separate sibling repo `s-koirala/SKIE-NINJA-0DTE`)

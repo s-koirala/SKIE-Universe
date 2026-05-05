@@ -1,0 +1,40 @@
+---
+hypothesis_id: H052a
+schema_version: stage_tracker_v1
+created: 2026-05-05
+---
+
+# Stage Tracker — H052a
+
+Per [ADR-0013](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §1.1, this is an **append-only** chronological record of every stage transition. The current stage of the strategy is the most recent row's `stage` value.
+
+| date | stage | transition_evidence | operator | notes |
+|---|---|---|---|---|
+| 2026-04-23 | exploration-in-progress | design.md frozen at status=designed; pre-reg via [research/01_hypothesis_register/H052a/design.md](design.md) (Tier 2b; ADR-0005 + ADR-0006 scope; futures-variant sibling of H052b) | skoir | Initial pre-registration. ORB literature flagged UNVERIFIED at design time pending Phase-0 lit-check. |
+| 2026-05-04 | exploration-in-progress (sub: phase-0-lit-check + phase-1-buildout) | Phase-0 ORB lit-check (commit `fa7b5c8`): 4 dispositioned errata (L-1 critical Galli/Saavedra hallucinated + Pagani non-ORB misattribution; L-2 major ≈null pre-supposition contradicted by Holmberg 2013 + Tsai 2019; L-3 major Lundström vol-state-conditioning prior-art uncited; L-4 minor 60-min OR not literature-canonical) → Path A §15.1 errata addendum. Phase-1 dedicated orchestrator + features + cost model (commit `6e87a9d`): 5 critical + 9 major Phase-1 audit findings remediated. | skoir | Phase A → Phase 1 buildout. Audit trails: [audit_trail_2026-05-04_h052a-orb-lit-check.md](../../../docs/audits/audit_trail_2026-05-04_h052a-orb-lit-check.md), [audit_trail_2026-05-04_h052a-phase-1-infrastructure.md](../../../docs/audits/audit_trail_2026-05-04_h052a-phase-1-infrastructure.md). |
+| 2026-05-05 | exploration-in-progress (sub: phase-2-production-walk-forward) | 5 build defects fixed under audit-remediate-loop (commits `583a4ee` O(N²) labeller; `27ed41d` VIX dtype; `3f2330a` feature panel precision; `20e6450` orchestrator join precision; `0aa9258` HMMParams API). 6th launch: production walk-forward run_id `184eccd67bf24d71990265d39c28daf0` completed 11:44:43 (~14 min wall-clock; both symbols ok); ReproLog at [logs/reproducibility/184eccd67bf24d71990265d39c28daf0.json](../../../logs/reproducibility/184eccd67bf24d71990265d39c28daf0.json); scientific_payload SHA `cca86b27...`. | skoir | First clean H052a production walk-forward. ES 27/27 cfgs + NQ 27/27 cfgs. T_H052a < 0 on both, but LW2008 differential CI COVERS zero on both — non-significant null (cf. H050 where CI excluded zero on the negative side). |
+| **2026-05-05** | **kpi-report-emitted** | **KPI report card [v1](H052a_kpi_report_v1.md) emitted; orchestrator [scripts/run_h052a_walk_forward.py](../../../scripts/run_h052a_walk_forward.py) (SHA `de3a41e7...`); §3.1 mandatory block populated (5,000-path bootstrap × 252 sessions; PW2004-selected block-lengths per arm × symbol)** | **skoir** | **First H052a KPI report card. Stage transition `exploration-in-progress` → `kpi-report-emitted` per ADR-0013 §1. All methodological-correctness annotations green or n/a. Performance KPIs: ES T_H052a = -0.0184 [-0.0676, +0.0260] (annualised -0.292); NQ T_H052a = -0.0342 [-0.1232, +0.0033] (annualised -0.542); LW2008 CI covers zero on both (non-significant). NQ unconditional ORB is the single positive cell on every metric (annualised SR +0.855, +10.61% realized OOS, P(loss)=18.56% in 252-session forward projection) — consistent with primary-literature unconditional ORB-on-futures (Holmberg-Lönnbark-Lundström 2013; Tsai 2019). HMM gating reduces but does not significantly damage performance; non-significant null is consistent with design.md §1's a-priori expectation. Per user's 2026-05-04 standing directive, next stage transition (`kpi-report-emitted` → `ninjascript-implemented`) is operator-discretionary, not auto-mandated. Tracked under `P1-H052A-NINJASCRIPT-IMPL`.** |
+| **2026-05-05** | **kpi-report-emitted** (operator-declined-ninjascript-progression) | **Operator decision logged at [logs/promotions/184eccd67bf24d71990265d39c28daf0_H052a_operator-decline-ninjascript.md](../../../logs/promotions/184eccd67bf24d71990265d39c28daf0_H052a_operator-decline-ninjascript.md). Authority: user's 2026-05-04 standing directive ("The failure of profit and projected profit negates our need to move onto ninjascript implementation. This will be the user's discretion upon presentation of results in the canonical format"). Decision criteria reviewed at decision time: (1) gated-arm realised P/L at-or-near-flat (ES -0.94%; NQ +3.39%); (2) gated-arm forward P(loss) = 54.84% / 37.12%; (3) hypothesis-of-record T_H052a > 0 NOT supported (CI covers zero); (4) strongest cell (NQ unconditional ORB) is NOT the H052a hypothesis-of-record; (5) bridge-mediated NinjaScript cost-of-implementation outweighs research value at this KPI level. All methodological-correctness annotations green or n/a; no acknowledgment required. Stage UNCHANGED at `kpi-report-emitted`; H052a is recorded-not-retired per ADR-0013 §4.1 non-loss; future operator may reverse at any time. New follow-up `P1-H052C-NQ-UNCONDITIONAL-ORB-PRE-REG` registers the strongest cell as a candidate for a successor hypothesis ID with its own design.md (pure-C# implementable; no HMM). `P1-H052A-NINJASCRIPT-IMPL` superseded by this decision but preserved as open-deferred (reversible).** | **skoir** | **Operator declines mandatory `kpi-report-emitted` → `ninjascript-implemented` transition per ADR-0013 §5.3 operator-discretionary clause + user's 2026-05-04 standing directive. H052a is a non-significant null on the hypothesis-of-record; the strongest cell (NQ unconditional ORB) is a literature-replication artifact, not the H052a hypothesis. Operator decision is decision-of-record at this date + run_id, NOT a permanent terminal verdict. Strategy recorded, not retired.** |
+
+## Append discipline
+
+- New rows APPEND to the table; existing rows are immutable.
+- A correction produces a new row with `notes` annotated `corrects row N`; the original row stays.
+- File deletion is fail-closed under [scripts/_hooks/check_non_loss_deletion.py](../../../scripts/_hooks/check_non_loss_deletion.py).
+
+## Cross-references
+
+- Failure log: [failure_log.md](failure_log.md)
+- KPI report card: [v1](H052a_kpi_report_v1.md) (emitted 2026-05-05)
+- Promotion logs: [../../../logs/promotions/](../../../logs/promotions/) (none yet for H052a)
+- Audit-remediate-loop trails:
+  - [docs/audits/audit_trail_2026-05-04_h052a-orb-lit-check.md](../../../docs/audits/audit_trail_2026-05-04_h052a-orb-lit-check.md) (Phase 0 ORB lit-check; R2 ACCEPT)
+  - [docs/audits/audit_trail_2026-05-04_h052a-phase-1-infrastructure.md](../../../docs/audits/audit_trail_2026-05-04_h052a-phase-1-infrastructure.md) (Phase 1 dedicated orchestrator; R2 ACCEPT)
+  - [docs/audits/audit_trail_2026-05-05_h052a-phase-2-build-defects.md](../../../docs/audits/audit_trail_2026-05-05_h052a-phase-2-build-defects.md) (Phase 2 build-defect remediation chain; R2 ACCEPT — 5/5 defects → 6th launch exit 0)
+- Frozen-pre-reg amendment trails:
+  - [research/01_hypothesis_register/H052a/design.md §15.1](design.md#151-citation-errata-phase-0-orb-lit-check-2026-05-04-findings-l-1-through-l-4) (Path A errata addendum; commit `fa7b5c8`)
+
+## Next mandatory transitions (per ADR-0013 §5)
+
+1. ~~`exploration-in-progress` → `kpi-report-emitted`~~: **CLOSED 2026-05-05** via KPI report card [v1](H052a_kpi_report_v1.md) emission on production walk-forward run_id `184eccd67bf24d71990265d39c28daf0`.
+2. ~~`kpi-report-emitted` → `ninjascript-implemented`~~: **DECLINED 2026-05-05** by operator per [logs/promotions/184eccd67bf24d71990265d39c28daf0_H052a_operator-decline-ninjascript.md](../../../logs/promotions/184eccd67bf24d71990265d39c28daf0_H052a_operator-decline-ninjascript.md). Authority: user's 2026-05-04 standing directive + ADR-0013 §5.3 operator-discretionary clause. Decision is reversible — `P1-H052A-NINJASCRIPT-IMPL` follow-up preserved as open-deferred (a future operator may reverse the decline at any time and authorize bridge-mediated NinjaScript implementation per ADR-0013 §1.2 + ADR-0002). H052a stage remains `kpi-report-emitted`; strategy is recorded, not retired.

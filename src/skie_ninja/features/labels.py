@@ -32,6 +32,7 @@ References
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -326,9 +327,395 @@ class TripleBarrierLabeler:
         )
 
 
+# ---------------------------------------------------------------------------
+# Opening-Range-Breakout (ORB) labels for H052a
+# ---------------------------------------------------------------------------
+#
+# Per H052a frozen pre-reg [research/01_hypothesis_register/H052a/design.md] §4 +
+# §15.1 errata addendum (2026-05-04):
+#
+#   - Entry: market order at fixed RTH time `entry_time_et` (default 10:30 ET)
+#     on the front-month roll-adjusted contract; long-only per pre-reg.
+#   - Profit target: `pt_mult × annualised_σ_lookback` above entry close.
+#   - Stop loss:     `sl_mult × annualised_σ_lookback` below entry close.
+#   - Time stop:     fixed RTH time `time_stop_et` (default 14:00 ET).
+#   - Hard close:    fixed RTH time `hard_close_et` (default 15:55 ET).
+#   - Volatility lookback grid: {30, 60, 120} minutes per design.md §4.
+#   - PT/SL multiplier grids: {0.5, 1.0, 1.5} each per design.md §4.
+#
+# The HMM regime-gate is applied at the orchestrator level (per design.md §5);
+# this labeller produces UNCONDITIONAL per-session ORB labels. The orchestrator
+# composes labeller output with HMM-gate posterior to construct the H052a test
+# statistic T_H052a = SR_gated − SR_unconditional.
+#
+# Volatility convention: realized variance via squared log-returns
+# (Andersen-Bollerslev 1998 doi:10.2307/2527343) over the prior
+# `realized_vol_lookback_minutes` window of 1-min bars, annualised by
+# √(252 × 390 RTH bars) = √(98,280) ≈ 313.5. Matches the §3 emission feature
+# convention (rv_realized).
+#
+# Per ADR-0013 §3.1.1 sizing-convention table: H052a is "First-hour ORB futures"
+# archetype — 100%-of-equity at ORB-trigger; position closed at first-hour
+# end OR PT/SL/timestop/hardclose. Daily-cleared session-cadence (avoids the
+# bar-vs-session horizon issue that complicated H050's §3.1 forward projection
+# per F-Q-2 / P1-H050-SESSION-AGGREGATE-FORWARD-PROJECTION). Note: ADR-0014
+# §3.2 governs the canonical end-of-simulation 9-table summary, NOT the
+# sizing convention; F-L-1 audit-remediate-loop 2026-05-04 corrected prior
+# misattribution.
+
+
+@dataclass(frozen=True)
+class OpeningRangeBreakoutConfig:
+    """Configuration for :class:`OpeningRangeBreakoutLabeller` (H052a).
+
+    Per design.md §4 + §15.1 errata 2026-05-04:
+
+      - ``pt_mult``, ``sl_mult``: profit-target / stop-loss multipliers
+        of the annualised σ over the prior ``realized_vol_lookback_minutes``
+        window. Both must be > 0. Pre-registered grid:
+        ``{0.5, 1.0, 1.5}`` each (design.md §5 line 86).
+      - ``realized_vol_lookback_minutes``: rolling window for σ.
+        Pre-registered grid: ``{30, 60, 120}`` (design.md §5 line 85).
+      - ``entry_time_et``, ``time_stop_et``, ``hard_close_et``:
+        ET wall-clock times in ``"HH:MM"`` form. Defaults match
+        design.md §4 (10:30 / 14:00 / 15:55 ET).
+    """
+
+    pt_mult: float
+    sl_mult: float
+    realized_vol_lookback_minutes: int
+    entry_time_et: str = "10:30"
+    time_stop_et: str = "14:00"
+    hard_close_et: str = "15:55"
+
+    def __post_init__(self) -> None:
+        if self.pt_mult <= 0:
+            raise ValueError(f"pt_mult must be > 0; got {self.pt_mult}.")
+        if self.sl_mult <= 0:
+            raise ValueError(f"sl_mult must be > 0; got {self.sl_mult}.")
+        if self.realized_vol_lookback_minutes <= 0:
+            raise ValueError(
+                f"realized_vol_lookback_minutes must be > 0; got "
+                f"{self.realized_vol_lookback_minutes}."
+            )
+        for fld in ("entry_time_et", "time_stop_et", "hard_close_et"):
+            v = getattr(self, fld)
+            if not (isinstance(v, str) and len(v) == 5 and v[2] == ":"):
+                raise ValueError(
+                    f"{fld} must be 'HH:MM' string; got {v!r}."
+                )
+
+
+@dataclass(frozen=True)
+class OpeningRangeBreakoutLabel:
+    """Single (symbol, session_date_et) ORB label output."""
+
+    symbol: str
+    session_date_et: pd.Timestamp  # midnight ET on the session date
+    entry_ts: pd.Timestamp  # UTC; first bar at or after entry_time_et
+    entry_price: float
+    realized_vol_at_entry: float  # annualised σ
+    pt_price: float
+    sl_price: float
+    exit_ts: pd.Timestamp
+    exit_price: float
+    exit_reason: str  # "pt" | "sl" | "timestop" | "hardclose" | "no_data"
+    pnl_log: float  # log(exit_price / entry_price); raw (cost applied separately)
+
+
+_RTH_BARS_PER_SESSION: int = 390  # 6.5 hr × 60 min
+
+
+class OpeningRangeBreakoutLabeller:
+    """Produce per-session ORB labels on a 1-min RTH OHLC panel (H052a).
+
+    Usage::
+
+        cfg = OpeningRangeBreakoutConfig(
+            pt_mult=1.0,
+            sl_mult=1.0,
+            realized_vol_lookback_minutes=60,
+        )
+        labeller = OpeningRangeBreakoutLabeller(cfg)
+        labels = labeller.apply(panel)
+
+    Input panel must carry columns ``{symbol, ts_event (UTC), close}``.
+    Output is one row per ``(symbol, session_date_et)`` pair with the
+    fields of :class:`OpeningRangeBreakoutLabel`.
+
+    Bars MUST be 1-minute RTH-only; the labeller does not filter ETH —
+    callers must pre-filter to 09:30-16:00 ET per H052a design.md §2.
+
+    Sessions with insufficient bars to compute realized vol or detect
+    entry get ``exit_reason="no_data"`` and ``pnl_log=0.0``; downstream
+    aggregation should treat these as zero-weight observations.
+    """
+
+    def __init__(self, config: OpeningRangeBreakoutConfig) -> None:
+        self.config = config
+
+    def apply(
+        self,
+        panel: pl.DataFrame,
+        *,
+        symbol_col: str = "symbol",
+        time_col: str = "ts_event",
+    ) -> pl.DataFrame:
+        """Apply ORB labeling per (symbol, session_date_et).
+
+        Returns a polars DataFrame with one row per (symbol, session)
+        with columns matching :class:`OpeningRangeBreakoutLabel` fields.
+        """
+        required = {symbol_col, time_col, "close"}
+        missing = required - set(panel.columns)
+        if missing:
+            raise ValueError(
+                f"panel missing required columns: {sorted(missing)}."
+            )
+
+        labels: list[dict[str, Any]] = []
+        for sym_group in panel.partition_by(symbol_col, maintain_order=True):
+            symbol = sym_group[symbol_col][0]
+            sym_labels = self._apply_single_symbol(
+                sym_group, symbol=str(symbol), time_col=time_col
+            )
+            labels.extend(sym_labels)
+
+        if not labels:
+            return pl.DataFrame(
+                schema={
+                    "symbol": pl.Utf8,
+                    "session_date_et": pl.Datetime("ns", "UTC"),
+                    "entry_ts": pl.Datetime("ns", "UTC"),
+                    "entry_price": pl.Float64,
+                    "realized_vol_at_entry": pl.Float64,
+                    "pt_price": pl.Float64,
+                    "sl_price": pl.Float64,
+                    "exit_ts": pl.Datetime("ns", "UTC"),
+                    "exit_price": pl.Float64,
+                    "exit_reason": pl.Utf8,
+                    "pnl_log": pl.Float64,
+                }
+            )
+        return pl.DataFrame(labels)
+
+    def _apply_single_symbol(
+        self,
+        group: pl.DataFrame,
+        *,
+        symbol: str,
+        time_col: str,
+    ) -> list[dict[str, Any]]:
+        group = group.sort(time_col)
+        ts_utc = group.get_column(time_col).to_pandas()
+        # Convert UTC → ET (America/New_York) for session-date + time-of-day.
+        if ts_utc.dt.tz is None:
+            ts_utc = ts_utc.dt.tz_localize("UTC")
+        ts_et = ts_utc.dt.tz_convert("America/New_York")
+        # session_date_et = ET calendar date as midnight-ET timestamp (UTC).
+        session_dates_et = ts_et.dt.normalize().dt.tz_convert("UTC")
+        time_of_day_et = ts_et.dt.strftime("%H:%M")
+        closes = group.get_column("close").to_numpy().astype(np.float64)
+
+        entry_t = self.config.entry_time_et
+        timestop_t = self.config.time_stop_et
+        hardclose_t = self.config.hard_close_et
+
+        results: list[dict[str, Any]] = []
+        # Performance fix (post-Round-2 stall investigation 2026-05-05):
+        # Build per-session index slices ONCE via a single sort + groupby
+        # rather than recomputing `(session_dates_et == session_date)` masks
+        # for every session iteration (the prior O(N · S) implementation
+        # produced ~7B ops on the H052a substrate at 2710 sessions × 2710 ×
+        # 390 bars per symbol; ran > 27 min before kill). Now O(N) total.
+        session_dates_arr = session_dates_et.to_numpy()
+        time_of_day_arr = time_of_day_et.to_numpy()
+        ts_utc_arr = ts_utc.to_numpy()
+        # `pd.factorize` returns codes (per-row session group id) + uniques
+        # (the actual session_date_et values). The data is already sorted by
+        # ts_utc per the `group.sort(time_col)` above, so codes are also
+        # contiguous-by-session — we can build per-session contiguous slices
+        # with `np.diff(codes).nonzero()` boundaries.
+        codes, unique_sessions_arr = pd.factorize(
+            session_dates_et.dt.tz_convert("UTC"), sort=True
+        )
+        # Boundaries where codes change → per-session slice [start, end).
+        n_total = codes.size
+        if n_total == 0:
+            return results
+        change_points = np.concatenate(
+            [[0], np.flatnonzero(np.diff(codes) != 0) + 1, [n_total]]
+        )
+        for k in range(len(change_points) - 1):
+            start = int(change_points[k])
+            end = int(change_points[k + 1])
+            session_date = unique_sessions_arr[codes[start]]
+            sess_idx = np.arange(start, end)
+            sess_tod = time_of_day_arr[start:end]
+            sess_closes = closes[start:end]
+            sess_ts_utc = ts_utc_arr[start:end]
+
+            # Find entry bar: first bar at or after entry_time_et.
+            entry_local_idx = self._first_index_at_or_after(sess_tod, entry_t)
+            if entry_local_idx is None:
+                results.append(
+                    self._no_data_label(symbol, session_date, sess_ts_utc)
+                )
+                continue
+            entry_price = float(sess_closes[entry_local_idx])
+            entry_ts_utc = pd.Timestamp(sess_ts_utc[entry_local_idx]).tz_localize(
+                "UTC"
+            ) if pd.Timestamp(sess_ts_utc[entry_local_idx]).tz is None else pd.Timestamp(sess_ts_utc[entry_local_idx])
+
+            # Realized vol: prior `realized_vol_lookback_minutes` log-returns
+            # ending at entry bar. Use bars in [entry_idx − lookback,
+            # entry_idx) on the FULL panel (cross-session for lookback > the
+            # entry-bar-position; otherwise within-session).
+            global_entry_idx = sess_idx[entry_local_idx]
+            lookback = self.config.realized_vol_lookback_minutes
+            lo = max(0, global_entry_idx - lookback)
+            window_closes = closes[lo : global_entry_idx + 1]  # +1 to include entry close
+            if len(window_closes) < 2:
+                results.append(
+                    self._no_data_label(symbol, session_date, sess_ts_utc)
+                )
+                continue
+            log_returns = np.diff(np.log(window_closes))
+            if len(log_returns) < 2 or not np.isfinite(log_returns).all():
+                results.append(
+                    self._no_data_label(symbol, session_date, sess_ts_utc)
+                )
+                continue
+            sigma_per_bar = float(log_returns.std(ddof=1))
+            sigma_annualised = sigma_per_bar * float(np.sqrt(252.0 * _RTH_BARS_PER_SESSION))
+            if not np.isfinite(sigma_annualised) or sigma_annualised <= 0:
+                results.append(
+                    self._no_data_label(symbol, session_date, sess_ts_utc)
+                )
+                continue
+
+            # σ_horizon = σ_per_bar × √(remaining session bars to hard close)
+            # per design.md §4. F-Q-10 fix (Round-2 audit-remediate-loop
+            # 2026-05-04): removed dead σ_annualised pt_price/sl_price
+            # computation that was overwritten in the original v1 code.
+            n_remaining_bars = float(self._n_bars_between(entry_t, hardclose_t))
+            sigma_horizon = sigma_per_bar * float(np.sqrt(n_remaining_bars))
+            pt_price = float(entry_price * np.exp(self.config.pt_mult * sigma_horizon))
+            sl_price = float(entry_price * np.exp(-self.config.sl_mult * sigma_horizon))
+
+            # F-Q-15 fix (Round-2 audit-remediate-loop 2026-05-04 major):
+            # PT/SL barrier resolution uses close-only price comparison
+            # (`price_j = sess_closes[j]` below). Design intent per H052a
+            # design.md §4 is close-based resolution at the 1-min bar grid;
+            # intra-bar high/low tie-breaks (analog of TripleBarrierLabeler at
+            # AFML §3.2) are NOT applied in H052a v1. A future
+            # P1-H052A-INTRABAR-PT-SL-TIEBREAK robustness exhibit MAY add
+            # high/low resolution if operator review of the KPI report card
+            # reveals the close-only resolution is materially favourable vs
+            # realistic execution.
+            timestop_local_idx = self._first_index_at_or_after(sess_tod, timestop_t)
+            hardclose_local_idx = self._first_index_at_or_after(sess_tod, hardclose_t)
+            if hardclose_local_idx is None:
+                hardclose_local_idx = len(sess_closes) - 1
+            scan_end = hardclose_local_idx + 1
+
+            exit_local_idx = hardclose_local_idx
+            exit_reason = "hardclose"
+            for j in range(entry_local_idx + 1, scan_end):
+                price_j = float(sess_closes[j])
+                if price_j >= pt_price:
+                    exit_local_idx = j
+                    exit_reason = "pt"
+                    break
+                if price_j <= sl_price:
+                    exit_local_idx = j
+                    exit_reason = "sl"
+                    break
+                if (
+                    timestop_local_idx is not None
+                    and j == timestop_local_idx
+                    and exit_reason == "hardclose"
+                ):
+                    exit_local_idx = j
+                    exit_reason = "timestop"
+                    break
+
+            exit_price = float(sess_closes[exit_local_idx])
+            exit_ts_utc_value = sess_ts_utc[exit_local_idx]
+            exit_ts_utc = pd.Timestamp(exit_ts_utc_value)
+            if exit_ts_utc.tz is None:
+                exit_ts_utc = exit_ts_utc.tz_localize("UTC")
+            pnl_log = float(np.log(exit_price / entry_price))
+
+            results.append(
+                {
+                    "symbol": symbol,
+                    "session_date_et": pd.Timestamp(session_date),
+                    "entry_ts": entry_ts_utc,
+                    "entry_price": entry_price,
+                    "realized_vol_at_entry": float(sigma_annualised),
+                    "pt_price": pt_price,
+                    "sl_price": sl_price,
+                    "exit_ts": exit_ts_utc,
+                    "exit_price": exit_price,
+                    "exit_reason": exit_reason,
+                    "pnl_log": pnl_log,
+                }
+            )
+        return results
+
+    @staticmethod
+    def _first_index_at_or_after(
+        time_of_day: np.ndarray, target_hhmm: str
+    ) -> int | None:
+        """Return index of the first bar whose ET time-of-day ≥ target_hhmm.
+
+        ``time_of_day`` is an array of "HH:MM" strings; comparison is
+        lexicographic on the 5-char string which is equivalent to numeric
+        time-of-day comparison since the format is fixed-width.
+        """
+        for idx, tod in enumerate(time_of_day):
+            if tod >= target_hhmm:
+                return int(idx)
+        return None
+
+    @staticmethod
+    def _n_bars_between(start_hhmm: str, end_hhmm: str) -> int:
+        """Number of 1-min bars between two ET wall-clock times (exclusive end)."""
+        start_h, start_m = int(start_hhmm[:2]), int(start_hhmm[3:5])
+        end_h, end_m = int(end_hhmm[:2]), int(end_hhmm[3:5])
+        return max(0, (end_h * 60 + end_m) - (start_h * 60 + start_m))
+
+    @staticmethod
+    def _no_data_label(
+        symbol: str,
+        session_date: pd.Timestamp,
+        sess_ts_utc: np.ndarray,
+    ) -> dict[str, Any]:
+        ts_zero = pd.Timestamp(sess_ts_utc[0]) if len(sess_ts_utc) > 0 else pd.Timestamp(session_date)
+        if ts_zero.tz is None:
+            ts_zero = ts_zero.tz_localize("UTC")
+        return {
+            "symbol": symbol,
+            "session_date_et": pd.Timestamp(session_date),
+            "entry_ts": ts_zero,
+            "entry_price": float("nan"),
+            "realized_vol_at_entry": float("nan"),
+            "pt_price": float("nan"),
+            "sl_price": float("nan"),
+            "exit_ts": ts_zero,
+            "exit_price": float("nan"),
+            "exit_reason": "no_data",
+            "pnl_log": 0.0,
+        }
+
+
 __all__ = [
     "TripleBarrierConfig",
     "TripleBarrierLabel",
     "TripleBarrierLabeler",
     "yang_zhang_volatility",
+    "OpeningRangeBreakoutConfig",
+    "OpeningRangeBreakoutLabel",
+    "OpeningRangeBreakoutLabeller",
 ]

@@ -1,0 +1,10 @@
+{
+  "date_max": "2026-05-04",
+  "date_min": "1990-01-02",
+  "ingested_at_utc": "2026-05-05T15:31:00.595928+00:00",
+  "n_rows": 9178,
+  "output_frame_sha256": "0a0e9f252bcaa3f2f9ee2d0ef142e8fff88924aa6a2590d76e924dd50d6ab552",
+  "output_parquet_path": "C:\\Users\\skoir\\Documents\\SKIE-Universe\\.claude\\worktrees\\friendly-ritchie-cd2dda\\data\\processed\\vix_daily\\vix_daily.parquet",
+  "raw_csv_sha256": "1dd6086ce6e80df9a6f30704e9e950edf4a28e5e878ddfaeac1871caa69fb751",
+  "source_url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=VIXCLS"
+}
