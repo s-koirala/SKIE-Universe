@@ -1,0 +1,76 @@
+# H052a hypothesis configuration.
+#
+# HMM regime-gated first-hour ORB on CME futures (ES/NQ; MES/MNQ for
+# robustness). Frozen pre-reg at:
+#   research/01_hypothesis_register/H052a/design.md
+# §15 + §15.1 errata addendum (2026-05-04):
+#   research/01_hypothesis_register/H052a/design.md §15.1
+#
+# Per ADR-0014 §3.2: end-of-simulation results-summary tables MANDATORY in
+# every KPI report card.
+hypothesis_id: H052a
+test_statistic: "SR_filtered_gated - SR_filtered_unconditional"  # design.md §1
+universe: [ES, NQ]  # primary; MES/MNQ are robustness exhibits per §2
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  vix_source: "data/processed/vix_daily/"  # FRED VIXCLS (T-1 close)
+  train: {start: "2020-01-01", end: "2022-12-31"}  # design.md §2 IS
+  val:   {start: "2023-01-01", end: "2023-06-30"}  # OOS held-out (split)
+  test:  {start: "2023-07-01", end: "2024-12-31"}  # design.md §2 OOS
+
+# Per-session HMM emission features per design.md §3 + §15.1 erratum-1.
+# All features computed at the entry timestamp (10:30 ET).
+features:
+  - realized_vol@1.0   # Andersen-Bollerslev 1998; CV-selected lookback
+  - first_hour_sign@1.0  # sign(close(10:30) - close(09:30)) ∈ {-1, 0, +1}
+  - gap_size@1.0        # log(open(09:30) / prior_session_close)
+  - dow_onehot@1.0      # Mon/Tue/Wed/Thu (Friday reference)
+  - eth_pre_rth@1.0     # log(close(09:29) / close(06:00))
+  - vix_daily@1.0       # VIX close on T-1 (CBOE / FRED VIXCLS)
+
+# ORB labels per design.md §4. Long-only per pre-reg.
+labels:
+  method: opening_range_breakout
+  pt_mult_grid: [0.5, 1.0, 1.5]            # design.md §5 line 86
+  sl_mult_grid: [0.5, 1.0, 1.5]            # design.md §5 line 87
+  realized_vol_lookback_minutes_grid: [30, 60, 120]  # design.md §5 line 85
+  entry_time_et: "10:30"
+  time_stop_et: "14:00"
+  hard_close_et: "15:55"
+
+# HMM configuration per ADR-0005 + design.md §5.
+hmm:
+  covariance_type: [diag, full]  # design.md §5 line 88; d=1 dedup at fit
+  selection: bic_plus_cv_ll      # ADR-0005 BIC + CV log-likelihood
+  inference: filter_states       # ADR-0005 anti-look-ahead causal filter
+  n_states_grid: [2, 3]          # ADR-0005 adaptive rule + power floor
+
+# Splitter per design.md §6.
+splitter:
+  method: purged_walk_forward
+  embargo: auto                  # Politis-White 2004 on training residuals
+  purge: auto                    # one trading session per design.md §6
+
+# Inference + gate thresholds per ADR-0013 (KPI-only; no binding gates).
+gates:
+  ledoit_wolf_2008_differential_ci:
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 2000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+  hansen_spa:
+    alpha: 0.05
+    variant: consistent
+    n_bootstrap: 1000
+    omega_method: hac  # ADR-0008 single-strategy default
+  bh_q: {threshold: 0.10}
+  power: {target: 0.80}
+
+# Cost model per design.md §7 + futures_orb_v1.py (this commit).
+cost_model: futures_orb_v1
+cost_sensitivity_mult: 1.0  # 1-tick prior; 2.0 for worst-case sensitivity
+
+# Reproducibility per design.md §11.
+random_seed: 20260423  # design.md §11 line 158
