@@ -213,13 +213,23 @@ def compute_vix_daily_join(
     sess_df["session_date_et"] = pd.to_datetime(sess_df["session_date_et"])
     if sess_df["session_date_et"].dt.tz is None:
         sess_df["session_date_et"] = sess_df["session_date_et"].dt.tz_localize("UTC")
+    # Normalise to ns precision (post-stall fix 2026-05-05): the polars-to-pandas
+    # round-trip emits session_date_et as us-precision while VIX is ms-precision;
+    # pd.merge_asof requires identical precision.
+    sess_df["session_date_et"] = sess_df["session_date_et"].astype(
+        "datetime64[ns, UTC]"
+    )
     sess_df = sess_df.sort_values(["symbol", "session_date_et"])
-    sess_df["_join_date"] = sess_df["session_date_et"].dt.normalize() - pd.Timedelta(days=1)
+    sess_df["_join_date"] = (
+        (sess_df["session_date_et"].dt.normalize() - pd.Timedelta(days=1))
+        .astype("datetime64[ns, UTC]")
+    )
 
     vix = vix_daily.copy()
     vix["date"] = pd.to_datetime(vix["date"])
     if vix["date"].dt.tz is None:
         vix["date"] = vix["date"].dt.tz_localize("UTC")
+    vix["date"] = vix["date"].astype("datetime64[ns, UTC]")
     vix = vix.sort_values("date")
     # Use merge_asof to handle weekend / holiday lookback to last available T-1.
     merged = pd.merge_asof(
