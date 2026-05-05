@@ -1,0 +1,92 @@
+# H054 hypothesis configuration.
+#
+# Anti-gate first-hour ORB on CME ES futures (ES only at v1; NQ excluded
+# per F-Q-6 design-time-knowledge-contamination fix). Frozen pre-reg at:
+#   research/01_hypothesis_register/H054/design.md (status: designed
+#   2026-05-05; Round-2+3 audit-remediate-loop ACCEPT).
+#
+# Per ADR-0014 §3.2: end-of-simulation results-summary tables MANDATORY in
+# every KPI report card.
+hypothesis_id: H054
+test_statistic: "SR_anti_gated"  # PRIMARY per F-Q-2 fix; T_H054_b = SR_anti_gated > 0
+test_statistic_secondary: "SR_anti_gated - SR_unconditional"  # T_H054_a; secondary informational
+universe: [ES]  # NQ excluded at v1 per F-Q-6 fix; design.md §2 binding
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  vix_source: "data/processed/vix_daily/"  # FRED VIXCLS (T-1 close); shared with H052a
+  # F-Q-1 fix (Round-2 audit-remediate-loop 2026-05-05): IS matches H052a
+  # IS+val EXACTLY. The H052a OOS window (2023-07-01 -> 2024-12-31) is
+  # DELIBERATELY-UNUSED in H054 v1.
+  train: {start: "2020-01-01", end: "2022-12-31"}  # H052a IS
+  val:   {start: "2023-01-01", end: "2023-06-30"}  # H052a val (used as inner-CV; not OOS test)
+  test:  {start: "2025-01-01", end: "2025-12-03"}  # ES-only fresh OOS per F-Q-6
+  deliberately_unused: {start: "2023-07-01", end: "2024-12-31"}  # H052a OOS; H054 NEVER touches
+
+# Per-session HMM emission features per design.md §3.
+# Identical to H052a §3 (the F-Q-1 + F-Q-6 fixes preserve the emission
+# vector; the H054-distinctive piece is gate inversion at the orchestrator).
+features:
+  - realized_vol@1.0   # Andersen-Bollerslev 1998
+  - first_hour_sign@1.0
+  - gap_size@1.0
+  - dow_onehot@1.0
+  - eth_pre_rth@1.0
+  - vix_daily@1.0
+
+# ORB labels per design.md §4 (identical to H052a §4).
+labels:
+  method: opening_range_breakout
+  pt_mult_grid: [0.5, 1.0, 1.5]
+  sl_mult_grid: [0.5, 1.0, 1.5]
+  realized_vol_lookback_minutes_grid: [30, 60, 120]
+  entry_time_et: "10:30"
+  time_stop_et: "14:00"
+  hard_close_et: "15:55"
+
+# HMM configuration per ADR-0005 + design.md §5.
+hmm:
+  covariance_type: [diag, full]  # d=1 dedup at fit per P1-HMM-FULL-COV-1DIM-REDUNDANT
+  selection: bic_plus_cv_ll
+  inference: filter_states  # ADR-0005 anti-look-ahead causal filter
+  n_states_grid: [2, 3]
+  # F-Q-3 fix (Round-2 audit-remediate-loop 2026-05-05): stress-state
+  # identification rule binding.
+  stress_state_id_rule: "argmax_rv_top1_with_tiebreak_lowest_state_index"
+
+# Splitter per design.md §6.
+splitter:
+  method: purged_walk_forward
+  embargo: 1  # 1 session
+  purge: 1
+  inner_cv_n_folds: 3
+
+# Inference + gate thresholds per ADR-0013 (KPI-only; no binding gates).
+gates:
+  ledoit_wolf_2008_univariate_ci:  # PRIMARY per F-Q-2 fix; T_H054_b
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 2000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+  ledoit_wolf_2008_differential_ci:  # SECONDARY informational; T_H054_a
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 2000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+  hansen_spa:
+    alpha: 0.05
+    variant: consistent
+    n_bootstrap: 1000
+    omega_method: hac  # ADR-0008 single-strategy default; M=1 at v1 per F-Q-5
+  bh_q: {threshold: 0.10}
+  power: {target: 0.80}
+
+# Cost model per design.md §7 + futures_orb_v1.py (shared with H052a).
+cost_model: futures_orb_v1
+cost_sensitivity_mult: 1.0  # 1-tick prior; 2.0 for worst-case sensitivity
+
+# Reproducibility per design.md §11.
+random_seed: 20260505  # justify: design-date YYYYMMDD per F-Q-8 fix
