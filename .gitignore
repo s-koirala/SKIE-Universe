@@ -31,6 +31,10 @@ data/processed/**
 !data/processed/_provenance
 !data/processed/_provenance/**
 !data/**/.gitkeep
+# H055 pilot ledger: small NinjaTrader CSV (~14 KB) + dataset card; tracked
+# as load-bearing pre-registration artifact per research/01_hypothesis_register/H055/data_requirements.md
+!data/external/h055_pilot_ledger/
+!data/external/h055_pilot_ledger/**
 
 # notebooks stripped
 *-checkpoint.ipynb
