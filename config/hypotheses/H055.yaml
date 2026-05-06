@@ -1,0 +1,113 @@
+# H055 hypothesis configuration.
+#
+# Multi-level body-overlap coil + level-exhaustion-counter v2 strategy on
+# CME ES/NQ + micro equivalents (ES, NQ, MES, MNQ at v1; CL/MCL/MYM/MGC
+# excluded at v1 per substrate-ingest gating, tracked under
+# P1-H055-CL-MCL-MYM-MGC-INGEST-AND-EXTEND).
+#
+# Pre-reg design at:
+#   research/01_hypothesis_register/H055/design.md
+#
+# Per ADR-0014 §3.2: end-of-simulation results-summary tables MANDATORY
+# in every KPI report card emitted from this hypothesis.
+hypothesis_id: H055
+test_statistic: "SR_v2"  # PRIMARY; v2 strategy single-strategy annualized Sharpe
+test_statistic_secondary: "SR_v2_minus_SR_bench"  # paired differential SR; secondary informational
+universe: [ES, NQ, MES, MNQ]  # CL/MCL/MYM/MGC excluded at v1; tracked under P1-H055-CL-MCL-MYM-MGC-INGEST-AND-EXTEND
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  # Component 1 trend-id selection + ρ_1 threshold pre-registration uses
+  # the calibration_holdout window per design.md §3 (no leakage into
+  # train/val/test).
+  calibration_holdout: {start: "2015-01-01", end: "2019-12-31"}
+  train: {start: "2020-01-01", end: "2022-12-31"}
+  val:   {start: "2023-01-01", end: "2023-12-31"}
+  # ES test extends to 2025-12-03 per the post-Cell-I substrate right-edge;
+  # NQ extends to 2025-12-19 per the same substrate (asymmetric right-edge
+  # documented in data/processed/vendor_legacy_1min_roll_adjusted provenance).
+  # Top-level `test:` retains the conservative ES end date for back-compat;
+  # see test_per_symbol below for the per-symbol overrides binding NQ to
+  # 2025-12-19 per design.md §2 + data_requirements.md §Coverage.
+  test:  {start: "2024-01-01", end: "2025-12-03"}
+  test_per_symbol:
+    ES:   {end: "2025-12-03"}  # justify: substrate ES right-edge per data_requirements.md §Coverage
+    MES:  {end: "2025-12-03"}  # justify: derived from ES
+    NQ:   {end: "2025-12-19"}  # justify: substrate NQ right-edge extends to 12-19 per data_requirements.md §Coverage
+    MNQ:  {end: "2025-12-19"}  # justify: derived from NQ
+
+# Per-bar features per design.md §3 (placeholder; production assembly
+# wired under P1-H055-FEATURE-FACTORY-IMPL).
+features:
+  - swing_pivot_detector
+  - body_overlap_rho_1
+  - level_exhaustion_counter
+  - atr_n
+  - trend_gate_indicator
+  - wick_size_atr_normalized
+
+# Per-trade entry/exit labels with ATR-scaled TP/SL per design.md §4.
+labels:
+  method: per_trade_entry_exit_atr_tp_sl
+  # Grid TBD per follow-up P1-H055-LABEL-GRID-PRE-REG (pt_mult, sl_mult,
+  # atr_lookback to be empirically calibrated on the calibration_holdout
+  # window before train fold opens; selection rule pre-registered there).
+
+# Splitter per design.md §6.
+splitter:
+  method: purged_walk_forward
+  # Embargo derived per design.md §6 formula:
+  #   embargo_minutes >= k_swing * minutes_per_T_H_bar
+  #                    + max_holding_period * minutes_per_T_L_bar
+  # Pinned numerically from the search-domain extremes in design.md §5.6:
+  #   k_swing_max          = 13 bars
+  #   max_holding_period   = 13 bars (proxy = k_swing time stop)
+  #   minutes_per_T_H_bar  = 240 (T_H max = 240m)
+  #   minutes_per_T_L_bar  = 15  (T_L max = 15m)
+  #   embargo_minutes_max  = 13 * 240 + 13 * 15 = 3120 + 195 = 3315 minutes
+  #   minutes_per_session  = 1380 (CME ETH 23-hour electronic)
+  #   embargo_sessions_max = ceil(3315 / 1380) = 3
+  embargo: 3315  # justify: derived from design.md §5.6 search-domain maxima per AFML §7.4 embargo formula; rebound at running per actual selected hyperparameters; units = minutes; ETH-session-equivalent = 3 sessions
+  purge: 3315    # justify: matches embargo by mlfinlab stacked-embargo convention per ADR-0007; same derivation as above
+  inner_cv_n_folds: 3
+
+# Inference + KPI-only annotations per ADR-0013 (no binding gates).
+gates:
+  ledoit_wolf_2008_univariate_ci:  # PRIMARY; SR_v2 single-strategy CI
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 2000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+  ledoit_wolf_2008_differential_ci:  # SECONDARY informational; SR_v2 - SR_bench
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 2000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+    benchmarks:
+      - buy_and_hold
+      - tsmom  # time-series momentum per Moskowitz-Ooi-Pedersen 2012
+      - no_skill_bootstrap
+  hansen_spa:
+    alpha: 0.05
+    variant: consistent
+    n_bootstrap: 1000
+    omega_method: hac  # ADR-0008 single-strategy default
+    K_max: 500  # justify: PLACEHOLDER pending P1-H055-POWER-SIMULATION-EXECUTE; rebound to empirical value at first running run via run_h055_spa_power_simulation.py output. The 500 is provisional from the H050/H054 typical Optuna trial budget.
+  bh_q: {threshold: 0.05}  # justify: aligned to design.md §1 α=0.05 + ADR-0004 default; BH-FDR across the 4 instrument-class siblings per Benjamini-Hochberg 1995
+  power: {target: 0.80}
+
+# Cost model per design.md §7 + futures_orb_v1.py (shared with H052a/H054).
+cost_model: futures_orb_v1
+cost_sensitivity_mult: 1.0  # 1-tick prior; 2.0 for worst-case sensitivity
+
+# v3 successor scope per ADR-0006: HMM regime-conditioning is DEFERRED to
+# the v3 successor hypothesis (post-H055-v2 NinjaScript-implemented stage)
+# per design.md §1. Setting hmm_excluded explicit so the orchestrator skips
+# any HMM fit-call path.
+hmm_excluded: true  # justify: HMM deferred to v3 successor per ADR-0006 scope; design.md §1
+
+# Reproducibility per design.md §11.
+random_seed: 20260506  # justify: design-date YYYYMMDD per F-Q-8 H054 precedent
