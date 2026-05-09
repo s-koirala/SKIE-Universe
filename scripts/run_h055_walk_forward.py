@@ -164,6 +164,91 @@ def _build_synthetic_bars(
     rng = np.random.default_rng(seed)
     sigma = 0.0005
     log_p = np.cumsum(rng.normal(drift, sigma, n_bars)) + np.log(5000.0)
+    return _bars_from_log_prices(log_p, seed=seed)
+
+
+def _bars_from_log_prices(
+    log_p: np.ndarray, *, seed: int = 42
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[datetime]]:
+    """Helper: build OHLC + UTC timestamps from a log-price walk."""
+    rng = np.random.default_rng(seed + 1)
+    n_bars = log_p.size
+    close = np.exp(log_p)
+    open_ = np.roll(close, 1)
+    open_[0] = close[0]
+    body_half = np.abs(rng.normal(0.5, 0.3, n_bars))
+    high = np.maximum(open_, close) + body_half + 0.05
+    low = np.minimum(open_, close) - body_half - 0.05
+    base_ts = datetime(2024, 6, 12, 14, 30, tzinfo=timezone.utc)
+    timestamps = [base_ts + timedelta(minutes=i) for i in range(n_bars)]
+    return open_, high, low, close, timestamps
+
+
+def _load_substrate_for_symbol(
+    substrate_root: Path,
+    *,
+    symbol: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, list[datetime]]:
+    """Load production substrate parquet → numpy arrays for the orchestrator.
+
+    Reads polars parquet(s) under `substrate_root / **/*.parquet`. Filters
+    by symbol + date range. Sorts by ts_event.
+
+    Args:
+        substrate_root: Directory containing the partitioned parquet (e.g.,
+            data/processed/vendor_legacy_1min_roll_adjusted/).
+        symbol: One of {ES, NQ, MES, MNQ}.
+        start_date / end_date: ISO date strings (YYYY-MM-DD); None = no
+            bound on that side.
+
+    Returns:
+        (open_, high, low, close, ts_utc_list) tuple matching the smoke-
+        mode output shape.
+
+    Raises:
+        FileNotFoundError: substrate_root does not exist.
+        ValueError: zero rows match (symbol absent, or date range empty).
+    """
+    import polars as pl  # local import; keeps smoke-mode dependency-free
+
+    if not substrate_root.exists():
+        raise FileNotFoundError(
+            f"substrate_root not found: {substrate_root}. Place ES/NQ "
+            "1-min roll-adjusted parquets at this path before production run."
+        )
+    pattern = str(substrate_root / "**" / "*.parquet")
+    panel = pl.read_parquet(pattern)
+    if panel.height == 0:
+        raise ValueError(f"empty panel from {pattern}")
+    panel = panel.filter(pl.col("symbol") == symbol)
+    if panel.height == 0:
+        raise ValueError(f"symbol {symbol} absent from substrate at {substrate_root}")
+    # Date filter — assumes ts_event is ts-aware datetime[ns,UTC].
+    # start_date: lower-bound at 00:00:00 UTC of that date.
+    # end_date: upper-bound at 23:59:59 UTC of that date (INCLUSIVE of full day).
+    if start_date is not None:
+        start_dt = datetime.fromisoformat(start_date).replace(tzinfo=timezone.utc)
+        panel = panel.filter(pl.col("ts_event") >= start_dt)
+    if end_date is not None:
+        end_dt = datetime.fromisoformat(end_date).replace(
+            hour=23, minute=59, second=59, tzinfo=timezone.utc
+        )
+        panel = panel.filter(pl.col("ts_event") <= end_dt)
+    if panel.height == 0:
+        raise ValueError(
+            f"date filter [{start_date}, {end_date}] produced zero bars for {symbol}"
+        )
+    panel = panel.sort("ts_event")
+    o = panel["open"].to_numpy().astype(float)
+    h = panel["high"].to_numpy().astype(float)
+    l = panel["low"].to_numpy().astype(float)
+    c = panel["close"].to_numpy().astype(float)
+    ts_series = panel["ts_event"].to_list()
+    # Ensure UTC datetimes (polars returns datetime objects already)
+    ts_utc = [t if t.tzinfo is not None else t.replace(tzinfo=timezone.utc) for t in ts_series]
+    return o, h, l, c, ts_utc
     close = np.exp(log_p)
     open_ = np.roll(close, 1)
     open_[0] = close[0]
@@ -359,6 +444,19 @@ def main() -> int:
         "--n-synthetic-bars", type=int, default=500,
         help="Bars for synthetic panel (smoke mode only)",
     )
+    parser.add_argument(
+        "--substrate-root", type=str, default=None,
+        help="Path to substrate parquet directory (production mode only). "
+        "Default: data/processed/vendor_legacy_1min_roll_adjusted",
+    )
+    parser.add_argument(
+        "--start-date", type=str, default=None,
+        help="ISO YYYY-MM-DD lower bound on ts_event (production mode only)",
+    )
+    parser.add_argument(
+        "--end-date", type=str, default=None,
+        help="ISO YYYY-MM-DD upper bound on ts_event (production mode only)",
+    )
     args = parser.parse_args()
 
     if not args.config.exists():
@@ -378,18 +476,24 @@ def main() -> int:
         )
         print(f"smoke mode: {args.n_synthetic_bars} synthetic 1-min bars")
     else:
-        # Production substrate load — pending P1-H055-WALK-FORWARD-FOLDING-IMPL
-        # production wiring. The current orchestrator scaffolding errors out
-        # explicitly on production mode to surface the gap.
-        print(
-            "error: production substrate load is pending follow-up "
-            "P1-H055-WALK-FORWARD-FOLDING-IMPL. Use --smoke for orchestration "
-            "pipeline validation; production walk-forward requires substrate at "
-            "data/processed/vendor_legacy_1min_roll_adjusted/ which is not "
-            "wired into this orchestrator yet.",
-            file=sys.stderr,
+        substrate_root = (
+            Path(args.substrate_root) if args.substrate_root
+            else Path("data/processed/vendor_legacy_1min_roll_adjusted")
         )
-        return 3
+        try:
+            o, h, l, c, ts = _load_substrate_for_symbol(
+                substrate_root, symbol=args.symbol,
+                start_date=args.start_date, end_date=args.end_date,
+            )
+        except (FileNotFoundError, ValueError) as e:
+            print(f"error: substrate load failed: {e}", file=sys.stderr)
+            return 3
+        print(
+            f"production mode: {o.size:,} bars loaded from {substrate_root.as_posix()} "
+            f"for symbol={args.symbol} "
+            f"[{ts[0].isoformat() if ts else 'n/a'} to "
+            f"{ts[-1].isoformat() if ts else 'n/a'}]"
+        )
 
     # ─── Feature factory ───
     feat_cfg = H055FeatureConfig(
