@@ -115,11 +115,35 @@ def test_r_multiple_from_trade_basic() -> None:
     assert r == 1.0
 
 
-@pytest.mark.skip(reason="P1-RISK-OF-RUIN-MONTE-CARLO-PRIMITIVE pending (separate commit)")
 def test_probability_of_ruin_basic() -> None:
-    """Risk-of-ruin Monte Carlo. Pending implementation in next Phase L commit."""
+    """Risk-of-ruin Monte Carlo sanity smoke test (full coverage in test_risk_of_ruin.py)."""
+    import numpy as np
+
+    from skie_ninja.inference.risk_of_ruin import probability_of_ruin_monte_carlo
+
+    # Strong positive edge + modest sizing → very low ruin probability
+    rm = np.array([3.0] * 70 + [-1.0] * 30)
+    result = probability_of_ruin_monte_carlo(
+        rm, kelly_fraction=0.10, n_paths=200, n_sessions=50, rng_seed=42
+    )
+    assert 0.0 <= result.probability_of_ruin <= 1.0
+    assert result.sizing_mode == "fixed_fraction_of_equity"
 
 
-@pytest.mark.skip(reason="P1-SURVIVAL-CONSTRAINED-SIZING-PRIMITIVE pending (separate commit)")
 def test_compute_position_size_basic() -> None:
-    """Position-sizing canonical computation. Pending implementation in next Phase L commit."""
+    """Position-sizing canonical computation (full coverage in test_sizing.py).
+
+    ADR-0017 §4.1 worked example: ES at $10K bankroll, multiplier=50, ATR=25,
+    quarter-Kelly → 0 contracts (Kelly bound = 0.01 binds).
+    """
+    from skie_ninja.sizing import compute_position_size
+
+    n = compute_position_size(
+        equity=10_000.0,
+        atr=25.0,
+        multiplier=50.0,
+        entry_price=5000.0,
+        kelly_fraction=0.25,
+        capacity_ceiling=20,
+    )
+    assert n == 0
