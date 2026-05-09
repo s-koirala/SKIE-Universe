@@ -83,26 +83,43 @@ def test_sizing_module_imports() -> None:
     assert callable(compute_position_size)
 
 
-@pytest.mark.skip(reason="P1-CALMAR-DIFFERENTIAL-CI-IMPL pending")
 def test_calmar_ratio_basic() -> None:
-    """Calmar ratio canonical computation. Pending implementation."""
+    """Calmar ratio sanity smoke test (full coverage in test_calmar.py)."""
+    import numpy as np
+
+    from skie_ninja.inference import calmar_ratio
+
+    # Strictly positive returns → MaxDD = 0 → Calmar = +inf
+    log_returns = np.array([0.001] * 100)
+    assert np.isposinf(calmar_ratio(log_returns))
 
 
-@pytest.mark.skip(reason="P1-PROFIT-FACTOR-CI-IMPL pending")
 def test_profit_factor_basic() -> None:
-    """Profit factor canonical computation. Pending implementation."""
+    """Profit factor sanity smoke test (full coverage in test_profit_factor.py)."""
+    import numpy as np
+
+    from skie_ninja.inference import profit_factor
+
+    # Gross profit 300, gross loss 100 → PF = 3.0
+    pnl = np.array([100.0, 200.0, -50.0, -50.0])
+    assert profit_factor(pnl) == 3.0
 
 
-@pytest.mark.skip(reason="P1-R-MULTIPLE-CI-IMPL pending")
 def test_r_multiple_from_trade_basic() -> None:
-    """R-multiple per-trade computation. Pending implementation."""
+    """R-multiple sanity smoke test (full coverage in test_r_multiple.py)."""
+    from skie_ninja.inference import r_multiple_from_trade
+
+    r = r_multiple_from_trade(
+        500.0, stop_loss_distance=10.0, position_size=1, multiplier=50.0
+    )
+    assert r == 1.0
 
 
-@pytest.mark.skip(reason="P1-RISK-OF-RUIN-MONTE-CARLO-PRIMITIVE pending")
+@pytest.mark.skip(reason="P1-RISK-OF-RUIN-MONTE-CARLO-PRIMITIVE pending (separate commit)")
 def test_probability_of_ruin_basic() -> None:
-    """Risk-of-ruin Monte Carlo. Pending implementation."""
+    """Risk-of-ruin Monte Carlo. Pending implementation in next Phase L commit."""
 
 
-@pytest.mark.skip(reason="P1-SURVIVAL-CONSTRAINED-SIZING-PRIMITIVE pending")
+@pytest.mark.skip(reason="P1-SURVIVAL-CONSTRAINED-SIZING-PRIMITIVE pending (separate commit)")
 def test_compute_position_size_basic() -> None:
-    """Position-sizing canonical computation. Pending implementation."""
+    """Position-sizing canonical computation. Pending implementation in next Phase L commit."""
