@@ -25,6 +25,12 @@ from skie_ninja.features.h055.level_state import (
     LevelExhaustionStateMachine,
     LevelState,
 )
+from skie_ninja.features.h055.swing_pivot import (
+    SwingPivotSetup,
+    detect_long_swing_pivot_setups,
+    detect_short_swing_pivot_setups,
+    detect_swing_pivot_setups,
+)
 from skie_ninja.features.h055.trend_identifiers import (
     trend_id_a_ts_mom,
     trend_id_b_adx,
@@ -35,9 +41,13 @@ from skie_ninja.features.h055.trend_identifiers import (
 __all__ = [
     "LevelExhaustionStateMachine",
     "LevelState",
+    "SwingPivotSetup",
     "atr_wilder",
     "body_interval",
     "body_overlap_rho_1",
+    "detect_long_swing_pivot_setups",
+    "detect_short_swing_pivot_setups",
+    "detect_swing_pivot_setups",
     "pairwise_jaccard",
     "trend_id_a_ts_mom",
     "trend_id_b_adx",
