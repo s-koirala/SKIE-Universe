@@ -2,7 +2,9 @@
 
 Validates the H055 design.md §5.3 + §6 embargo + level-state contracts that
 the walk-forward splitter must satisfy. Closes BLOCKING-BEFORE-LAUNCH
-precondition `P1-H055-LEVEL-STATE-FOLD-CONTINUITY-TEST` per design.md §11.2.
+precondition `P1-H055-LEVEL-STATE-FOLD-CONTINUITY-TEST` per design.md §11.2
+plus the state-machine fold-boundary contracts originally deferred to
+`P1-H055-LEVEL-EXHAUSTION-STATE-MACHINE-IMPL`.
 
 Three pre-registered fixtures (per §5.3 + §11.2):
   (i)   embargo_minutes formula validation against the H055 config: the
@@ -12,18 +14,11 @@ Three pre-registered fixtures (per §5.3 + §11.2):
         §5.6 search domain.
   (ii)  RTH-only (405-min session): snapshot-policy variant of the level-
         state machine preserves state across folds.
-        Status: implementation-deferred (skip annotation cross-links to
-        new follow-up `P1-H055-LEVEL-EXHAUSTION-STATE-MACHINE-IMPL`).
   (iii) Fold boundary across CME 17:00 CT maintenance break: reset-policy
-        variant resets state.
-        Status: implementation-deferred (same follow-up).
+        variant resets state (state_signature changes; n_resets increments).
 
-Tests (ii) and (iii) require a `LevelExhaustionStateMachine` implementation
-which lands as a separate primitive (the design.md §5.3 state machine is the
-load-bearing primitive; this test only validates fold-boundary continuity
-of an already-built state machine). Implementation tracked under
-`P1-H055-LEVEL-EXHAUSTION-STATE-MACHINE-IMPL`. The tests remain marked
-@pytest.mark.skip with the cross-link until that primitive lands.
+State-machine implementation:
+[src/skie_ninja/features/h055/level_state.py](../../src/skie_ninja/features/h055/level_state.py)
 """
 
 from __future__ import annotations
@@ -34,6 +29,8 @@ from typing import Any
 
 import pytest
 import yaml
+
+from skie_ninja.features.h055.level_state import LevelExhaustionStateMachine
 
 
 def _load_h055_config() -> dict[str, Any]:
@@ -177,42 +174,82 @@ def test_embargo_strictly_exceeds_t_h_max_lookback() -> None:
     assert embargo >= t_h_max_term
 
 
-@pytest.mark.skip(
-    reason=(
-        "Pending P1-H055-LEVEL-EXHAUSTION-STATE-MACHINE-IMPL: requires the "
-        "design.md §5.3 R(L) state machine to be implemented before fold-"
-        "continuity assertions can be exercised. The state machine itself "
-        "is a separate primitive (level-exhaustion counter on swing-pivot "
-        "levels with k-bar window + R* threshold + reset/snapshot policy "
-        "variants). This test will land its assertion body in the same "
-        "commit that implements the state machine."
-    )
-)
 def test_rth_only_state_machine_snapshot_at_fold_boundary() -> None:
     """RTH-only (405-min session) — snapshot policy preserves state across folds.
 
+    Per design.md §5.3 SECONDARY policy (snapshot at right edge): at
+    fold[i].end the state-machine state is serialised; at fold[i+1].start
+    the new state-machine instance is restored from the snapshot. The
+    state_signature must match before and after.
+
     Asserts:
-        level_state at fold[i].end == level_state at fold[i+1].start
-
-    under the snapshot-policy variant of the splitter (design.md §5.3
-    alternative; primary policy is reset-at-boundary).
+        state_machine.state_signature() at fold[i].end ==
+        new_state_machine.state_signature() after restore at fold[i+1].start
     """
+    fold_i = LevelExhaustionStateMachine()
+    a = fold_i.add_level(level_value=5_000.0, side="support", current_bar=0)
+    b = fold_i.add_level(level_value=5_010.0, side="resistance", current_bar=15)
+    fold_i.record_rejection(a, current_bar=20)
+    fold_i.record_rejection(a, current_bar=50)
+    fold_i.record_penetration(b, current_bar=100)
+
+    snap = fold_i.snapshot()
+    sig_at_fold_i_end = fold_i.state_signature()
+
+    fold_i_plus_1 = LevelExhaustionStateMachine()
+    fold_i_plus_1.restore(snap)
+    sig_at_fold_i_plus_1_start = fold_i_plus_1.state_signature()
+
+    # The load-bearing assertion: snapshot policy preserves the level-state
+    # vector across the fold boundary.
+    assert sig_at_fold_i_end == sig_at_fold_i_plus_1_start
+    # Post-conditions on the carried state:
+    assert fold_i_plus_1.n_levels() == 2
+    assert fold_i_plus_1.n_active_levels() == 1  # b is killed
+    assert fold_i_plus_1.get_level(a).r_count == 2
 
 
-@pytest.mark.skip(
-    reason=(
-        "Pending P1-H055-LEVEL-EXHAUSTION-STATE-MACHINE-IMPL: same as above."
-    )
-)
 def test_fold_boundary_across_cme_maintenance_break() -> None:
     """Fold boundary spanning the daily 17:00 CT CME maintenance halt.
 
-    Asserts:
-        state_machine.was_reset_at_boundary == True
+    Per design.md §5.3 PRIMARY policy (reset-at-boundary): at the fold[i] →
+    fold[i+1] transition (which may span the 17:00 CT CME maintenance halt),
+    the state machine RESETS — the n_resets counter increments and the
+    state signature returns to the empty-state signature. CME Globex halts
+    trading 17:00–17:55 CT; substrate-side gaps under
+    ``data/processed/vendor_legacy_1min_roll_adjusted/`` reflect the halt.
+    A false-continuity bug would manifest as level-state vectors unchanged
+    across a multi-hour wall-clock gap.
 
-    under the reset-policy variant (design.md §5.3 primary). CME Globex
-    halts trading 17:00–17:55 CT in typical configurations; substrate-side
-    gaps under data/processed/vendor_legacy_1min_roll_adjusted/ reflect
-    the halt. A false-continuity bug here would manifest as level-state
-    vectors that appear unchanged across a multi-hour wall-clock gap.
+    Asserts:
+        state_machine.was_reset_at_boundary(expected_resets=1) == True
+        state_machine.state_signature() == empty_state_signature
+        state_machine.n_levels() == 0
     """
+    machine = LevelExhaustionStateMachine()
+    # Pre-halt state: register some swing-pivot levels and accumulate counts.
+    a = machine.add_level(level_value=5_000.0, side="support", current_bar=0)
+    machine.add_level(level_value=5_010.0, side="resistance", current_bar=10)
+    machine.record_rejection(a, current_bar=20)
+    sig_pre_halt = machine.state_signature()
+    assert machine.n_levels() == 2
+    assert machine.n_resets() == 0
+
+    # A reference machine that has been reset once — its state_signature
+    # reflects (empty levels, n_resets=1). The state-machine n_resets counter
+    # is a load-bearing audit trail (so the orchestrator can verify a reset
+    # actually fired rather than coincidentally landing on empty state).
+    reference = LevelExhaustionStateMachine()
+    reference.reset()
+    reference_signature_after_one_reset = reference.state_signature()
+
+    # Fold-boundary reset event (orchestrator invokes reset() when entering a
+    # new fold whose first bar is post-17:00 CT CME maintenance halt).
+    machine.reset()
+
+    assert machine.was_reset_at_boundary(expected_resets=1) is True
+    assert machine.n_levels() == 0
+    assert machine.n_active_levels() == 0
+    # Post-reset machine matches the once-reset reference (both empty + n_resets=1).
+    assert machine.state_signature() == reference_signature_after_one_reset
+    assert machine.state_signature() != sig_pre_halt
