@@ -1,0 +1,73 @@
+{
+  "alpha": 0.05,
+  "central_omega": 0.45,
+  "config_path": "config/hypotheses/H055.yaml",
+  "decision": {
+    "binding_K_max": null,
+    "central_omega": 0.45,
+    "n_strategies_grid": [
+      50,
+      100
+    ],
+    "power_target": 0.8,
+    "satisfying_K_values": []
+  },
+  "effect_size": 0.3,
+  "grid": {
+    "K=100|omega=0.30": {
+      "mean_block_length": 1.0,
+      "mean_p_value": 0.05225,
+      "n_inner_bootstrap": 200.0,
+      "n_replicates": 20.0,
+      "power": 0.75,
+      "power_mc_se": 0.09682458365518543
+    },
+    "K=100|omega=0.45": {
+      "mean_block_length": 1.0,
+      "mean_p_value": 0.0595,
+      "n_inner_bootstrap": 200.0,
+      "n_replicates": 20.0,
+      "power": 0.65,
+      "power_mc_se": 0.1066536450385077
+    },
+    "K=100|omega=0.60": {
+      "mean_block_length": 1.0,
+      "mean_p_value": 0.08424999999999999,
+      "n_inner_bootstrap": 200.0,
+      "n_replicates": 20.0,
+      "power": 0.45,
+      "power_mc_se": 0.11124297730643495
+    },
+    "K=50|omega=0.30": {
+      "mean_block_length": 1.0,
+      "mean_p_value": 0.15425,
+      "n_inner_bootstrap": 200.0,
+      "n_replicates": 20.0,
+      "power": 0.4,
+      "power_mc_se": 0.10954451150103323
+    },
+    "K=50|omega=0.45": {
+      "mean_block_length": 1.0,
+      "mean_p_value": 0.143,
+      "n_inner_bootstrap": 200.0,
+      "n_replicates": 20.0,
+      "power": 0.4,
+      "power_mc_se": 0.10954451150103323
+    },
+    "K=50|omega=0.60": {
+      "mean_block_length": 1.0,
+      "mean_p_value": 0.22525000000000003,
+      "n_inner_bootstrap": 200.0,
+      "n_replicates": 20.0,
+      "power": 0.25,
+      "power_mc_se": 0.09682458365518543
+    }
+  },
+  "mode": "smoke",
+  "n_sessions": 5,
+  "pilot_ledger_path": "data/external/h055_pilot_ledger/Performance.csv",
+  "pilot_mean_log_return": 0.45213459849802157,
+  "pilot_std_log_return": 0.2540798099630773,
+  "power_target": 0.8,
+  "rng_seed": 20260506
+}
