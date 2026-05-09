@@ -78,6 +78,12 @@ from typing import Final, Literal
 import numpy as np
 import yaml
 
+# Ensure the scripts/ directory is on the path so we can import the
+# orchestrator's substrate loader.
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
 from skie_ninja.features.h055.body_overlap import body_overlap_rho_1
 from skie_ninja.features.h055.trend_identifiers import (
     trend_id_a_ts_mom,
@@ -445,15 +451,85 @@ def main() -> int:
             print(f"  q={q:.2f}: rho_star={r.rho_star:.4f}, "
                   f"brier={r.brier_score:.4f}, n_cond={r.n_conditional_bars}")
     else:
-        # Production-mode substrate load (pending; mirrors orchestrator pattern)
-        print(
-            "error: production-mode substrate load is pending operator-side "
-            "data placement at data/processed/vendor_legacy_1min_roll_adjusted/. "
-            "The harness logic is validated by --smoke; production execution "
-            "requires substrate.",
-            file=sys.stderr,
-        )
-        return 3
+        # Production-mode: load 2015-2019 calibration-holdout fragment from substrate.
+        substrate_root = Path(args.substrate_root)
+        if not substrate_root.exists():
+            print(
+                f"error: substrate_root not found at {substrate_root}",
+                file=sys.stderr,
+            )
+            return 3
+        # Import here to keep smoke-mode dependency-free for the harness logic.
+        from run_h055_walk_forward import _load_substrate_for_symbol  # type: ignore[import-untyped]
+
+        # Per design.md §5.1: fit-half = 2015-2018 (4 yrs); score-half = 2019 (1 yr).
+        # Process per (instrument-class × symbol) per design.md §5.1; the
+        # symbol's score-half index is the bar-position cut point (use a
+        # date-based split to avoid varying bars/year).
+        for inst_class, symbols in _INSTRUMENT_CLASSES.items():
+            class_results: dict[str, TrendIDBrierResult] = {}
+            for symbol in symbols:
+                try:
+                    o, h, l, c, ts = _load_substrate_for_symbol(
+                        substrate_root, symbol=symbol,
+                        start_date="2015-01-01", end_date="2019-12-31",
+                    )
+                except (FileNotFoundError, ValueError) as e:
+                    print(f"  [{inst_class}/{symbol}] skip: {e}")
+                    continue
+                log_p = np.log(c)
+                # Find bar index of 2019-01-01 (score-half boundary)
+                from datetime import datetime as _dt, timezone as _tz
+                score_start_dt = _dt(2019, 1, 1, tzinfo=_tz.utc)
+                score_start_idx = next(
+                    (i for i, t in enumerate(ts) if t >= score_start_dt), len(ts)
+                )
+                # First symbol in class drives the result; subsequent symbols
+                # in the class would be aggregated in a more thorough impl
+                # (per-class aggregation tracked under
+                # P1-H055-CALIBRATION-CLASS-AGGREGATE).
+                class_results = calibrate_trend_id(
+                    log_prices=log_p, high=h, low=l, close=c,
+                    score_start_idx=score_start_idx, score_end_idx=len(c),
+                    instrument_class=inst_class,
+                )
+                print(f"[{inst_class}/{symbol}] production trend-id Brier scores:")
+                for tid, r in class_results.items():
+                    brier_str = f"{r.brier_score:.4f}" if not np.isnan(r.brier_score) else "n/a"
+                    print(f"  {tid}: brier={brier_str}, n={r.n_eligible_bars}")
+                break  # one symbol per class for this prototype
+            if class_results:
+                trend_id_results[inst_class] = class_results
+
+        # rho* on the first available symbol (project-wide single value)
+        first_symbol_loaded = False
+        for symbols in _INSTRUMENT_CLASSES.values():
+            for symbol in symbols:
+                try:
+                    o, h, l, c, ts = _load_substrate_for_symbol(
+                        substrate_root, symbol=symbol,
+                        start_date="2015-01-01", end_date="2019-12-31",
+                    )
+                    log_p = np.log(c)
+                    rho_results = calibrate_rho_star(
+                        open_prices=o, close=c, log_prices=log_p,
+                        rho_window_n=10, h_dwell_bars=5,
+                    )
+                    print(f"production rho-star selection (basis: {symbol}):")
+                    for q, r in sorted(rho_results.items()):
+                        rho_s = f"{r.rho_star:.4f}" if not np.isnan(r.rho_star) else "n/a"
+                        b_s = f"{r.brier_score:.4f}" if not np.isnan(r.brier_score) else "n/a"
+                        print(f"  q={q:.2f}: rho_star={rho_s}, "
+                              f"brier={b_s}, n_cond={r.n_conditional_bars}")
+                    first_symbol_loaded = True
+                    break
+                except (FileNotFoundError, ValueError):
+                    continue
+            if first_symbol_loaded:
+                break
+        if not first_symbol_loaded:
+            print("error: could not load any symbol for rho* calibration", file=sys.stderr)
+            return 3
 
     out_md = args.out_dir / f"calibration_holdout_results_{datetime.now().date().isoformat()}.md"
     _emit_calibration_md(
