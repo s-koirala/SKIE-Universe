@@ -142,6 +142,7 @@ class KillSwitchSimulationResult:
     halted_sessions: tuple[int, ...]
     halted_weeks: tuple[int, ...]
     n_trades_skipped: int
+    skipped_trade_indices: tuple[int, ...]
     starting_equity: float
     risk_budget_pct: float
 
@@ -229,11 +230,13 @@ def simulate_equity_with_kill_switches(
     session_pnl: dict[int, float] = {}
     week_pnl: dict[int, float] = {}
     n_k1 = n_k6 = n_k7 = n_skipped = 0
+    skipped_trade_indices: list[int] = []
 
     for i, t in enumerate(trades):
         if t.session_id in halted_session_ids or t.week_id in halted_week_ids:
             equity_curve[i + 1] = equity
             n_skipped += 1
+            skipped_trade_indices.append(i)
             continue
 
         if t.session_id not in session_start_equity:
@@ -298,6 +301,7 @@ def simulate_equity_with_kill_switches(
         halted_sessions=tuple(sorted(halted_session_ids)),
         halted_weeks=tuple(sorted(halted_week_ids)),
         n_trades_skipped=n_skipped,
+        skipped_trade_indices=tuple(skipped_trade_indices),
         starting_equity=starting_equity,
         risk_budget_pct=risk_budget_pct,
     )
