@@ -21,6 +21,13 @@ from skie_ninja.features.h055.body_overlap import (
     body_overlap_rho_1,
     pairwise_jaccard,
 )
+from skie_ninja.features.h055.features import (
+    BarFeatures,
+    H055FeatureConfig,
+    Setup,
+    compute_h055_features,
+    emit_h055_setups,
+)
 from skie_ninja.features.h055.level_state import (
     LevelExhaustionStateMachine,
     LevelState,
@@ -44,18 +51,23 @@ from skie_ninja.features.h055.wick_reversal import (
 )
 
 __all__ = [
+    "BarFeatures",
+    "H055FeatureConfig",
     "LevelExhaustionStateMachine",
     "LevelState",
+    "Setup",
     "SwingLevelMemory",
     "SwingPivotSetup",
     "WickReversalSetup",
     "atr_wilder",
     "body_interval",
     "body_overlap_rho_1",
+    "compute_h055_features",
     "detect_long_swing_pivot_setups",
     "detect_short_swing_pivot_setups",
     "detect_swing_pivot_setups",
     "detect_wick_reversal_setups",
+    "emit_h055_setups",
     "pairwise_jaccard",
     "trend_id_a_ts_mom",
     "trend_id_b_adx",
