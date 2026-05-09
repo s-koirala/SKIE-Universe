@@ -79,9 +79,20 @@ from skie_ninja.features.h055.features import (
     emit_h055_setups,
 )
 from skie_ninja.features.h055.level_state import LevelExhaustionStateMachine
+from skie_ninja.inference.bootstrap import (
+    politis_white_block_length,
+    stationary_bootstrap_indices,
+)
 from skie_ninja.inference.calmar import calmar_ratio
-from skie_ninja.inference.profit_factor import profit_factor
-from skie_ninja.inference.r_multiple import r_multiple_distribution
+from skie_ninja.inference.profit_factor import (
+    profit_factor,
+    profit_factor_differential_ci_stationary_bootstrap,
+)
+from skie_ninja.inference.r_multiple import (
+    r_multiple_distribution,
+    r_multiple_mean_ci_stationary_bootstrap,
+)
+from skie_ninja.inference.risk_of_ruin import probability_of_ruin_monte_carlo
 from skie_ninja.utils.news_calendar import NewsCalendar
 
 
@@ -99,7 +110,7 @@ class H055RunConfig:
 
 @dataclass(frozen=True)
 class FoldResult:
-    """Aggregated per-fold result.
+    """Aggregated per-fold result + ADR-0017 §1 inference + forward projection.
 
     Fields:
         symbol: e.g. "ES".
@@ -115,6 +126,20 @@ class FoldResult:
         profit_factor: gross_profit / gross_loss (None if no losers).
         r_multiple_mean: mean realized R.
         n_sessions_proxy: sessions implied by bar count.
+
+    ADR-0017 §1 inference fields (None when n_trades_filled < threshold):
+        r_mult_ci_lower / upper / underpowered: stationary-bootstrap CI on
+            R-multiple-mean per ADR-0017 §2.4.
+        forward_terminal_q01 / q05 / median / q95 / q99: forward-projection
+            quantiles per ADR-0017 §1 from a 5,000-path × 252-session
+            iid-bootstrap of per-trade R-multiples (SIMPLIFIED — production
+            should use stationary bootstrap with PW2004 block length, but
+            with n_trades typically << n_sessions * trade_rate the iid
+            approximation is the floor; tracked under
+            P1-H055-FORWARD-PROJECTION-STATIONARY-BOOTSTRAP).
+        forward_p_loss: probability terminal_equity < starting_equity.
+        forward_p_below_50pct: probability terminal_equity < 0.5 × starting.
+        risk_of_ruin: probability of touching 50% bankroll within 252 sessions.
     """
 
     symbol: str
@@ -132,6 +157,21 @@ class FoldResult:
     profit_factor_value: float | None
     r_multiple_mean: float
     n_sessions_proxy: int
+
+    # ADR-0017 §1 inference
+    r_mult_ci_lower: float | None = None
+    r_mult_ci_upper: float | None = None
+    r_mult_underpowered: bool | None = None
+
+    # Forward projection (ADR-0017 §1 + ADR-0013 §3.1)
+    forward_terminal_q01: float | None = None
+    forward_terminal_q05: float | None = None
+    forward_terminal_median: float | None = None
+    forward_terminal_q95: float | None = None
+    forward_terminal_q99: float | None = None
+    forward_p_loss: float | None = None
+    forward_p_below_50pct: float | None = None
+    risk_of_ruin: float | None = None
 
 
 def _load_config(config_path: Path, smoke: bool) -> H055RunConfig:
@@ -328,6 +368,10 @@ def _aggregate_fold(
     gated_setups: list[Setup],
     trades: list[TradeResult],
     starting_equity: float,
+    rng_seed: int = 20260506,
+    n_forward_paths: int = 5_000,
+    n_forward_sessions: int = 252,
+    n_bootstrap_ci: int = 2_000,
 ) -> FoldResult:
     filled = [t for t in trades if t.fill_bar is not None]
     pnl_dollars = np.array([t.realized_pnl_dollars for t in filled], dtype=float)
@@ -356,6 +400,59 @@ def _aggregate_fold(
         pf_val = None
     r_mean = float(r_multiples.mean()) if r_multiples.size > 0 else 0.0
 
+    # ─── ADR-0017 §1 inference ───
+    r_mult_lo = r_mult_hi = None
+    r_mult_underpowered = None
+    fwd_q01 = fwd_q05 = fwd_med = fwd_q95 = fwd_q99 = None
+    fwd_p_loss = fwd_p_below_50 = None
+    ror = None
+
+    if r_multiples.size >= 4:  # bootstrap requires n >= 4
+        # CI on R-multiple-mean
+        r_mult_ci = r_multiple_mean_ci_stationary_bootstrap(
+            r_multiples, n_bootstrap=n_bootstrap_ci, rng_seed=rng_seed,
+        )
+        r_mult_lo = float(r_mult_ci.ci_lower)
+        r_mult_hi = float(r_mult_ci.ci_upper)
+        r_mult_underpowered = bool(r_mult_ci.underpowered)
+
+        # Forward projection: bootstrap-resample per-trade R-multiples;
+        # build n_forward_sessions equity curves; quantile.
+        # Per ADR-0013 §3.1: the n_forward_sessions corresponds to 1 trading
+        # year. We approximate per-session trade rate from n_filled / n_sessions_proxy.
+        rng = np.random.default_rng(rng_seed + 1)
+        trades_per_session = max(1, len(filled) // n_sessions_proxy)
+        n_forward_trades = trades_per_session * n_forward_sessions
+        # Simple iid bootstrap of R-multiples → $-PnL using session-cohort
+        # mean dollar-stake (gross_profit + gross_loss / n_filled as an
+        # approximation of $-stake-per-trade).
+        if pnl_dollars.size > 0:
+            avg_dollar_per_trade = float(np.abs(pnl_dollars).mean())
+            indices = rng.integers(0, r_multiples.size, size=(n_forward_paths, n_forward_trades))
+            r_paths = r_multiples[indices]  # (n_paths, n_trades)
+            pnl_paths = r_paths * avg_dollar_per_trade
+            cum_pnl = pnl_paths.sum(axis=1)
+            terminal_equity = starting_equity + cum_pnl
+            fwd_q01 = float(np.quantile(terminal_equity, 0.01))
+            fwd_q05 = float(np.quantile(terminal_equity, 0.05))
+            fwd_med = float(np.median(terminal_equity))
+            fwd_q95 = float(np.quantile(terminal_equity, 0.95))
+            fwd_q99 = float(np.quantile(terminal_equity, 0.99))
+            fwd_p_loss = float(np.mean(terminal_equity < starting_equity))
+            fwd_p_below_50 = float(np.mean(terminal_equity < 0.5 * starting_equity))
+
+            # Risk-of-ruin Monte Carlo using existing primitive
+            ror_result = probability_of_ruin_monte_carlo(
+                r_multiples,
+                starting_equity=starting_equity,
+                ruin_threshold_fraction=0.5,
+                n_sessions=n_forward_sessions,
+                n_paths=n_forward_paths,
+                kelly_fraction=0.10,
+                rng_seed=rng_seed + 2,
+            )
+            ror = float(ror_result.probability_of_ruin)
+
     return FoldResult(
         symbol=symbol,
         n_bars=n_bars,
@@ -372,6 +469,17 @@ def _aggregate_fold(
         profit_factor_value=pf_val,
         r_multiple_mean=r_mean,
         n_sessions_proxy=n_sessions_proxy,
+        r_mult_ci_lower=r_mult_lo,
+        r_mult_ci_upper=r_mult_hi,
+        r_mult_underpowered=r_mult_underpowered,
+        forward_terminal_q01=fwd_q01,
+        forward_terminal_q05=fwd_q05,
+        forward_terminal_median=fwd_med,
+        forward_terminal_q95=fwd_q95,
+        forward_terminal_q99=fwd_q99,
+        forward_p_loss=fwd_p_loss,
+        forward_p_below_50pct=fwd_p_below_50,
+        risk_of_ruin=ror,
     )
 
 
@@ -382,37 +490,131 @@ def _emit_kpi_report_card(
     config: H055RunConfig,
     out_dir: Path,
 ) -> Path:
-    """Emit ADR-0017 §1 primary KPI report card v1."""
+    """Emit ADR-0017 §1 primary KPI report card v1.
+
+    Includes the full survival-constrained inferential vector:
+      - Realized OOS: end equity, max-DD, win/loss/zero counts
+      - ADR-0017 §1 metrics: Calmar, profit-factor, R-multiple-mean
+      - R-mult-mean stationary-bootstrap CI (Politis-Romano 1994)
+      - Forward 252-session projection: q01/q05/median/q95/q99 + P(loss) +
+        P(<50% bankroll) terminal equity quantiles
+      - Risk-of-ruin Monte Carlo per ADR-0017 §4.2 (Vince 1990 *practitioner*)
+
+    Per ADR-0014 §3.2 mandatory 12-table format (subset emitted here;
+    full 12-table to land per-table once SPA family + LW2008 differential
+    CI vs benchmark are wired under P1-H055-INFERENCE-CI-IMPL).
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     md_path = out_dir / "H055_kpi_report_v1.md"
     lines: list[str] = []
     lines.append(f"# H055 KPI Report Card v1 (run_id `{run_id}`)\n")
     lines.append(
-        "Survival-constrained inferential framework per ADR-0017 §1. "
-        "Sharpe-family metrics archived per project directive (2026-05-09).\n"
+        "Survival-constrained inferential framework per "
+        "[ADR-0017 §1](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md). "
+        "Sharpe-family metrics archived per project directive (2026-05-09 operator instruction).\n"
     )
-    lines.append("\n## ADR-0017 §1 Primary Metrics — per symbol\n")
+
+    # Table 1: Realized OOS P/L + counts
+    lines.append("\n## §1 Realized OOS ($10,000 starting capital)\n")
     lines.append(
-        "| Symbol | n_bars | n_setups_total | n_post_gate | n_trades_filled | "
-        "Realized end | Max-DD | Annualized return | Calmar | "
-        "Profit-factor | R-mult mean |\n"
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+        "| Symbol | n_bars | n_setups | n_post_gate | n_trades_filled | "
+        "Realized end | % change | Max-DD | Ann. return |\n"
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|"
     )
     for r in fold_results:
-        pf_str = f"{r.profit_factor_value:.3f}" if r.profit_factor_value is not None else "n/a"
+        pct = r.realized_end_equity / config.starting_equity - 1.0
         lines.append(
             f"| {r.symbol} | {r.n_bars:,} | {r.n_setups_total} | "
             f"{r.n_setups_post_gate} | {r.n_trades_filled} | "
-            f"${r.realized_end_equity:,.2f} | {r.max_dd:.2%} | "
-            f"{r.ann_return:.2%} | {r.calmar:+.3f} | {pf_str} | "
-            f"{r.r_multiple_mean:+.4f} |"
+            f"${r.realized_end_equity:,.2f} | {pct:+.2%} | "
+            f"{r.max_dd:.2%} | {r.ann_return:.2%} |"
         )
+    lines.append("")
+
+    # Table 2: ADR-0017 §1 primary metrics + R-mult CI
+    lines.append("\n## §2 ADR-0017 §1 Primary Inference (with stationary-bootstrap CI)\n")
+    lines.append(
+        "| Symbol | Calmar | Profit-factor | R-mult mean | R-mult 95% CI | "
+        "Excludes 0 | Underpowered |\n"
+        "|---|---:|---:|---:|:--:|:--:|:--:|"
+    )
+    for r in fold_results:
+        pf_str = (
+            f"{r.profit_factor_value:.3f}"
+            if r.profit_factor_value is not None else "n/a"
+        )
+        if r.r_mult_ci_lower is not None and r.r_mult_ci_upper is not None:
+            ci_str = f"[{r.r_mult_ci_lower:+.3f}, {r.r_mult_ci_upper:+.3f}]"
+            excl0 = "YES" if (r.r_mult_ci_lower > 0 or r.r_mult_ci_upper < 0) else "NO"
+            up_str = "YES" if r.r_mult_underpowered else "NO"
+        else:
+            ci_str = "n/a (n_trades < 4)"
+            excl0 = "n/a"
+            up_str = "n/a"
+        lines.append(
+            f"| {r.symbol} | {r.calmar:+.3f} | {pf_str} | "
+            f"{r.r_multiple_mean:+.4f} | {ci_str} | {excl0} | {up_str} |"
+        )
+    lines.append("")
+
+    # Table 3: Forward 1-year projection
+    lines.append("\n## §3 Forward 1-year projection (252-session bootstrap; 5,000 paths)\n")
+    lines.append(
+        "| Symbol | Median | q01 | q05 | q95 | q99 | "
+        "P(loss) | P(<50% bankroll) | Risk-of-ruin |\n"
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|"
+    )
+    for r in fold_results:
+        if r.forward_terminal_median is not None:
+            lines.append(
+                f"| {r.symbol} | "
+                f"${r.forward_terminal_median:,.0f} | "
+                f"${r.forward_terminal_q01:,.0f} | "
+                f"${r.forward_terminal_q05:,.0f} | "
+                f"${r.forward_terminal_q95:,.0f} | "
+                f"${r.forward_terminal_q99:,.0f} | "
+                f"{r.forward_p_loss:.2%} | "
+                f"{r.forward_p_below_50pct:.2%} | "
+                f"{r.risk_of_ruin:.4%} |"
+            )
+        else:
+            lines.append(
+                f"| {r.symbol} | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a |"
+            )
+    lines.append("")
+
+    # ADR-0017 §1 verdict per-symbol
+    lines.append("\n## §4 ADR-0017 §1 Verdict per Symbol\n")
+    for r in fold_results:
+        verdict_parts: list[str] = []
+        if r.calmar > 0.5:
+            verdict_parts.append("Calmar > 0.5 (favorable)")
+        elif r.calmar < 0:
+            verdict_parts.append(f"Calmar = {r.calmar:+.3f} (negative)")
+        else:
+            verdict_parts.append(f"Calmar = {r.calmar:+.3f} (marginal)")
+        if r.r_mult_ci_lower is not None and r.r_mult_ci_lower > 0:
+            verdict_parts.append("R-mult CI excludes zero on positive side")
+        elif r.r_mult_ci_upper is not None and r.r_mult_ci_upper < 0:
+            verdict_parts.append("R-mult CI excludes zero on NEGATIVE side")
+        if r.forward_p_loss is not None and r.forward_p_loss < 0.20:
+            verdict_parts.append(f"Forward P(loss) = {r.forward_p_loss:.1%} (low)")
+        elif r.forward_p_loss is not None and r.forward_p_loss > 0.50:
+            verdict_parts.append(f"Forward P(loss) = {r.forward_p_loss:.1%} (HIGH)")
+        verdict = "; ".join(verdict_parts) if verdict_parts else "insufficient data"
+        lines.append(f"- **{r.symbol}**: {verdict}")
     lines.append("")
 
     if config.smoke:
         lines.append(
             "\n> **Smoke-mode result**: synthetic 1-min bars; no statistical "
             "interpretation. Intended for orchestration-pipeline validation only.\n"
+        )
+    else:
+        lines.append(
+            "\n> **Production-mode result**: real substrate. Operator review per "
+            "the user's 2026-05-04 standing decline-ninjascript directive + "
+            "ADR-0013 §5.3 operator-discretionary clause.\n"
         )
 
     md_path.write_text("\n".join(lines), encoding="utf-8")
@@ -457,12 +659,31 @@ def main() -> int:
         "--end-date", type=str, default=None,
         help="ISO YYYY-MM-DD upper bound on ts_event (production mode only)",
     )
+    parser.add_argument(
+        "--rho-star", type=float, default=None,
+        help="Override the rho_star gate (default 0.6 PLACEHOLDER pending "
+        "P1-H055-CALIBRATION-HOLDOUT-RUN binding). Lower values admit "
+        "more setups; useful for smoke-testing the inference layer.",
+    )
     args = parser.parse_args()
 
     if not args.config.exists():
         print(f"error: config not found at {args.config}", file=sys.stderr)
         return 2
     run_cfg = _load_config(args.config, smoke=args.smoke)
+    if args.rho_star is not None:
+        # Operator override per CLI; used to exercise the inference layer
+        # on synthetic substrate where ρ_1 distribution doesn't reach the
+        # production-default 0.6 threshold.
+        run_cfg = H055RunConfig(
+            hypothesis_id=run_cfg.hypothesis_id,
+            rho_star=float(args.rho_star),
+            smoke=run_cfg.smoke,
+            starting_equity=run_cfg.starting_equity,
+            risk_budget_pct=run_cfg.risk_budget_pct,
+            rng_seed=run_cfg.rng_seed,
+        )
+        print(f"rho_star override: {args.rho_star}")
 
     # Build run_id
     run_id = f"smoke_{args.symbol}_{run_cfg.rng_seed}" if args.smoke else f"prod_{args.symbol}"
@@ -543,11 +764,12 @@ def main() -> int:
         trades.append(simulate_per_trade(h, l, c, config=cfg))
     print(f"simulated {len(trades)} trades; {sum(1 for t in trades if t.fill_bar is not None)} filled")
 
-    # ─── Aggregate ───
+    # ─── Aggregate (includes ADR-0017 §1 inference + forward projection) ───
     fold_result = _aggregate_fold(
         symbol=args.symbol, n_bars=o.size,
         setups=setups, gated_setups=gated, trades=trades,
         starting_equity=run_cfg.starting_equity,
+        rng_seed=run_cfg.rng_seed,
     )
 
     # ─── Emit results ───
@@ -570,6 +792,19 @@ def main() -> int:
             "profit_factor": fold_result.profit_factor_value,
             "r_multiple_mean": fold_result.r_multiple_mean,
             "n_sessions_proxy": fold_result.n_sessions_proxy,
+            # ADR-0017 §1 inference
+            "r_mult_ci_lower": fold_result.r_mult_ci_lower,
+            "r_mult_ci_upper": fold_result.r_mult_ci_upper,
+            "r_mult_underpowered": fold_result.r_mult_underpowered,
+            # Forward 1-year projection
+            "forward_terminal_q01": fold_result.forward_terminal_q01,
+            "forward_terminal_q05": fold_result.forward_terminal_q05,
+            "forward_terminal_median": fold_result.forward_terminal_median,
+            "forward_terminal_q95": fold_result.forward_terminal_q95,
+            "forward_terminal_q99": fold_result.forward_terminal_q99,
+            "forward_p_loss": fold_result.forward_p_loss,
+            "forward_p_below_50pct": fold_result.forward_p_below_50pct,
+            "risk_of_ruin": fold_result.risk_of_ruin,
         },
     }
     json_path = out_dir / "results.json"
