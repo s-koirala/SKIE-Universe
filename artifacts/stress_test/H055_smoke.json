@@ -1,0 +1,147 @@
+{
+  "config_path": "config/hypotheses/H055.yaml",
+  "hypothesis_id": "H055",
+  "input_mode": "synthetic",
+  "kill_switch_params": {
+    "daily_circuit_breaker_fraction": -0.02,
+    "per_trade_stop_r": 1.0,
+    "weekly_circuit_breaker_fraction": -0.05
+  },
+  "n_trades": 100,
+  "payload_sha256": "0fb7b7574f66ef9bb238359240465abfb19362e5c494d94a5aef617c2ac6e7dc",
+  "results": {
+    "FM-1": {
+      "fm_description": "Death by thousand cuts: replace each loss trade with 4\u00d7 as many trades each carrying 1/4 the loss (R-multiple-sum-preserving; $-loss compounds with O(risk_budget_pct\u00b2 \u00d7 cuts) discrepancy in the conservative direction).",
+      "fm_id": "FM-1",
+      "fm_specific": {
+        "cuts_multiplier": 4,
+        "halted_sessions_post": [
+          56,
+          81,
+          90
+        ],
+        "halted_sessions_pre": [],
+        "k6_demonstrably_caught_damage": true,
+        "n_k6_fires_post": 3,
+        "n_k6_fires_pre": 0,
+        "n_post_stress_trades": 247,
+        "n_pre_stress_trades": 100,
+        "no_kss_terminal_equity": 9518.161322692316,
+        "vacuous_pass": false
+      },
+      "pass_criterion": "K-6 fires AND demonstrably catches damage (kill-switch terminal equity > no-kill-switch counterfactual terminal equity); or vacuous pass when no K-6 trigger condition is structurally reachable (annotated as `vacuous_pass=True`).",
+      "passed": true,
+      "post_stress_max_drawdown_fraction": -0.08196052668250338,
+      "post_stress_terminal_equity": 9695.957961122354,
+      "pre_stress_max_drawdown_fraction": -0.06422681463856983,
+      "pre_stress_terminal_equity": 10653.655907936285,
+      "rng_seed": 20260508,
+      "starting_equity": 10000.0,
+      "triggered_kill_switches": [
+        "K-6",
+        "K-7"
+      ]
+    },
+    "FM-2": {
+      "fm_description": "Gap-overnight stress test bypassed by RTH-only mandate per ADR-0017 \u00a76 row 2 closing parenthetical. The strategy closes all positions at the RTH session close, so an overnight gap (-3.0R) cannot affect a held position by construction.",
+      "fm_id": "FM-2",
+      "fm_specific": {
+        "exempt_reason": "rth-only-mandate",
+        "gap_size_in_r": -3.0
+      },
+      "pass_criterion": "Strategy is exempt by construction per ADR-0017 \u00a76 row 2 (strategies with in-session-only mandate / RTH close = hard close).",
+      "passed": true,
+      "post_stress_max_drawdown_fraction": 0.0,
+      "post_stress_terminal_equity": 10000.0,
+      "pre_stress_max_drawdown_fraction": 0.0,
+      "pre_stress_terminal_equity": 10000.0,
+      "rng_seed": 20260508,
+      "starting_equity": 10000.0,
+      "triggered_kill_switches": []
+    },
+    "FM-3": {
+      "fm_description": "News-spike: inject a -2.5R adverse 1-min spike at the per-trade scale (modeling a 5\u03c3 news-induced move) during an active position; AND-conjunction pass criterion per ADR-0017 \u00a76 row 3 + F-15 audit remediation.",
+      "fm_id": "FM-3",
+      "fm_specific": {
+        "condition_a_news_calendar_filter_active": false,
+        "condition_a_orchestrator_coverage_required": true,
+        "condition_b_k1_binds_counterfactual": true,
+        "k1_floor_in_r": -1.0,
+        "realized_r_at_spike": -1.0,
+        "spike_size_in_r": -2.5
+      },
+      "pass_criterion": "BOTH (a) news-calendar \u00a74 eligible-bar filter prevents entry in the configured news window AND (b) counterfactual entry triggers K-1 with realised loss bounded at -1.0R.",
+      "passed": false,
+      "post_stress_max_drawdown_fraction": -0.01,
+      "post_stress_terminal_equity": 9900.0,
+      "pre_stress_max_drawdown_fraction": 0.0,
+      "pre_stress_terminal_equity": 10000.0,
+      "rng_seed": 20260508,
+      "starting_equity": 10000.0,
+      "triggered_kill_switches": [
+        "K-1"
+      ]
+    },
+    "FM-4": {
+      "fm_description": "Latency-induced bad fill: deduct 0.1000R per trade AFTER the K-1 floor (cost_mult=2.0 \u00d7 baseline cost_per_trade=0.05R) modeling 2-tick adverse slippage on every entry+exit. K-1-floored losers realise -1R - cost.",
+      "fm_id": "FM-4",
+      "fm_specific": {
+        "cost_application_order": "post-k1-floor",
+        "cost_mult": 2.0,
+        "cost_per_trade_in_r": 0.05,
+        "extra_cost_r_per_trade": 0.1,
+        "n_trades": 100,
+        "survival_floor_dollars": 5000.0,
+        "survival_threshold_fraction": 0.5
+      },
+      "pass_criterion": "Post-stress terminal equity > starting_equity \u00d7 0.5 (= $5,000.00; the 50%-of-bankroll floor borrows the ADR-0017 \u00a74.2 ruin threshold as the operational quantification of the \u00a76 row 4 qualitative 'survives the elevated cost regime' criterion).",
+      "passed": true,
+      "post_stress_max_drawdown_fraction": -0.07360445175641528,
+      "post_stress_terminal_equity": 9639.917341579272,
+      "pre_stress_max_drawdown_fraction": -0.06422681463856983,
+      "pre_stress_terminal_equity": 10653.655907936285,
+      "rng_seed": 20260508,
+      "starting_equity": 10000.0,
+      "triggered_kill_switches": [
+        "K-1"
+      ]
+    },
+    "FM-5": {
+      "fm_description": "Regime change mid-trade: shift R-distribution by -0.5R for all trades with session_id \u2265 50 (modeling a regime break the IS fold did not contain).",
+      "fm_id": "FM-5",
+      "fm_specific": {
+        "cumulative_damage_fraction": -0.10178193975311296,
+        "k7_fired": false,
+        "n_k7_fires": 0,
+        "n_trades_post_break": 50,
+        "n_trades_pre_break": 50,
+        "path_a_regime_conditioning_orchestrator_coverage_required": true,
+        "regime_break_session": 50,
+        "regime_break_severity": -0.5
+      },
+      "pass_criterion": "K-7 weekly circuit breaker fires within the post-break equity trajectory (path b at primitive layer; path a regime-conditioning verification deferred to orchestrator layer per P1-ADR-0017-KILL-SWITCH-BACKTEST-VALIDATION).",
+      "passed": false,
+      "post_stress_max_drawdown_fraction": -0.16414935213187942,
+      "post_stress_terminal_equity": 8982.18060246887,
+      "pre_stress_max_drawdown_fraction": -0.06422681463856983,
+      "pre_stress_terminal_equity": 10653.655907936285,
+      "rng_seed": 20260508,
+      "starting_equity": 10000.0,
+      "triggered_kill_switches": [
+        "K-1"
+      ]
+    }
+  },
+  "risk_budget_pct": 0.01,
+  "rng_seed": 20260508,
+  "starting_equity": 10000.0,
+  "summary": {
+    "all_passed": false,
+    "failed_ids": [
+      "FM-3",
+      "FM-5"
+    ],
+    "n_failed": 2,
+    "n_passed": 3
+  }
+}
