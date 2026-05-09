@@ -1,0 +1,129 @@
+{
+  "smoke": true,
+  "trend_id_results": {
+    "ES_class": {
+      "a": {
+        "instrument_class": "ES_class",
+        "trend_id": "a",
+        "n_eligible_bars": 995,
+        "brier_score": 1.3316582914572865,
+        "realized_side_dist": [
+          373,
+          45,
+          582
+        ]
+      },
+      "b": {
+        "instrument_class": "ES_class",
+        "trend_id": "b",
+        "n_eligible_bars": 995,
+        "brier_score": 1.6100502512562813,
+        "realized_side_dist": [
+          492,
+          165,
+          343
+        ]
+      },
+      "c": {
+        "instrument_class": "ES_class",
+        "trend_id": "c",
+        "n_eligible_bars": 995,
+        "brier_score": 1.5095477386934673,
+        "realized_side_dist": [
+          661,
+          112,
+          227
+        ]
+      },
+      "d": {
+        "instrument_class": "ES_class",
+        "trend_id": "d",
+        "n_eligible_bars": 995,
+        "brier_score": 0.9979899497487437,
+        "realized_side_dist": [
+          2,
+          0,
+          998
+        ]
+      }
+    },
+    "NQ_class": {
+      "a": {
+        "instrument_class": "NQ_class",
+        "trend_id": "a",
+        "n_eligible_bars": 995,
+        "brier_score": 1.2914572864321607,
+        "realized_side_dist": [
+          438,
+          0,
+          562
+        ]
+      },
+      "b": {
+        "instrument_class": "NQ_class",
+        "trend_id": "b",
+        "n_eligible_bars": 995,
+        "brier_score": 1.4703517587939698,
+        "realized_side_dist": [
+          531,
+          110,
+          359
+        ]
+      },
+      "c": {
+        "instrument_class": "NQ_class",
+        "trend_id": "c",
+        "n_eligible_bars": 995,
+        "brier_score": 1.4904522613065327,
+        "realized_side_dist": [
+          712,
+          89,
+          199
+        ]
+      },
+      "d": {
+        "instrument_class": "NQ_class",
+        "trend_id": "d",
+        "n_eligible_bars": 995,
+        "brier_score": 1.0,
+        "realized_side_dist": [
+          0,
+          0,
+          1000
+        ]
+      }
+    }
+  },
+  "rho_results": {
+    "q0.50": {
+      "quantile": 0.5,
+      "rho_star": 0.10073471770279468,
+      "n_conditional_bars": 2496,
+      "brier_score": 0.04887820512820513
+    },
+    "q0.60": {
+      "quantile": 0.6,
+      "rho_star": 0.11607437003100284,
+      "n_conditional_bars": 1997,
+      "brier_score": 0.04807210816224337
+    },
+    "q0.70": {
+      "quantile": 0.7,
+      "rho_star": 0.13448319504708592,
+      "n_conditional_bars": 1498,
+      "brier_score": 0.04806408544726302
+    },
+    "q0.80": {
+      "quantile": 0.8,
+      "rho_star": 0.15416119456162372,
+      "n_conditional_bars": 999,
+      "brier_score": 0.042042042042042045
+    },
+    "q0.90": {
+      "quantile": 0.9,
+      "rho_star": 0.18575388165576515,
+      "n_conditional_bars": 500,
+      "brier_score": 0.036
+    }
+  }
+}
