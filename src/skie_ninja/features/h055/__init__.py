@@ -25,6 +25,12 @@ from skie_ninja.features.h055.level_state import (
     LevelExhaustionStateMachine,
     LevelState,
 )
+from skie_ninja.features.h055.trend_identifiers import (
+    trend_id_a_ts_mom,
+    trend_id_b_adx,
+    trend_id_c_hac_ols_slope_t,
+    trend_id_d_ma_cross,
+)
 
 __all__ = [
     "LevelExhaustionStateMachine",
@@ -33,5 +39,9 @@ __all__ = [
     "body_interval",
     "body_overlap_rho_1",
     "pairwise_jaccard",
+    "trend_id_a_ts_mom",
+    "trend_id_b_adx",
+    "trend_id_c_hac_ols_slope_t",
+    "trend_id_d_ma_cross",
     "true_range",
 ]
