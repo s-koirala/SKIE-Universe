@@ -296,15 +296,47 @@ Per [ADR-0009](../../../docs/decisions/ADR-0009-blas-thread-pinning.md) + [ADR-0
 - Random seed: 20260506 (frozen).  <!-- justify: design-date encoded as YYYYMMDD per the H054 F-Q-8 convention; deterministic, no upstream selection bias -->
 - Single-seed mandate: no per-replicate seed sweep on the OOS test fold.
 
-### 11.1 Kill-switch parameters (per ADR-0013 §5.1; cross-link to NinjaScript §15)
+### 11.1 Kill-switch parameters (per ADR-0013 §5.1; amended 2026-05-08 per ADR-0017 §5; cross-link to NinjaScript §15)
 
-NinjaScript implementation kill-switch parameters (used at paper-trade-active and live stages, NOT during backtest):
+NinjaScript implementation kill-switch parameters. The 8 hard kill-switch constraints K-1 through K-8 are inherited from [ADR-0017 §5](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) project-wide mandatory inheritance; the H055-specific numeric defaults are calibrated below. Constraints are enforced at the kill-switch layer in NinjaScript implementation (used at paper-trade-active and live stages) AND validated at the backtest layer in the Python walk-forward orchestrator (per `P1-ADR-0017-KILL-SWITCH-BACKTEST-VALIDATION`).
 
-- `Per-trade loss limit`: `β · ATR_n · point_value` per design; mechanically enforced.
-- `Per-session loss limit`: $1,000 / contract / session (calibrated post-paper-trade under `P1-H055-KILL-SWITCH-EMPIRICAL`).
-- `Daily attempt cap`: 50 wick-rejection attempts per session (≈ 1.75× pilot-cadence ceiling; slack for adverse-selection sessions).
-- `Realized daily P/L exit`: ≤ -$3,000 / contract triggers same-day kill of any new wick-rejection orders.
-- `Wall-clock cap`: 15:55 ET timestop (matches §4 hard close).
+Per ADR-0017 §5, defaults MAY be tightened with `# justify:` annotation but MAY NOT be loosened below the ADR-0017 default without project-level ADR amendment.
+
+| ID | Constraint | H055 default | Cross-link |
+|---|---|---|---|
+| K-1 | Per-trade $-stop | `1.0 × R` where `R = β · ATR_n · point_value · position_size`, `β` per §5 search domain (default 1.5; ATR-units) | ADR-0017 §5 K-1; Turtle 2N convention per Faith 2007 *practitioner* |
+| K-2 | Per-trade time-stop | 2 × median winning-trade duration on calibration holdout (per-instrument-class; populated post-`P1-H055-CALIBRATION-HOLDOUT-RUN`); fallback default = 30 min if calibration not yet run | ADR-0017 §5 K-2; mechanical inverse of avg_losing_time = 3.65× avg_winning_time in pilot ledger |
+| K-3 | No-add-to-loser | Forbid second entry on same instrument while open position is in unrealized loss; **zero exception** | ADR-0017 §5 K-3; mechanical inverse of 2026-05-07 17:06/17:08/17:16 CL stack ($-5,850 in one co-stopped exit) |
+| K-4 | Per-symbol position cap | Per [ADR-0001](../../../docs/decisions/ADR-0001-project-scope.md): ≤ 20 ES, ≤ 40 NQ, ≤ 200 MES, ≤ 400 MNQ; energy/metals deferred per §2 (`P1-H055-CL-MCL-MYM-MGC-INGEST-AND-EXTEND`) | ADR-0017 §5 K-4 |
+| K-5 | Correlated-instrument inventory cap | ES+MES share a budget; NQ+MNQ share a budget; aggregate per-group $-notional ≤ 1.0× the largest single-symbol cap in the group | ADR-0017 §5 K-5; catches cross-symbol stacks |
+| K-6 | Daily circuit breaker | Cease trading for the session at -2% of equity realized P/L | ADR-0017 §5 K-6; mechanical inverse of 2026-05-07 11-hour escalation from peak-equity to MaxDD |
+| K-7 | Weekly circuit breaker | Cease trading for the week at -5% of equity realized P/L | ADR-0017 §5 K-7 |
+| K-8 | Adverse-direction entry filter | Forbid entries where the trigger bar's higher-TF (T_H per §3 Component 1) trend gate sign disagrees with the entry direction AND price has moved adversely > 0.5 ATR from entry-bar open at fill time | ADR-0017 §5 K-8; mechanical inverse of "averaging-down into a falling knife" pattern |
+
+Legacy H055-specific operational parameters (preserved for paper-trade calibration; NOT in the ADR-0017 K-1..K-8 set):
+
+- `Daily attempt cap`: 50 wick-rejection attempts per session (≈ 1.75× pilot-cadence ceiling; slack for adverse-selection sessions). Calibration holdout will refine this default under `P1-H055-KILL-SWITCH-EMPIRICAL`.
+- `Wall-clock cap`: 15:55 ET timestop (matches §4 hard close); subsumed by K-2 per-trade time-stop in the limit but retained as session-end safety net.
+
+### 11.1.1 Survival-constrained sizing (per ADR-0017 §4.1; binding for production walk-forward)
+
+Component 4 (sizing inputs) per §3 is amended to use the project-canonical drawdown-constrained Kelly sizing rule per [ADR-0017 §4.1](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md). The position-size formula is:
+
+```
+position_size_t = floor(min(
+    per_trade_risk_budget_t / (k × ATR_n_t × tick_value),
+    kelly_fraction_t × equity_t / (entry_price_t × tick_value × multiplier),
+    retail_capacity_ceiling
+))
+```
+
+with:
+- `per_trade_risk_budget_t = 0.01 × equity_t` (1% of current equity; Turtle convention per Faith 2007 *practitioner*)
+- `k = 2.0` (the Turtle 2N stop convention)
+- `kelly_fraction_t = clamp(f_kelly_raw_t × 0.25, 0, 0.25)` (quarter-Kelly cap; the practitioner-canonical floor per [MacLean-Thorp-Ziemba 2010](https://doi.org/10.1142/7598)); `f_kelly_raw_t` from the IS-fold per-trade R-multiple distribution per Vince 1990 *practitioner*
+- `equity_t` is the **current** account equity at t (NOT starting equity); this is the structural defense against the operator's empirical "size scaled with run-up but not unscaled with drawdown" failure mode
+
+Implementation is bound to [src/skie_ninja/sizing/](../../../src/skie_ninja/sizing/) per `P1-SURVIVAL-CONSTRAINED-SIZING-PRIMITIVE` (BLOCKING-BEFORE-LAUNCH per §11.2).
 
 ### 11.2 Pre-reg implementation prerequisites (BLOCKING-BEFORE-LAUNCH)
 
@@ -316,6 +348,13 @@ NinjaScript implementation kill-switch parameters (used at paper-trade-active an
 - `P1-H055-NEWS-CALENDAR-INGEST` (BLOCKING-BEFORE-LAUNCH): news-calendar module [src/skie_ninja/utils/news_calendar.py](../../../src/skie_ninja/utils/news_calendar.py) with FOMC/NFP/CPI release-time loaders per §4.
 - `P1-H055-POWER-SIMULATION-EXECUTE` (BLOCKING-BEFORE-LAUNCH): execute [scripts/run_h055_spa_power_simulation.py](../../../scripts/run_h055_spa_power_simulation.py) and populate the §9.1 4×3 power table; revisit K_max + `n_min_folds` per the §9 selection rules.
 - `P1-H055-CALIBRATION-HOLDOUT-RUN` (BLOCKING-BEFORE-LAUNCH): execute the §5.1 trend-identifier supervised competition + §5.2 ρ* calibration on the 2015-2019 calibration holdout; freeze the per-instrument-class `ID_1*_c` and the global `q*` for the production walk-forward.
+- `P1-SURVIVAL-CONSTRAINED-SIZING-PRIMITIVE` (BLOCKING-BEFORE-LAUNCH per ADR-0017 §4.1): implement [src/skie_ninja/sizing/](../../../src/skie_ninja/sizing/) module with `kelly_fraction_from_r_multiples`, `drawdown_constrained_kelly`, `compute_position_size` per ADR-0017 §4.1.
+- `P1-CALMAR-DIFFERENTIAL-CI-IMPL` (BLOCKING-BEFORE-LAUNCH per ADR-0017 §2.2): implement [src/skie_ninja/inference/calmar.py](../../../src/skie_ninja/inference/calmar.py) with `calmar_ratio`, `calmar_differential`, `calmar_differential_ci_stationary_bootstrap`.
+- `P1-PROFIT-FACTOR-CI-IMPL` (BLOCKING-BEFORE-LAUNCH per ADR-0017 §2.3): implement [src/skie_ninja/inference/profit_factor.py](../../../src/skie_ninja/inference/profit_factor.py) with `profit_factor`, `profit_factor_differential`, `profit_factor_differential_ci_stationary_bootstrap`.
+- `P1-R-MULTIPLE-CI-IMPL` (BLOCKING-BEFORE-LAUNCH per ADR-0017 §2.4): implement [src/skie_ninja/inference/r_multiple.py](../../../src/skie_ninja/inference/r_multiple.py) with `r_multiple_from_trade`, `r_multiple_distribution`, `r_multiple_mean_ci_stationary_bootstrap`.
+- `P1-RISK-OF-RUIN-MONTE-CARLO-PRIMITIVE` (BLOCKING-BEFORE-LAUNCH per ADR-0017 §4.2): implement [src/skie_ninja/inference/risk_of_ruin.py](../../../src/skie_ninja/inference/risk_of_ruin.py) with `probability_of_ruin_monte_carlo`.
+- `P1-FAILURE-MODE-STRESS-TEST-PRIMITIVE` (BLOCKING-BEFORE-LAUNCH per ADR-0017 §6): implement [scripts/stress_test_failure_modes.py](../../../scripts/stress_test_failure_modes.py) with the 5 synthetic failure modes (FM-1 death-by-thousand-cuts, FM-2 gap-overnight, FM-3 news-spike, FM-4 latency-induced-bad-fill, FM-5 regime-change-mid-trade).
+- `P1-ADR-0017-KILL-SWITCH-BACKTEST-VALIDATION` (BLOCKING-BEFORE-LAUNCH per ADR-0017 §5): wire the K-1..K-8 hard kill-switch constraints into the Cycle-4 leak-canary discipline at the walk-forward orchestrator layer; emit a `kill-switch-canary-{pass,fail}` annotation per fold.
 
 ## 12. Relationship to other hypotheses
 
@@ -444,3 +483,4 @@ AI-assistance disclosure per [ICMJE Recommendations January 2026](https://www.ic
 - **AI-assistance disclosure**: this design.md was authored by a general-purpose Claude Code agent under operator review; the staging-draft 3-round audit-remediate-loop used parallel quant-auditor + literature-check sub-agents (rounds 1-3) and a general-purpose remediator (rounds 1-2). Per [ICMJE Recommendations January 2026](https://www.icmje.org/recommendations/) AI cannot be an author; AI-assistance use is disclosed; the reproducibility log path is `logs/reproducibility/{run_id}.json` per §11.
 - **Successor cross-link**: `P1-H055-V2-WITH-HMM-REGIME-GATE` (HMM regime-gate integration at v3); `P1-H055-CL-MCL-MYM-MGC-INGEST-AND-EXTEND` (energy + metals + Dow micro extension; phase-2 falsifier for the regime-asymmetry validation).
 - **2026-05-06 — Amendment per ADR-0015 + ADR-0016 + [plan/h055_successor_tree_2026-05-06.md](../../../plan/h055_successor_tree_2026-05-06.md)**: added cross-TF robustness exhibits in §14 (new §14.1 with five informational MTF exhibits — confluence score, cross-TF momentum divergence, multi-TF ATR ratio, multi-TF Hurst, daily / session-context); added successor cross-links in §12 (new §12.2 binding H056 → H057 → H058 → H059 main chain + H055-CL/MCL/MYM/MGC v2 + H055-event-time as parallel tracks). §1-§7 (hypothesis statement, universe/sample, features, labels, splitter, cost model) immutable per ADR-0013 frozen-pre-reg amendment policy and **preserved verbatim**. Amendment is **Path A** under ADR-0013 frozen-pre-reg amendment policy (informational exhibits + relationship cross-links only; no change to §1-§7 nor to gate thresholds §8 nor decision rule §10; the §14.1 exhibits are reported as KPI annotations and do not enter the LW2008 strict-CI-dominance H_1 family or the Hansen 2005 SPA family). Cross-link to [ADR-0015](../../../docs/decisions/ADR-0015-component-stacking-master-architecture.md) (component-stacking master architecture) + [ADR-0016](../../../docs/decisions/ADR-0016-sibling-repo-audit-and-lift-protocol.md) (sibling-repo audit-and-lift protocol). Concurrent landing with [plan/h055_successor_tree_2026-05-06.md](../../../plan/h055_successor_tree_2026-05-06.md).
+- **2026-05-08 — Amendment per [ADR-0017](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md)** (survival-constrained optimization paradigm; profit-and-drawdown-primary inference; Sharpe demoted to KPI). §11.1 amended: 8 hard kill-switch constraints K-1..K-8 inherited from ADR-0017 §5 with H055-specific calibrated defaults (per-trade $-stop, per-trade time-stop, no-add-to-loser, per-symbol cap, correlated-instrument cap, daily/weekly circuit breakers, adverse-direction entry filter). §11.1.1 added: drawdown-constrained Kelly sizing primitive per ADR-0017 §4.1 (1% per-trade risk budget, quarter-Kelly cap, current-equity rebasing). §11.2 BLOCKING-BEFORE-LAUNCH preconditions extended: 7 new follow-ups for inferential/sizing primitives (Calmar-differential CI, profit-factor CI, R-multiple CI, risk-of-ruin Monte Carlo, sizing primitive, failure-mode stress test, kill-switch backtest validation). §1-§7 (hypothesis statement, universe/sample, features, labels, splitter, cost model) **preserved verbatim** per ADR-0013 frozen-pre-reg amendment §1-§7 immutability discipline. Amendment is **Path A** under ADR-0013 (the §1 T_H055_class statistic is preserved verbatim as a secondary KPI; the load-bearing operator-review artifact at §8+§10 promotion-decision-rule layer is reframed to the ADR-0017 §1 survival-constrained metric vector — terminal-wealth-q05, Calmar-differential, profit-factor, R-multiple-mean). The empirical motivation is the operator pilot ledger 2026-05-01 → 2026-05-07 (the 2026-05-08 226-trade extension processed in-context but NOT committed to the public repo per the user 2026-05-08 directive on identity-hygiene; SHA256 provenance recorded under `P1-ADR-0017-PILOT-LEDGER-V2-NON-COMMIT-PROVENANCE`). Audit-remediate-loop trail: [docs/audits/audit_trail_2026-05-08_adr-0017-survival-constrained-paradigm.md](../../../docs/audits/audit_trail_2026-05-08_adr-0017-survival-constrained-paradigm.md).
