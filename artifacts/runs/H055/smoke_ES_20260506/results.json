@@ -1,0 +1,36 @@
+{
+  "run_id": "smoke_ES_20260506",
+  "hypothesis_id": "H055",
+  "smoke": true,
+  "symbol": "ES",
+  "config": {
+    "trend_id_choice": "d",
+    "trend_id_lookback_l": 60,
+    "tau_m": 1.0,
+    "tau_adx": 20.0,
+    "tau_t": 2.0,
+    "tau_ma": 0.005,
+    "short_window": 5,
+    "long_window": 20,
+    "rho_window_n": 10,
+    "r_max": 2,
+    "atr_n": 14,
+    "swing_confirmation_window": 5,
+    "theta_wick_min": 1.0,
+    "news_calendar_enabled": false
+  },
+  "fold_result": {
+    "symbol": "ES",
+    "n_bars": 500,
+    "n_setups_total": 1,
+    "n_setups_post_gate": 0,
+    "n_trades_filled": 0,
+    "realized_end_equity": 10000.0,
+    "max_dd": 0.0,
+    "ann_return": 0.0,
+    "calmar": 0.0,
+    "profit_factor": null,
+    "r_multiple_mean": 0.0,
+    "n_sessions_proxy": 1
+  }
+}
