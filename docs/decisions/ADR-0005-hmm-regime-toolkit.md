@@ -6,7 +6,7 @@ date: 2026-04-20
 decision-owner: Lead researcher
 supersedes: none
 related:
-  - plan/implementation-plan_2026-04-15.md §3, §4, §5
+  - plan/buildouts/implementation-plan_2026-04-15.md §3, §4, §5
   - docs/decisions/ADR-0003-spa-vs-romanowolf.md
   - docs/decisions/ADR-0004-alpha-and-power-defaults.md
 ---
@@ -89,7 +89,7 @@ No hand-tuned values. Every run selects:
 - HMM-specific model-selection reference ([Celeux & Durand 2008](https://doi.org/10.1007/s00180-007-0097-1)).
 - `em_tol`, `max_iter`, `seed`: pre-registered at hypothesis design time; no post-hoc adjustment.
 
-All selection happens **inside** the walk-forward train fold so no information leaks forward, per [plan §4.1](../../plan/implementation-plan_2026-04-15.md).
+All selection happens **inside** the walk-forward train fold so no information leaks forward, per [plan §4.1](../../plan/buildouts/implementation-plan_2026-04-15.md).
 
 ### Fold-boundary state continuity (filter warm-start)
 
@@ -154,7 +154,7 @@ Every HMM-using hypothesis inherits this ADR by reference in its `citations` fro
 ## Consequences
 
 - No change to the SPA gate ([ADR-0003](ADR-0003-spa-vs-romanowolf.md)) or to alpha/power defaults ([ADR-0004](ADR-0004-alpha-and-power-defaults.md)); HMM hypotheses enter the universe on the same terms as any other.
-- New Tier 2b "regime/state" section in the hypothesis backlog ([plan/hypothesis_backlog.md](../../plan/hypothesis_backlog.md)); see [ADR-0006](ADR-0006-scope-extension-hmm-0dte.md).
+- New Tier 2b "regime/state" section in the hypothesis backlog ([hypothesis_backlog.md](../../hypothesis_backlog.md)); see [ADR-0006](ADR-0006-scope-extension-hmm-0dte.md).
 - A single point of failure if the upstream HMM library regresses; mitigated by pinning and by the fallback options B/C/D above.
 
 ## References

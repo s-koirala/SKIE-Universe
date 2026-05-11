@@ -8,7 +8,7 @@ supersedes: none
 related:
   - docs/decisions/ADR-0001-project-scope.md
   - docs/decisions/ADR-0005-hmm-regime-toolkit.md
-  - plan/hypothesis_backlog.md
+  - hypothesis_backlog.md
 ---
 
 # ADR-0006 — Scope extension: HMM regime track and 0DTE option track
@@ -19,7 +19,7 @@ Proposed. Acceptance follows the first three hypotheses H050/H051/H052 clearing 
 
 ## Context
 
-The existing backlog tiers are defined in [plan/hypothesis_backlog.md](../../plan/hypothesis_backlog.md):
+The existing backlog tiers are defined in [hypothesis_backlog.md](../../hypothesis_backlog.md):
 
 - **Tier 1** — directional conditioning variables (attack 50% AUC wall).
 - **Tier 2** — microstructure / flow.
@@ -70,7 +70,7 @@ Cons: packaging overhead; a shared-utils contract to respect.
 
 Adopt **Option C**. Consequences:
 
-- Add a new tier label **Tier 2b — regime/state** to [plan/hypothesis_backlog.md](../../plan/hypothesis_backlog.md) for HMM-native hypotheses.
+- Add a new tier label **Tier 2b — regime/state** to [hypothesis_backlog.md](../../hypothesis_backlog.md) for HMM-native hypotheses.
 - 0DTE hypotheses enter **Tier 3** (frontier / low coverage) when they live in this repo; when they live in the sibling repo, they are linked from the backlog but carry sibling-repo IDs.
 - All HMM-using hypotheses inherit [ADR-0005](ADR-0005-hmm-regime-toolkit.md); all strategy hypotheses (regardless of track) inherit [ADR-0003](ADR-0003-spa-vs-romanowolf.md) and [ADR-0004](ADR-0004-alpha-and-power-defaults.md).
 - First three inaugural hypotheses: H050 (Tier 2b), H051 (Tier 2b), H052 (Tier 3, 0DTE).

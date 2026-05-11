@@ -51,13 +51,13 @@ Operationally this means:
 2. **§10.1 disposition deviation note.** Per design.md §10.1, any arm whose realized OOS sample fails to meet `n_required_for_power_80` records `archive(null, underpowered)`. Per design.md §8, the SPA slot is consumed by that null record (not freed for a fourth arm). Under option 3, per [data_requirements_H053_2026-04-28.md:99](data_requirements_H053_2026-04-28.md) verbatim binding ("document the conservative-assumption deviation in §10.1 disposition"), the §10.1 disposition record carries the deviation note `pilot-conservative-prior` — flagging that the underpower verdict was assessed under iid Gaussian and may not transfer to the empirical return distribution. This is a §10.1 disposition note (pre-reg-bound by data_requirements.md:99), not a §10.2 annotation (which would be a design amendment).
 3. **Disposition note persists into `ReproLog`.** Within the §11.2 prereq-19 power-calibration JSON sidecar (`ReproLog.power_calibration_{run_id}.json`) that the design already creates at run start, the deviation is captured as a sub-field `pilot_source: "option_3_conservative_iid_gaussian"`. This is a sub-field within an already-pre-registered ReproLog file, not a new top-level ReproLog field.
 
-**Solver implementation prerequisite still open.** [design.md §11.2 prereq 19](design.md) (power-calibration solver `inference/power.py::required_n` writing the `ReproLog.power_calibration_{run_id}.json` sidecar at run start) is a `designed → running` prerequisite that this addendum does NOT close. The solver implementation is a Cycle-7 deliverable per [plan/h053_buildout_2026-04-28.md](../../../plan/h053_buildout_2026-04-28.md). H053 is not unblocked for `running` purely by this addendum; it is unblocked only after Cycle 7 completes.
+**Solver implementation prerequisite still open.** [design.md §11.2 prereq 19](design.md) (power-calibration solver `inference/power.py::required_n` writing the `ReproLog.power_calibration_{run_id}.json` sidecar at run start) is a `designed → running` prerequisite that this addendum does NOT close. The solver implementation is a Cycle-7 deliverable per [plan/buildouts/h053_buildout_2026-04-28.md](../../../plan/buildouts/h053_buildout_2026-04-28.md). H053 is not unblocked for `running` purely by this addendum; it is unblocked only after Cycle 7 completes.
 
 **Re-election clause.** If a fold-disjoint pre-IS pilot window becomes available later (e.g., a Databento purchase in a later phase), reactivating option 1 mid-program would be a re-pinning of `ar1_rho_pilot` / `excess_kurtosis_pilot` from the option-3 values. Per design.md §0/§7 (any change requires a successor hypothesis ID) and §9 ("Pinning at the start of `running` is binding; refining on IS is pre-registered as forbidden"), such a mid-program re-election would constitute a successor hypothesis ID. The conservative interpretation: option 3 is binding for this iteration of H053; option 1 reactivation requires H053'.
 
 ## Buildout plan consequence
 
-[plan/h053_buildout_2026-04-28.md:54](../../../plan/h053_buildout_2026-04-28.md) §Cycle 7 lists `P1-H053-PILOT-WINDOW-DATABENTO` as a Cycle-7 prerequisite. This addendum closes that follow-up. Cycle 7 no longer waits on external data acquisition; the option-3 pin is structurally satisfied by this addendum. The buildout-plan row is amended in the same commit that lands this file.
+[plan/buildouts/h053_buildout_2026-04-28.md:54](../../../plan/buildouts/h053_buildout_2026-04-28.md) §Cycle 7 lists `P1-H053-PILOT-WINDOW-DATABENTO` as a Cycle-7 prerequisite. This addendum closes that follow-up. Cycle 7 no longer waits on external data acquisition; the option-3 pin is structurally satisfied by this addendum. The buildout-plan row is amended in the same commit that lands this file.
 
 ## Follow-up closures
 
@@ -83,7 +83,7 @@ This addendum + the lit-review remediation (`P1-LIT-REVIEW-H053-STALE-ENTRY-RESO
 
 - [research/01_hypothesis_register/H053/design.md](design.md) §9 (Stopping rule + power) — binds the pilot-anchor pinning convention.
 - [research/01_hypothesis_register/H053/data_requirements_H053_2026-04-28.md](data_requirements_H053_2026-04-28.md) §"Pre-IS pilot window (for §9 power calibration)" — enumerates options 1, 2, 3 at pre-registration.
-- [plan/h053_buildout_2026-04-28.md](../../../plan/h053_buildout_2026-04-28.md) §Cycle 7 — amended in same commit to remove the closed follow-up.
+- [plan/buildouts/h053_buildout_2026-04-28.md](../../../plan/buildouts/h053_buildout_2026-04-28.md) §Cycle 7 — amended in same commit to remove the closed follow-up.
 
 ### External
 

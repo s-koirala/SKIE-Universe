@@ -1,87 +1,95 @@
 # SKIE-Universe
 
-Longitudinal research program for intraday ES/NQ futures day trading, executed on NinjaTrader 8 Desktop with Python/NinjaScript/MCP automation.
+Longitudinal, pre-registered intraday futures research program on CME ES/NQ (and micro equivalents MES/MNQ). Hypotheses progress through walk-forward backtest → KPI report card → mandatory NinjaScript C# implementation per [ADR-0013](docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md). Primary inferential metrics are survival-constrained (terminal-wealth-q05, Calmar-differential, profit-factor, R-multiple-mean) per [ADR-0017](docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md); Sharpe-family preserved as secondary KPI.
 
-## Prior-art context (SKIE Ninja github projects)
-Empirically established in prior SKIE Ninja work:
-- Volatility is predictable (walk-forward).
-- Breakouts are predictable.
-- Movement size is predictable.
-- **Direction is 50% AUC via technicals alone.**
-- News/geopolitical structured surprises show predictable patterns.
+> **This is a research program, not a deployable library.** No `pip install` path. The repository documents pre-registered hypotheses, audit-remediate-loop trails, and reproducible walk-forward results. External readers: skim §"Research philosophy" → §"Current state" → the linked KPI report cards. Operators / contributors: see [CLAUDE.md](CLAUDE.md) for the full project-rules + phase ledger.
 
-This project does not re-test those facts. It attacks the **directional AUC wall** by stacking directional conditioning variables on top of the already-working size/vol/breakout stack, and by exhaustively evaluating every promising signal in the literature plus the research-frontier whitespace.
+---
 
-## Current status (2026-04-23)
+## Research philosophy
 
-**Reassessment + timeline to first strategy result:** [docs/research_notes/memo_phase1-reassessment_2026-04-23.md](docs/research_notes/memo_phase1-reassessment_2026-04-23.md). TL;DR: data substrate for H050 directional track is live at raw tier; strategy-development code can start today; first walk-forward result lands ~3 weeks out with focused work; paper-trade verdict lands ~16 weeks from today assuming evidence-bar clears.
+Per [ADR-0013](docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) (the central governance ADR):
 
-## Historical status (2026-04-20)
+- **Permanent exploration.** Every hypothesis goes into [hypothesis_backlog.md](hypothesis_backlog.md) with a pre-registered design doc. Null and negative results stay in the file — they document the search space we have covered.
+- **No gates.** Every former evidence-bar criterion (leakage-canary, BSS, reliability slope, DSR, SPA p) is now a **KPI annotation** in the per-strategy report card. Operator-discretionary review of the KPI report card governs stage transitions.
+- **NinjaScript is the terminus.** Every hypothesis MUST progress to a working C# strategy in [ninjascript/strategies/](ninjascript/strategies/), regardless of KPI value. The Python prototype is intermediate; the NinjaScript implementation is the canonical research-loop output.
+- **Non-loss mandate.** No audit trail, ReproLog, sidecar, KPI report card, promotion log, NinjaScript strategy, or design.md may be deleted, overwritten, or wiped. Corrections produce versioned successors. Enforced fail-closed by [scripts/_hooks/check_non_loss_deletion.py](scripts/_hooks/check_non_loss_deletion.py).
+- **Walk-forward only.** No k-fold. Time-ordered disjoint splits. Purge + embargo per López de Prado 2018 AFML §7.4. CPCV is the canonical splitter for any Sharpe KPI emission.
 
-**Phase 0 (Foundation)** — complete. 196 unit tests passing. All P0-1 through P0-12 items delivered and audit-remediated (3-round cap). Two items deferred to user: NT8 F5-compile (P0-9) and ADR-0002 bridge latency measurement (P0-10) — both require NinjaTrader 8 Desktop installation.
+Per [ADR-0017](docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) (the central inferential ADR, 2026-05-08):
 
-**Phase 1 (Data substrate)** — FOMC text + macro_surprise ingest pipelines operational as of 2026-04-20. Final end-to-end run (post audit-remediate) landed 164 FOMC parquets (2015-01-01 → 2026-04-20, statements + minutes + press conferences across 64 meetings) and 1,686 macro_surprise parquets (11 of 12 ALFRED initial-release indicators active + SPF consensus, 2016-01-01 → 2026-04-20). Audit-remediate cycle resolved: schema tz-awareness, wrong FRED `output_type` parameter (1 → 4 per FRED enum), event_id grain (now keyed to `obs_date`, not `vintage_date`), Null-dtype parquet round-trip. Trail: [docs/audits/audit_trail_2026-04-20_phase1-ingest-remediation.md](docs/audits/audit_trail_2026-04-20_phase1-ingest-remediation.md). ES/NQ tick ingest still awaiting Databento account + ADR-0002. `EXHOSLUSM495S` returned HTTP 400 across both `output_type=1` and `output_type=4`; pending FRED catalog reconciliation (series likely renamed/removed).
+- **Survival metrics are primary.** terminal-wealth-q05 + Calmar-differential + profit-factor + R-multiple-mean are the load-bearing operator-review artifact. Sharpe-family preserved as secondary KPI for academic comparability.
+- **Hard kill-switches K-1..K-8** mandatory inheritance from H055 forward (per-trade $-stop, time-stop, no-add-to-loser, position cap, correlated-instrument inventory cap, daily/weekly circuit breakers, adverse-direction entry filter).
+- **Drawdown-constrained quarter-Kelly sizing** with current-equity rebasing (MacLean-Thorp-Ziemba 2010).
+- **Forward-projection block mandatory** in every KPI report card from 2026-05-03 forward ($10K-baseline 252-session bootstrap; per ADR-0013 §3.1).
 
-**Phase 2 (HMM regime + 0DTE track)** — scope extension accepted 2026-04-20 via [ADR-0005](docs/decisions/ADR-0005-hmm-regime-toolkit.md) (HMM toolkit: Baum-Welch + causal Viterbi) and [ADR-0006](docs/decisions/ADR-0006-scope-extension-hmm-0dte.md) (HMM track + sibling 0DTE repo). Four pre-registered hypotheses (H050/H051/H052a/H052b) live under [research/01_hypothesis_register/](research/01_hypothesis_register/); H052 was split 2026-04-23 into **H052a** (HMM-gated ORB on CME futures ES/NQ/MNQ/MES, buildable today on the live raw 1-min substrate) and **H052b** (QQQ 0DTE long-call scalp, vendor-gated on the option chain). Sibling repo [`s-koirala/SKIE-NINJA-0DTE`](https://github.com/s-koirala/SKIE-NINJA-0DTE) (SKIE-ORB-CALL) verified live. Audit trail: [docs/audits/audit_trail_2026-04-20_hmm-scope-extension.md](docs/audits/audit_trail_2026-04-20_hmm-scope-extension.md) (3 rounds).
+---
 
-**Tier-2b buildout (started 2026-04-23)** — 6-cycle audit-remediate critical-path sequence to deliver MVP-1 (first H050 walk-forward result). See [plan/tier2b_buildout_2026-04-23.md](plan/tier2b_buildout_2026-04-23.md) for the sequencing rationale. Each cycle updates this README on completion.
+## Current state (2026-05-11)
 
-- **Cycle 1 — roll-adjusted 1-min derivative (2026-04-23) ✓ done.** Evidence-bar-tier continuous-contract derivative `vendor_legacy_1min_roll_adjusted` at [src/skie_ninja/data/ingest/vendor_legacy_1min_roll_adjusted.py](src/skie_ninja/data/ingest/vendor_legacy_1min_roll_adjusted.py). Method: multiplicative ratio adjustment per de Prado 2018 AFML ch.2 §2.4.3 ("Single Future Roll") with volume-crossover + `window_days` persistence guard. Evidence-bar flag discriminated (`returns=True`, `levels=False`). 241/241 unit tests green (29 new). Audit trail: [docs/audits/audit_trail_2026-04-23_cycle1-roll-adjusted-1min.md](docs/audits/audit_trail_2026-04-23_cycle1-roll-adjusted-1min.md).
-- **Cycle 2 — NW-HAC + Sharpe CI (2026-04-23) ✓ done.** Newey-West 1987 Bartlett long-run variance with Andrews 1991 AR(1)-plug-in and Newey-West 1994 automatic bandwidth at [src/skie_ninja/inference/stats/hac.py](src/skie_ninja/inference/stats/hac.py). Four Sharpe-CI flavors at [src/skie_ninja/inference/stats/sharpe_ci.py](src/skie_ninja/inference/stats/sharpe_ci.py): Lo 2002 iid, Lo 2002 Proposition 2 literal η(q), Lo 2002 HAC practitioner approximation, Opdyke 2007 Mertens-HAC approximation (primary channel). 273/273 unit tests green (32 new). Round-1 audit raised 2 lit-check criticals (citation misattribution) resolved by honest relabeling + addition of paper-faithful Prop-2 form. Follow-up `P1-OPDYKE-FULL-GMM` tracks implementing the full moment-vector GMM form. Audit trail: [docs/audits/audit_trail_2026-04-23_cycle2-hac-sharpe-ci.md](docs/audits/audit_trail_2026-04-23_cycle2-hac-sharpe-ci.md).
-- Cycle 3 — HMM toolkit per [ADR-0005](docs/decisions/ADR-0005-hmm-regime-toolkit.md) → pending.
-- Cycle 4 — walk-forward engine + purged/embargo CV + leak canaries → pending.
-- Cycle 5 — Hansen SPA + Politis-White stationary bootstrap → pending.
-- Cycle 6 — H050 feature factory + first walk-forward run → pending.
+| Hypothesis | Stage | Headline result |
+|---|---|---|
+| [**H050**](research/01_hypothesis_register/H050/) HMM regime-conditioned ES/NQ directional | `kpi-report-emitted` ([v1](research/01_hypothesis_register/H050/H050_kpi_report_v1.md)) | Catastrophic. Gated arms ES −81%, NQ −84% realized; T_H050 CIs exclude zero on the **negative** side. HMM-gating actively harms the directional signal. |
+| [H051](research/01_hypothesis_register/H051/) HMM-gated Kalman pairs ES/NQ basis | `designed` | Not yet executed. |
+| [**H052a**](research/01_hypothesis_register/H052a/) HMM regime-gated first-hour ORB | `kpi-report-emitted` (operator-declined-ninjascript) | Non-significant null on hypothesis-of-record. Strongest cell is **NQ unconditional ORB** (+10.61% realized) — literature-replication artifact. |
+| [H052b](research/01_hypothesis_register/H052b/) QQQ 0DTE long-call scalp | `designed` | Vendor-gated on QQQ 0DTE option chain. |
+| [**H053**](research/01_hypothesis_register/H053/) Multi-TF mediation + categorical archetype table | `kpi-report-emitted` ([v3](research/01_hypothesis_register/H053/H053_kpi_report_v3.md)) | CI-marginal across 4 arms; **NQ LightGBM +10.8%** realized 2-yr OOS, max-DD 3.7%, forward median $10,713 / P(loss)=15%. |
+| [**H054**](research/01_hypothesis_register/H054/) Anti-gate first-hour ORB on ES | `kpi-report-emitted` ([v1](research/01_hypothesis_register/H054/H054_kpi_report_v1.md)) | Point-positive (+3.50% realized anti-gated, P(loss)=29.2%) but CIs cover zero. Structurally low-power (anti-gate fires 7/237 sessions). |
+| [**H055**](research/01_hypothesis_register/H055/) Mechanized wick-rejection scalping (HMM-deferred v3) | `exploration-in-progress` | Pre-launch; 7+ BLOCKING preconditions outstanding. |
+| H056–H059 | `queued` | Per the [H055 successor tree](plan/buildouts/h055_successor_tree_2026-05-06.md): per-component ML → stacking master → multi-TF attention → live probability display layer. |
 
-### Phase-0 gate checklist
-- P0-1 `reproducibility.py` — done, tested, atomic writes
-- P0-2 `paths.py` — done, tested (+ shared data dir at `~/datasets`)
-- P0-3 `clock.py` — done, CME half-day calendar validated against `pandas_market_calendars`
-- P0-4 `instruments.yaml` + pydantic loader — done, CME fees cited
-- P0-5 `hashing.py` — done, cross-process determinism tested
-- P0-6 `.pre-commit-config.yaml` + `.gitattributes` — done
-- P0-7 `logging_setup.py` — done, JSON structured + rich console
-- P0-8 `bootstrap_env.py` — done, Python 3.11+ band enforced
-- P0-9 `TrivialSmokeTest.cs` — written, awaiting NT8 install + F5 compile
-- P0-10 ADR-0002 bridge selection — `proposed`, awaiting latency measurement
-- P0-11 `hypothesis_new.py` + templates — done
-- P0-12 `runcontext.py` — done, atomic writes, crash-path flush
+For the full per-hypothesis stage dashboard see [research/01_hypothesis_register/INDEX.md](research/01_hypothesis_register/INDEX.md). For emitted KPI report cards with mandatory 9-table results summaries see [RESULTS_INDEX.md](research/01_hypothesis_register/RESULTS_INDEX.md).
 
-### Phase-1 data pipelines
-- FOMC text: federalreserve.gov scraper with two-phase commit, DST-aware timestamps, BeautifulSoup parser (statements 1994+, minutes 1993+, press conferences 2011+). **Live on this machine as of 2026-04-20**: 164 parquets under [data/processed/fomc_text/](data/processed/fomc_text/), raw HTML cached at `C:\Users\skoir\datasets\fomc_text\`.
-- Macro surprises: ALFRED API initial-release observations (`output_type=4`) + Philadelphia Fed SPF consensus, forecast-error-std proxy per ABDV 2003 (11 active FRED series, 1 pending catalog reconciliation). **Live on this machine as of 2026-04-20**: 1,686 parquets under [data/processed/macro_surprise/](data/processed/macro_surprise/), raw JSON + SPF CSV cached at `C:\Users\skoir\datasets\{fred,spf}\`. Event grain: `(indicator, obs_date)`; `release_date` = ALFRED `realtime_start`.
-- ES 5-min engineered features: prototype-tier, imported 2026-04-20 — see [audit_trail_2026-04-20_vendor-skie-ninja-legacy-import.md](docs/audits/audit_trail_2026-04-20_vendor-skie-ninja-legacy-import.md).
-- **ES + NQ 1-min raw OHLCV (Databento GLBX.MDP3, evidence-bar eligible): live on this machine as of 2026-04-23.** 3,733,906 rows partitioned under [data/processed/vendor_legacy_1min/](data/processed/vendor_legacy_1min/) as `symbol={ES,NQ}/year={YYYY}/`. ES spans 2020-01-01 → 2025-12-03 (6 years); NQ spans 2020-01-01 → 2024-12-19 (5 years; 2025 pending sibling pull). Ingest module [src/skie_ninja/data/ingest/vendor_legacy_1min.py](src/skie_ninja/data/ingest/vendor_legacy_1min.py) is SHA256-idempotent, OHLC-consistency validated, and `ctx.add_dataset_checksum`-wired (closes the prior follow-up on empty ReproLog dataset_checksums). Audit trail: [audit_trail_2026-04-23_vendor-legacy-1min-ingest.md](docs/audits/audit_trail_2026-04-23_vendor-legacy-1min-ingest.md).
-- ES tick (sub-minute): Databento recommended (plan §2.1), `EsTickSchema` stub in place; direct SKIE-Universe subscription still awaiting account for tick-level H051 queue-position work.
+**Project-wide observation through 2026-05-11**: across H050 + H052a + H053 + H054 the Sharpe-family inferential anchor consistently clustered around zero while realized $10K trajectories diverged materially. This empirical pattern motivated [ADR-0017](docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md), which demoted Sharpe to a secondary KPI from H055 forward.
 
-## Local directory rename (2026-04-20)
+---
 
-- Repo renamed to `SKIE-Universe` on GitHub (remote: `s-koirala/SKIE-Universe`).
-- Local directory currently `C:\Users\skoir\SKIE-Ninja-Intraday\`; user will `mv` to `C:\Users\skoir\SKIE-Universe\` out-of-session.
-- After rename, recreate venv: `uv venv --python 3.11 .venv && uv pip install -e ".[dev]"` (absolute paths are baked into the old `.venv/`).
-- Harness memory dir already mirrored to `c--Users-skoir-SKIE-Universe` so the new session retains prior memory.
-- Python package `skie_ninja` is unchanged; imports untouched.
+## Reproducibility contract
 
-## Layout
+Every walk-forward run emits a [ReproLog](src/skie_ninja/utils/reproducibility.py) sidecar at `logs/reproducibility/{run_id}.json` with 13 frozen-dataclass fields: `git_head`, `pip_freeze`, `dataset_checksums`, `rng_seed`, `model_hash`, `timestamp_utc`, `env_id`, plus per-fold artifact SHAs. Substrate parquet partitions are SHA256-bound at `designed` status in each hypothesis's `data_requirements.md`. Per [ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md), BLAS thread pinning is required for byte-deterministic HMM fits across runs.
+
+Canonical wall-clock for a clean production walk-forward at the current substrate (ES + NQ × 2015-2025, ~7.4M 1-min bars): **~7h50min** on a single 24-thread workstation (H050 run_id `31d23ec...`). Mid-run external kills (Windows Update, OS reboot, supervisor cap) are protected against by the three-layer defense in [ADR-0010](docs/decisions/ADR-0010-multi-hour-run-process-protection.md) + the preflight checklist in [ADR-0011](docs/decisions/ADR-0011-production-walkforward-runbook.md).
+
+Canonical launch path (Windows):
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  uv run python scripts/supervised_run.py \
+  --hypothesis H050 --config config/hypotheses/H050.yaml
+```
+
+Sister scripts: `scripts/run_h052a_walk_forward.py`, `scripts/run_h054_walk_forward.py`, `scripts/run_h053_stage{0,1,2,3}_*.py`. Forward-projection: `scripts/simulate_h053_v4_10k_2026.py`, `scripts/simulate_h050_v1_10k_2026.py`.
+
+---
+
+## Repository layout
 
 | Path | Purpose |
 |---|---|
-| [config/](config/) | Instrument specs, data sources, model registry, macro indicators |
-| [data/](data/) | Raw, interim, processed. `external/` holds alt-data |
-| [docs/decisions/](docs/decisions/) | ADR-0001 scope, ADR-0002 bridge, ADR-0003 SPA, ADR-0004 alpha/power, ADR-0005 HMM toolkit, ADR-0006 HMM+0DTE scope |
-| [docs/audits/](docs/audits/) | Audit-remediate-loop trails (e.g., HMM scope extension 2026-04-20) |
-| [docs/research_notes/](docs/research_notes/) | Dated research memos (e.g., Medallion/HMM lineage 2026-04-20) |
-| [docs/templates/](docs/templates/) | Pre-registered hypothesis design, config, data requirements |
-| [docs/methodology/](docs/methodology/) | Architecture surveys, data source inventories |
-| [research/](research/) | Lit review, hypothesis register, experiments, audits |
-| [src/skie_ninja/utils/](src/skie_ninja/utils/) | Clock, hashing, instruments, logging, paths, reproducibility, runcontext |
-| [src/skie_ninja/data/](src/skie_ninja/data/) | Ingest registry, FOMC/macro pipelines, validation schemas, provenance |
-| [tests/](tests/) | Unit (196 passing), integration (2, network-gated), property-based |
-| [scripts/](scripts/) | `ingest.py`, `bootstrap_env.py`, `hypothesis_new.py`, pre-commit hooks |
-| [ninjascript/](ninjascript/) | NinjaTrader 8 C# strategies (TrivialSmokeTest) |
-| [artifacts/](artifacts/) | Versioned model binaries, reports, universe log |
-| [plan/](plan/) | Phased plan, implementation plan, hypothesis backlog |
-| [logs/reproducibility/](logs/reproducibility/) | Auto-generated audit trail |
+| [**hypothesis_backlog.md**](hypothesis_backlog.md) | Project-canonical hypothesis register — at-a-glance status table + tier-organized backlog |
+| [**CHANGELOG.md**](CHANGELOG.md) | Condensed phase-by-phase summary (one line per phase). Full ledger in CLAUDE.md. |
+| [**CLAUDE.md**](CLAUDE.md) | Full project-rules + audit-remediate-loop ledger (~140 KB; load-bearing internal doc) |
+| [docs/glossary.md](docs/glossary.md) | Stage labels, KPI annotation grammar, statistical primitives, reproducibility terms |
+| [docs/decisions/](docs/decisions/) | Architecture Decision Records (17 ADRs); see [decisions/README.md](docs/decisions/README.md) |
+| [docs/audits/](docs/audits/) | Audit-remediate-loop trails (append-only; protected) |
+| [docs/research_notes/](docs/research_notes/) | Dated research memos (postmortems, reassessments, retrospectives) |
+| [research/01_hypothesis_register/](research/01_hypothesis_register/) | Per-hypothesis design.md + stage.md + KPI report cards + failure_log.md; see [INDEX.md](research/01_hypothesis_register/INDEX.md) |
+| [research/00_literature_review/](research/00_literature_review/) | Grounded primary-literature citations |
+| [research/03_audits/](research/03_audits/) | Pre-Phase-0 audit-remediate records (immutable) |
+| [src/skie_ninja/](src/skie_ninja/) | Python package: data ingest, features, models (HMM), backtest engine, inference primitives, NinjaTrader bridge |
+| [tests/](tests/) | Unit + integration + property-based tests (>1,000 unit tests as of 2026-05-09) |
+| [scripts/](scripts/) | Walk-forward orchestrators (one per hypothesis), simulators, ingest CLI, preflight |
+| [ninjascript/](ninjascript/) | NinjaTrader 8 C# strategies (terminal state of every hypothesis per ADR-0013 §5) |
+| [config/](config/) | Instrument specs, hypothesis configs, data sources, gate thresholds |
+| [data/](data/) | Raw + interim + processed substrate; `external/` for ledgers and reference datasets |
+| [logs/reproducibility/](logs/reproducibility/) | Auto-generated ReproLog sidecars (one per run) |
+| [logs/promotions/](logs/promotions/) | Operator promotion / decline / retirement decision logs |
+| [plan/](plan/) | Operational planning — buildouts, roadmaps, engineering specs; see [plan/README.md](plan/README.md) |
+| [artifacts/](artifacts/) | Versioned model binaries + reports + universe log |
+| [runs/](runs/) | Per-run sidecars + per-fold metrics |
+| [reports/](reports/) | Per-hypothesis stage dispositions (Markdown narrative) |
+
+---
 
 ## Environment setup
 
@@ -92,38 +100,11 @@ uv pip install -e ".[dev]"
 python scripts/bootstrap_env.py
 ```
 
-The HMM forward-backward kernels under `src/skie_ninja/models/regime/_em_kernels.py`
-are accelerated with [Numba](https://numba.pydata.org/) `@njit`. As of
-[P1-HMM-EM-NUMBA-KERNELS](docs/audits/audit_trail_2026-04-28_hmm-em-numba-kernels.md)
-numba is included in the `[dev]` extra so the standard install above
-exercises the JIT path during testing. The `[perf]` extra is a
-deployment-only alias that pins the same numba/llvmlite band without
-the test-only deps. Reproducing production HMM fits to **byte
-identity** requires the same `(numba, llvmlite, host CPU feature set)`
-tuple as the producing run; cross-host fits agree only to
-`rtol = 1e-12` (see the kernel module docstring's
-"Cross-host determinism caveat").
-
 Shared data directory: `~/datasets/` (override with `SKIE_SHARED_DATA` env var). See [config/shared_data.yaml](config/shared_data.yaml).
 
-## Reproducibility
+The HMM forward-backward kernels under [src/skie_ninja/models/regime/_em_kernels.py](src/skie_ninja/models/regime/_em_kernels.py) are accelerated with Numba `@njit`. As of `P1-HMM-EM-NUMBA-KERNELS`, numba is included in the `[dev]` extra so the standard install above exercises the JIT path during testing. Reproducing production HMM fits to byte identity requires the same `(numba, llvmlite, host CPU feature set)` tuple as the producing run; cross-host fits agree only to `rtol = 1e-12`.
 
-Per [ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md), BLAS
-thread counts must be pinned to 1 for any KMeans-bearing code path
-(unit suite, walk-forward orchestrator, anything that constructs
-`GaussianHMM`). On Windows this is required to avoid a non-deterministic
-`sklearn.cluster.KMeans` deadlock; on all platforms it stabilises
-`ReproLog.model_hash` SHA256 across runs.
-
-`pytest` invocations have the pin applied automatically once the
-`pytest-env`-based native `[tool.pytest_env]` block (with
-`pytest-env>=1.6` in the `[dev]` extras) lands per
-[ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md) §Implementation
-(deferred follow-up `P1-BLAS-PIN-PYTEST-ENV-IMPLEMENT`; the older
-`[tool.pytest.ini_options] env = [...]` form is **not** supported by
-`pytest-env` >= 1.0). Until that block lands, and for any direct
-invocation of `scripts/run_walk_forward.py` until follow-up
-`P1-BLAS-PIN-ORCHESTRATOR-WRAPPER` lands, set:
+Per [ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md), BLAS thread counts must be pinned to 1 for any KMeans-bearing code path (unit suite, walk-forward orchestrator, anything that constructs `GaussianHMM`). Set the BLAS env vars before importing numpy / sklearn (variables read at process start):
 
 ```bash
 export OMP_NUM_THREADS=1
@@ -131,47 +112,31 @@ export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 ```
 
-(Windows PowerShell: `$env:OMP_NUM_THREADS = "1"` etc; cmd.exe:
-`set OMP_NUM_THREADS=1` etc.) Set these *before* importing `numpy` /
-`sklearn` — BLAS libraries read the variables at process start, so
-exporting after a Python interpreter is already running has no effect.
+---
 
-## Key scripts
+## Sibling repositories
 
-```bash
-# Data ingestion
-python scripts/ingest.py --dataset fomc_text --start 2015-01-01 --end 2026-04-16 --dry-run
-python scripts/ingest.py --dataset macro_surprise --start 2016-01-01 --end 2026-04-16
+Per [ADR-0006](docs/decisions/ADR-0006-scope-extension-hmm-0dte.md) + [ADR-0016](docs/decisions/ADR-0016-sibling-repo-audit-and-lift-protocol.md):
 
-# Hypothesis management
-python scripts/hypothesis_new.py H027 --title "CBOE COR regime gate" --tier 3 --citations doi:10.xxxx/yyyy
+- **[SKIE-NINJA-0DTE](https://github.com/s-koirala/SKIE-NINJA-0DTE)** (internal: SKIE-ORB-CALL) — QQQ first-hour long-call 0DTE scalp; cross-track sibling for H052b.
+- **[SKIE-NINJA-Volatility](https://github.com/s-koirala/SKIE-NINJA-Volatility)** — first audit-and-lift target per ADR-0016 (BLOCKING-BEFORE-H056-LIFT-OPTION-3-2).
+- **[SKIE-Ninja](https://github.com/s-koirala/SKIE-Ninja)** — legacy precursor (~500+ feature ML system); future audit per ADR-0016.
+- **[SKIENINJA-V3](https://github.com/s-koirala/SKIENINJA-V3)** — BTC-focused; out-of-universe per ADR-0001; cited for scope-boundary clarity.
 
-# Validate instruments config
-python -m skie_ninja.utils.instruments
+Sibling-repo artifacts cannot be promoted into SKIE-Universe successors without passing the [ADR-0016](docs/decisions/ADR-0016-sibling-repo-audit-and-lift-protocol.md) 7-gate audit (substrate-compatibility, PIT correctness via Cycle-4 leak canaries, purged/embargoed walk-forward verification, multi-testing correction, BSS + reliability slope, ReproLog schema compatibility, license + commit-SHA provenance).
 
-# Tests
-pytest tests/unit/ -v                              # 196 tests, no network
-pytest tests/integration/ -v -m integration        # requires FRED_API_KEY
-```
+---
 
-## Entry points
-- [plan/phases.md](plan/phases.md) — phased execution plan (8 phases, P0-P8)
-- [plan/implementation-plan_2026-04-15.md](plan/implementation-plan_2026-04-15.md) — engineering spec with acceptance criteria
-- [plan/hypothesis_backlog.md](plan/hypothesis_backlog.md) — 26 ranked hypotheses across 4 tiers
-- [research/00_literature_review/](research/00_literature_review/) — grounded citations
-- [research/03_audits/](research/03_audits/) — audit-remediate loop records
-- [CLAUDE.md](CLAUDE.md) — project-local rules
+## Key entry points
 
-## Architecture decisions
+- [hypothesis_backlog.md](hypothesis_backlog.md) — what we are researching and current status
+- [research/01_hypothesis_register/INDEX.md](research/01_hypothesis_register/INDEX.md) — per-hypothesis stage dashboard
+- [research/01_hypothesis_register/RESULTS_INDEX.md](research/01_hypothesis_register/RESULTS_INDEX.md) — KPI report cards across all hypotheses
+- [docs/decisions/README.md](docs/decisions/README.md) — ADR index
+- [docs/glossary.md](docs/glossary.md) — terms and conventions
+- [CHANGELOG.md](CHANGELOG.md) — condensed phase log
+- [CLAUDE.md](CLAUDE.md) — full project rules + audit-remediate-loop ledger
 
-| ADR | Title | Status |
-|---|---|---|
-| [ADR-0001](docs/decisions/ADR-0001-project-scope.md) | Project scope | accepted |
-| [ADR-0002](docs/decisions/ADR-0002-bridge-selection.md) | Python-NT8 bridge selection | proposed (user measurement pending) |
-| [ADR-0003](docs/decisions/ADR-0003-spa-vs-romanowolf.md) | SPA vs Romano-Wolf for FWER control | proposed |
-| [ADR-0004](docs/decisions/ADR-0004-alpha-and-power-defaults.md) | Alpha and power defaults | accepted |
-| [ADR-0005](docs/decisions/ADR-0005-hmm-regime-toolkit.md) | HMM canonical regime-inference toolkit (Baum-Welch + causal Viterbi) | proposed |
-| [ADR-0006](docs/decisions/ADR-0006-scope-extension-hmm-0dte.md) | Scope extension: HMM track + sibling 0DTE repo | proposed |
-| [ADR-0007](docs/decisions/ADR-0007-embargo-placement.md) | Embargo placement: stacked vs overlap form | accepted |
-| [ADR-0008](docs/decisions/ADR-0008-spa-omega-method.md) | SPA omega estimator selection | accepted |
-| [ADR-0009](docs/decisions/ADR-0009-blas-thread-pinning.md) | BLAS thread pinning for reproducibility | accepted |
+## License
+
+See [LICENSE](LICENSE) (when present). Source code is project-internal research; do not deploy against live capital without operator authorization. Strategies promoted to `live-promoted` are tracked at [logs/promotions/](logs/promotions/).

@@ -1,7 +1,7 @@
 """Feature-factory Protocol, registry, and contractual-test base class.
 
 Source of truth for the feature interface defined in
-[plan/implementation-plan_2026-04-15.md] §3 (lines 101-132). Every
+[plan/buildouts/implementation-plan_2026-04-15.md] §3 (lines 101-132). Every
 module registered here is enumerable by the walk-forward runner and
 must satisfy the six contractual guarantees below.
 
@@ -91,7 +91,7 @@ class DatasetRef:
 class FeatureModule(Protocol):
     """Protocol every registered feature must satisfy.
 
-    Verbatim from [plan/implementation-plan_2026-04-15.md] §3. The
+    Verbatim from [plan/buildouts/implementation-plan_2026-04-15.md] §3. The
     ``runtime_checkable`` decoration allows the registry to
     ``isinstance(obj, FeatureModule)`` at registration time — a
     cheap guard against accidentally registering an unrelated object.

@@ -6,11 +6,11 @@ Usage:
         --tier 3 \
         --citations doi:10.xxxx/yyyy,https://arxiv.org/abs/2604.01431
 
-Spec: plan/implementation-plan_2026-04-15.md §10 (item P0-11).
+Spec: plan/buildouts/implementation-plan_2026-04-15.md §10 (item P0-11).
 - Copies docs/templates/{hypothesis_design.md, hypothesis_config.yaml,
   hypothesis_data_requirements.md} into research/01_hypothesis_register/{HID}/ and
   generates a README.md.
-- Appends a `queued`-status row to plan/hypothesis_backlog.md (idempotent).
+- Appends a `queued`-status row to hypothesis_backlog.md (idempotent).
 - Rejects existing IDs; validates tier in {1, 2, 3}; validates every citation parses as
   a DOI or URL.
 
@@ -178,7 +178,7 @@ def create_hypothesis(
     )
     _write_if_absent(readme_path, readme)
 
-    backlog = root / "plan" / "hypothesis_backlog.md"
+    backlog = root / "hypothesis_backlog.md"
     _append_backlog(backlog, spec)
 
     return {
@@ -195,7 +195,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="hypothesis_new.py",
         description=(
             "Create a new hypothesis folder and append a queued row to the backlog. "
-            "See plan/implementation-plan_2026-04-15.md §10."
+            "See plan/buildouts/implementation-plan_2026-04-15.md §10."
         ),
     )
     p.add_argument("hid", type=str, help="Hypothesis ID, e.g., H027.")

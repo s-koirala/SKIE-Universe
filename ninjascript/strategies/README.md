@@ -4,7 +4,7 @@ NinjaTrader 8 strategies for SKIE-Universe. One C# file per strategy, namespace 
 
 ## TrivialSmokeTest.cs
 
-Phase-0 end-to-end execution smoke test per [plan/implementation-plan_2026-04-15.md §P0-9](../../plan/implementation-plan_2026-04-15.md).
+Phase-0 end-to-end execution smoke test per [plan/buildouts/implementation-plan_2026-04-15.md §P0-9](../../plan/buildouts/implementation-plan_2026-04-15.md).
 
 ### Build
 

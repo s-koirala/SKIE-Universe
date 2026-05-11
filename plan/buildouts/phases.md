@@ -4,8 +4,8 @@ This plan is deliberately *longitudinal*. Phases are not gates we finish and wal
 
 ## Phase 0 — Foundation (weeks 1–2)
 - Environment: `uv` venv pinned, ruff/pytest/nbstripout wired.
-- SessionStart/SessionEnd reproducibility hooks confirmed writing to [../logs/reproducibility/](../logs/reproducibility/).
-- Instrument specs and roll calendar locked in [../config/instruments.yaml](../config/instruments.yaml).
+- SessionStart/SessionEnd reproducibility hooks confirmed writing to [../logs/reproducibility/](../../logs/reproducibility/).
+- Instrument specs and roll calendar locked in [../config/instruments.yaml](../../config/instruments.yaml).
 - NinjaTrader 8 Desktop: paper-account wired, connection to market-data feed verified, one trivial NinjaScript strategy deployed end-to-end (e.g. "buy 1 MES on 09:30 CT, flat at 15:00 CT") to prove the execution loop.
 - Python ↔ NinjaTrader bridge: *one* of {ATI via socket, NTDirect DLL via pythonnet, file-bridge, or MCP server} selected after the execution-research agent report.
 
@@ -19,7 +19,7 @@ This plan is deliberately *longitudinal*. Phases are not gates we finish and wal
 - Validation: schema + distribution + provenance checks per `validate-data` skill for every ingest.
 
 ## Phase 2 — Feature factories (weeks 4–10, concurrent)
-One module per feature family under [../src/skie_ninja/features/](../src/skie_ninja/features/):
+One module per feature family under [../src/skie_ninja/features/](../../src/skie_ninja/features/):
 - `microstructure/` — OFI, deep OFI, LOB state vectors, Hawkes-clock resampler.
 - `macro/` — surprise z-scores, event-window features.
 - `text/` — FOMC delta, sentence-level embedding streams, topic drift.
@@ -45,7 +45,7 @@ All trained with purged walk-forward CV + combinatorial purged CV where sample e
 - Every result tagged with the SPA-corrected p-value, not the raw p-value.
 
 ## Phase 5 — Backtest engine + cost model (weeks 10–14)
-- Walk-forward engine in [../src/skie_ninja/backtest/engine/](../src/skie_ninja/backtest/engine/).
+- Walk-forward engine in [../src/skie_ninja/backtest/engine/](../../src/skie_ninja/backtest/engine/).
 - Transaction cost model fit empirically from NinjaTrader paper-trade fills (not assumed).
 - Slippage distribution per session regime (RTH / ETH / overnight).
 - Capacity curve estimated via square-root impact, recalibrated quarterly.

@@ -1,6 +1,6 @@
 # artifacts/universe/
 
-Append-only strategy-universe log for Hansen SPA bookkeeping. Every gate evaluation via [src/skie_ninja/inference/gate.py](../../src/skie_ninja/inference/gate.py) hashes the full universe-to-date into `universe_snapshot_id` per [implementation-plan §5 Universe snapshot](../../plan/implementation-plan_2026-04-15.md).
+Append-only strategy-universe log for Hansen SPA bookkeeping. Every gate evaluation via [src/skie_ninja/inference/gate.py](../../src/skie_ninja/inference/gate.py) hashes the full universe-to-date into `universe_snapshot_id` per [implementation-plan §5 Universe snapshot](../../plan/buildouts/implementation-plan_2026-04-15.md).
 
 ## Files
 

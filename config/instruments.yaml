@@ -29,7 +29,7 @@
 # MUST override to match their actual broker contract before any
 # live-capital run, and set `commission_reviewed_for_broker` accordingly.
 #
-# See plan/implementation-plan_2026-04-15.md §P0-4 for field spec and
+# See plan/buildouts/implementation-plan_2026-04-15.md §P0-4 for field spec and
 # research/03_audits/audit-round1-quant_2026-04-15.md item M-15 for the
 # volume-tier requirement.
 

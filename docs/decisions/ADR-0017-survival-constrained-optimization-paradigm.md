@@ -230,7 +230,7 @@ This ADR amends §8 + §10 of all hypothesis design.md files (H050, H051, H052a,
 
 For H055 (the immediately-load-bearing instance), the §11.1 amendment lands in the same commit group as this ADR per Path A frozen-pre-reg amendment scope. H055's §17 amendment ledger gains a 2026-05-08 entry recording the ADR-0017 cross-link.
 
-For H056-H059 (currently `queued` per [plan/h055_successor_tree_2026-05-06.md](../../plan/h055_successor_tree_2026-05-06.md)), ADR-0017's §1 + §3 + §4 + §5 are inherited at pre-registration time; their design.md §1 statements are written under the survival-constrained paradigm from inception (no Sharpe-differential T_H statistic in §1; Sharpe-family computation reported as KPI annotation per §1.2).
+For H056-H059 (currently `queued` per [plan/buildouts/h055_successor_tree_2026-05-06.md](../../plan/buildouts/h055_successor_tree_2026-05-06.md)), ADR-0017's §1 + §3 + §4 + §5 are inherited at pre-registration time; their design.md §1 statements are written under the survival-constrained paradigm from inception (no Sharpe-differential T_H statistic in §1; Sharpe-family computation reported as KPI annotation per §1.2).
 
 ## Alternatives considered
 

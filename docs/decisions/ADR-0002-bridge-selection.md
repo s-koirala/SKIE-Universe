@@ -6,16 +6,16 @@ date: 2026-04-15
 decision-owner: Execution-research agent / Lead researcher
 supersedes: none
 related:
-  - plan/implementation-plan_2026-04-15.md §P0-10
-  - plan/implementation-plan_2026-04-15.md §7 Execution Adapter Interface
-  - plan/implementation-plan_2026-04-15.md §8 Kill-Switches
+  - plan/buildouts/implementation-plan_2026-04-15.md §P0-10
+  - plan/buildouts/implementation-plan_2026-04-15.md §7 Execution Adapter Interface
+  - plan/buildouts/implementation-plan_2026-04-15.md §8 Kill-Switches
   - docs/methodology/arch_ninjatrader-automation-options_2026-04-15.md
   - research/03_audits/audit-round1-quant_2026-04-15.md #22
 ---
 
 # ADR-0002 — Python↔NinjaTrader 8 execution bridge selection
 
-> **Phase-0 gate status.** STATUS: proposed. This ADR BLOCKS Phase-0 gate G0 per [plan §P0-10](../../plan/implementation-plan_2026-04-15.md) acceptance until the measurement protocol in §5 is executed by the user and status flipped to `accepted`. See §8 Acceptance Checklist and §9 Phase-0 follow-up.
+> **Phase-0 gate status.** STATUS: proposed. This ADR BLOCKS Phase-0 gate G0 per [plan §P0-10](../../plan/buildouts/implementation-plan_2026-04-15.md) acceptance until the measurement protocol in §5 is executed by the user and status flipped to `accepted`. See §8 Acceptance Checklist and §9 Phase-0 follow-up.
 
 ## Status
 
@@ -23,7 +23,7 @@ Proposed. Acceptance is conditional on executing the measurement protocol in §5
 
 ## 1. Context
 
-[§7 of the implementation plan](../../plan/implementation-plan_2026-04-15.md) defines `OrderRouter`, `NinjaTraderRouter`, and `MCPRouter`. The bridge chosen here instantiates `NinjaTraderRouter`. [§8](../../plan/implementation-plan_2026-04-15.md) requires `LatencyAnomalySwitch` with baseline `submit→ack` p99; the baseline is a direct function of the bridge choice. The project constraint set requires bounded latency, deterministic behaviour, full observability, parity between research and live, and hard kill-switches (CLAUDE.md §Research philosophy, §Execution bar for live; [arch doc §1](../methodology/arch_ninjatrader-automation-options_2026-04-15.md)).
+[§7 of the implementation plan](../../plan/buildouts/implementation-plan_2026-04-15.md) defines `OrderRouter`, `NinjaTraderRouter`, and `MCPRouter`. The bridge chosen here instantiates `NinjaTraderRouter`. [§8](../../plan/buildouts/implementation-plan_2026-04-15.md) requires `LatencyAnomalySwitch` with baseline `submit→ack` p99; the baseline is a direct function of the bridge choice. The project constraint set requires bounded latency, deterministic behaviour, full observability, parity between research and live, and hard kill-switches (CLAUDE.md §Research philosophy, §Execution bar for live; [arch doc §1](../methodology/arch_ninjatrader-automation-options_2026-04-15.md)).
 
 Candidate set (P0-10 scope):
 
@@ -39,7 +39,7 @@ Candidate set (P0-10 scope):
 - D3 **Observability** — every order correlates to a JSONL record with `git_head`, `pip_freeze`, `dataset_sha`, RNG seed, model hash (CLAUDE.md §Reproducibility).
 - D4 **Stability under NT point releases** — the interface must not silently break on NT update.
 - D5 **Coupling cost** — single source of truth; minimise translation layers between research Python and live execution (arch doc §1.5 parity).
-- D6 **Safety surface** — compatible with [§8 kill-switches](../../plan/implementation-plan_2026-04-15.md) and broker-side Trailing Max Drawdown ([NT: Trailing Max Drawdown](https://support.ninjatrader.com/s/article/How-Do-I-Set-a-Trailing-Max-Drawdown-on-My-Account?language=en_US)).
+- D6 **Safety surface** — compatible with [§8 kill-switches](../../plan/buildouts/implementation-plan_2026-04-15.md) and broker-side Trailing Max Drawdown ([NT: Trailing Max Drawdown](https://support.ninjatrader.com/s/article/How-Do-I-Set-a-Trailing-Max-Drawdown-on-My-Account?language=en_US)).
 
 ## 3. Considered options
 
@@ -71,7 +71,7 @@ Candidate set (P0-10 scope):
 - **Mechanism**: MCP tools wrap order submission; client is an LLM.
 - **Latency floor**: 1–5 s including model inference, two to three orders of magnitude above the intraday budget (arch doc §4; [Building an AI Trading Bot with MCP (Medium)](https://medium.com/@cognidownunder/building-an-ai-trading-bot-using-model-context-protocol-mcp-server-a-detailed-guide-17a75e468ea5)).
 - **Determinism**: LLM sampling breaks reproducibility; prompt-injection surface when the model consumes headlines/chat.
-- **Designation**: [§7](../../plan/implementation-plan_2026-04-15.md) explicitly assigns `MCPRouter` read-only research. **Rejected for live order placement.**
+- **Designation**: [§7](../../plan/buildouts/implementation-plan_2026-04-15.md) explicitly assigns `MCPRouter` read-only research. **Rejected for live order placement.**
 
 ## 4. Decision outcome (tentative, conditional on §5 measurements)
 
@@ -82,7 +82,7 @@ Ranking:
 1. **ATI-socket — primary.** In the [arch-doc §8 recommendation](../methodology/arch_ninjatrader-automation-options_2026-04-15.md) this is the Phase-0 hybrid pattern (Approaches 9 + 2). It keeps a single source of truth in Python for decisions while execution runs on the only NT-supported surface (AddOn + Strategy). Expected latency satisfies D1 for intraday bars; stability under NT point releases (D4) is the strongest of the four. Observability (D3) is natural because both sides speak an application protocol with correlation IDs.
 2. **NTDirect-pythonnet — fallback.** Lower nominal latency but materially higher fragility. NT's own documentation marks the interface as unsupported for general use; the R2 audit finding flags this as lock-in risk. Reserve as fallback only if the ATI-socket measurement fails D1 by a margin that sub-ms DLL calls would close (unlikely on intraday budgets).
 3. **File-bridge — cold-disaster-recovery only.** OS-dependent polling latency and `My Documents` collision footguns disqualify it from the hot path. Retain as an operator-triggered flatten / re-enter mechanism when the socket path is down and broker-side kill-switches are insufficient.
-4. **MCP — rejected for order placement.** Per [§7](../../plan/implementation-plan_2026-04-15.md), `MCPRouter` is read-only. Live orders via MCP violate D1, D2, and D6.
+4. **MCP — rejected for order placement.** Per [§7](../../plan/buildouts/implementation-plan_2026-04-15.md), `MCPRouter` is read-only. Live orders via MCP violate D1, D2, and D6.
 
 **Reconciliation with the prior architecture survey:** the user-provided tentative ranking suggested NTDirect-pythonnet as primary with ATI-socket as fallback. The architecture survey ([arch_ninjatrader-automation-options_2026-04-15.md §3.3, §8](../methodology/arch_ninjatrader-automation-options_2026-04-15.md)) classifies NTDirect-pythonnet as "Prototypes only" on stability grounds and recommends the hybrid AddOn-socket pattern as the Phase-0 default. Per project convention the prior survey's ranking governs; this ADR inverts the first two positions of the proposed ranking accordingly and documents the inversion here so that the measurement protocol can falsify the survey if latency data so indicates.
 
@@ -197,7 +197,7 @@ Payload is identical across options to remove serialisation-size as a covariate.
 - [ ] ATI-socket p99 95% CI upper bound ≤ 100 ms; if not, escalate to NTDirect-pythonnet fallback or revise the intraday budget.
 - [ ] Repro logs written to `logs/reproducibility/adr2_bridge_bench_*_YYYYMMDD.json`.
 - [ ] This ADR's `status` field edited to `accepted` with the date of the final measurement session.
-- [ ] [§8 `LatencyAnomalySwitch`](../../plan/implementation-plan_2026-04-15.md) baseline (rolling-100 p99) seeded from the accepted ATI-socket distribution.
+- [ ] [§8 `LatencyAnomalySwitch`](../../plan/buildouts/implementation-plan_2026-04-15.md) baseline (rolling-100 p99) seeded from the accepted ATI-socket distribution.
 
 ## 9. Phase-0 follow-up
 
@@ -210,7 +210,7 @@ Remediation obligation (user-owned; not executable by the agent):
 3. Populate the latency table in §5.5 with empirical p50, p99, stationary-bootstrap 95% CI, and reject rate.
 4. Verify ATI-socket p99 95% CI upper bound ≤ 100 ms against the budget justified in §5.4; if violated, invoke the NTDirect-pythonnet fallback clause in §4 or revise the budget with a documented evidence update.
 5. Write reproducibility logs to `logs/reproducibility/adr2_bridge_bench_{option}_{YYYYMMDD}.json`.
-6. Flip the frontmatter `status` field from `proposed` to `accepted` with the final measurement-session date, remove the Phase-0 gate banner at the top of this ADR, tick the §8 checklist, and seed [§8 `LatencyAnomalySwitch`](../../plan/implementation-plan_2026-04-15.md) baseline from the accepted ATI-socket distribution.
+6. Flip the frontmatter `status` field from `proposed` to `accepted` with the final measurement-session date, remove the Phase-0 gate banner at the top of this ADR, tick the §8 checklist, and seed [§8 `LatencyAnomalySwitch`](../../plan/buildouts/implementation-plan_2026-04-15.md) baseline from the accepted ATI-socket distribution.
 
 Until step 6 is complete, Phase-0 gate G0 remains blocked and no code binding to `NinjaTraderRouter` may pass the plan's P0-10 acceptance criteria. The agent cannot fabricate or proxy the §5 measurements; the latency table must be populated from a real paper-account run.
 
@@ -261,7 +261,7 @@ Until step 6 is complete, Phase-0 gate G0 remains blocked and no code binding to
 ### Internal
 
 - [docs/methodology/arch_ninjatrader-automation-options_2026-04-15.md](../methodology/arch_ninjatrader-automation-options_2026-04-15.md)
-- [plan/implementation-plan_2026-04-15.md §P0-10, §7, §8](../../plan/implementation-plan_2026-04-15.md)
+- [plan/buildouts/implementation-plan_2026-04-15.md §P0-10, §7, §8](../../plan/buildouts/implementation-plan_2026-04-15.md)
 - [research/03_audits/audit-round1-quant_2026-04-15.md](../../research/03_audits/audit-round1-quant_2026-04-15.md)
 
 ## 11. AI-assistance statement

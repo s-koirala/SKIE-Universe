@@ -7,7 +7,7 @@
 hypothesis_id: {HID}          # justify: matches directory name research/01_hypothesis_register/{HID}/
 title: {TITLE}                # justify: matches design.md title
 tier: {TIER}                  # justify: plan §10 tier classification (1 directional | 2 microstructure | 3 frontier)
-status: queued                # justify: lifecycle per plan/hypothesis_backlog.md
+status: queued                # justify: lifecycle per hypothesis_backlog.md (repo root)
 
 citations:                    # justify: primary literature; DOI or URL; no folklore
   - null

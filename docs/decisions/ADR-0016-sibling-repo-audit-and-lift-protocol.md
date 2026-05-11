@@ -25,7 +25,7 @@ The operator maintains four ML-bearing sibling GitHub repositories under the `s-
 - [s-koirala/SKIE-NINJA-0DTE](https://github.com/s-koirala/SKIE-NINJA-0DTE) — QQQ first-hour long-call 0DTE scalp (internal SKIE-ORB-CALL), cross-validated on NQ/MNQ futures per [ADR-0006](ADR-0006-scope-extension-hmm-0dte.md) §"Decision (proposed)".
 - [s-koirala/SKIENINJA-V3](https://github.com/s-koirala/SKIENINJA-V3) — BTC range-expansion strategy.
 
-The H055 successor tree at [plan/h055_successor_tree_2026-05-06.md](../../plan/h055_successor_tree_2026-05-06.md) (concurrent landing) authorizes H056 + H057 to LIFT model artifacts from these siblings into SKIE-Universe walk-forward runs. Without a formal audit + substrate-compatibility check, the lift would inherit unaudited backtest claims into a SKIE-Universe successor's design.md §3-§5 features / labels / estimators. The siblings predate:
+The H055 successor tree at [plan/buildouts/h055_successor_tree_2026-05-06.md](../../plan/buildouts/h055_successor_tree_2026-05-06.md) (concurrent landing) authorizes H056 + H057 to LIFT model artifacts from these siblings into SKIE-Universe walk-forward runs. Without a formal audit + substrate-compatibility check, the lift would inherit unaudited backtest claims into a SKIE-Universe successor's design.md §3-§5 features / labels / estimators. The siblings predate:
 
 - Cycle 4 leak canaries at [src/skie_ninja/backtest/leak_canaries.py](../../src/skie_ninja/backtest/leak_canaries.py) (fold-boundary invariant; label-horizon purge; dual-fit-call observer).
 - Cycle 4 purged + embargoed walk-forward at [src/skie_ninja/backtest/](../../src/skie_ninja/backtest/) per AFML §7.4 ([López de Prado 2018](https://www.wiley.com/en-us/Advances+in+Financial+Machine+Learning-p-9781119482086), Wiley, ISBN 978-1119482086, *practitioner*) and [Bergmeir & Benitez 2012](https://doi.org/10.1016/j.ins.2011.12.028) Information Sciences 191:192-213.
@@ -193,7 +193,7 @@ Rejected. The sibling repos predate SKIE-Universe's leak-canary discipline (Cycl
 - [ADR-0012 disposition philosophy](ADR-0012-disposition-philosophy-aspirational-mvp.md) — frozen-pre-reg amendment discipline preserved.
 - [ADR-0013 permanent-exploration framework](ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) — §1-§7 immutability binding for the lift.
 - ADR-0015 (concurrent landing) — referenced for cross-link continuity.
-- [plan/h055_successor_tree_2026-05-06.md](../../plan/h055_successor_tree_2026-05-06.md) (concurrent landing) — H056 + H057 are the first applications of ADR-0016.
+- [plan/buildouts/h055_successor_tree_2026-05-06.md](../../plan/buildouts/h055_successor_tree_2026-05-06.md) (concurrent landing) — H056 + H057 are the first applications of ADR-0016.
 - [research/01_hypothesis_register/H055/design.md](../../research/01_hypothesis_register/H055/design.md) §12 — relationship to other hypotheses; H055 is the parent; H056 + H057 are the lift-bearing successors.
 - [López de Prado 2018](https://www.wiley.com/en-us/Advances+in+Financial+Machine+Learning-p-9781119482086) *Advances in Financial Machine Learning*, Wiley, ISBN 978-1119482086, *practitioner* — Ch. 7 purged + embargoed walk-forward; §2.4.3 anchor invariant; §7.4.1 purging the training set.
 - [Bergmeir & Benitez 2012](https://doi.org/10.1016/j.ins.2011.12.028) Information Sciences 191:192-213 — time-series CV protocol.

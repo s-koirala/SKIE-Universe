@@ -14,7 +14,7 @@ citations: {CITATIONS}
 
 This document is the pre-registration record for hypothesis {HID}. It is frozen at
 `designed` status; any change after that point requires a new hypothesis ID. The 11
-sections below are mandated by [plan/implementation-plan_2026-04-15.md §10](../../../plan/implementation-plan_2026-04-15.md).
+sections below are mandated by [plan/buildouts/implementation-plan_2026-04-15.md §10](../../../plan/buildouts/implementation-plan_2026-04-15.md).
 Inline commentary cites the plan or audit anchor that governs the content of each section.
 
 ## 1. Hypothesis
@@ -34,7 +34,7 @@ statistic, not prose). Identify the economic mechanism and the primary literatur
 Bounded at pre-reg; no discretion later. Specify instruments (ES/NQ/MES/MNQ front month
 per [config/instruments.yaml](../../../config/instruments.yaml)), sampling frequency,
 session regime (RTH vs ETH, per project CLAUDE.md session policy), and the time-ordered
-train / validation / test windows. Walk-forward only per [plan §4.1](../../../plan/implementation-plan_2026-04-15.md).
+train / validation / test windows. Walk-forward only per [plan §4.1](../../../plan/buildouts/implementation-plan_2026-04-15.md).
 
 - Instruments:
 - Frequency:
@@ -47,7 +47,7 @@ train / validation / test windows. Walk-forward only per [plan §4.1](../../../p
 ## 3. Features
 
 List feature modules by exact `FEATURE_REGISTRY` name and semver version per
-[plan §3](../../../plan/implementation-plan_2026-04-15.md). Any logic change bumps
+[plan §3](../../../plan/buildouts/implementation-plan_2026-04-15.md). Any logic change bumps
 `version`. Point-in-time property test and pipeline-level leakage test (plan §3, §4.6)
 must pass before run.
 

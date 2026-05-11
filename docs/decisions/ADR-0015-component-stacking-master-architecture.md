@@ -249,7 +249,7 @@ Rejected. ADR-0013's permanent-exploration framework explicitly supports the nat
 - [ADR-0014](ADR-0014-canonical-end-of-simulation-results-summary-tables.md) — canonical 9-table results summary; ADR-0015 §3.6 interpretability annotation cascades into the §3.2 9-table Table 9 methodological-correctness one-liner.
 - ADR-0016 (concurrent-landing) — sibling-repo lift discipline; addresses the §"Residual risk" sibling-repo open item.
 - [research/01_hypothesis_register/H055/design.md](../../research/01_hypothesis_register/H055/design.md) — H055 v1 four-component structure; the empirical opening for the architectural family.
-- `plan/h055_successor_tree_2026-05-06.md` — H055 successor tree (concurrent-landing artifact; documents the H056 / H057 / H058 / H059 sequence claimed at this commit).
+- `plan/buildouts/h055_successor_tree_2026-05-06.md` — H055 successor tree (concurrent-landing artifact; documents the H056 / H057 / H058 / H059 sequence claimed at this commit).
 
 ## Follow-ups
 

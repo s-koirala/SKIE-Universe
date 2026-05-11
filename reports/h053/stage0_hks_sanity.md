@@ -119,7 +119,7 @@ no missing-bar artifacts, no DST-edge contamination).
 
 ## Closes
 
-- Cycle 7 Stage-0 sanity check (per [plan/h053_buildout_2026-04-28.md](../../plan/h053_buildout_2026-04-28.md)
+- Cycle 7 Stage-0 sanity check (per [plan/buildouts/h053_buildout_2026-04-28.md](../../plan/buildouts/h053_buildout_2026-04-28.md)
   Cycle-7 row).
 - Substrate-behavior validation for the post-Cell-I roll-adjusted ES + NQ 1-min substrate.
 

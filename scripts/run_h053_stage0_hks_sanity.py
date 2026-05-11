@@ -1,6 +1,6 @@
 """H053 Cycle 7 Stage-0 sanity — HKS 2010 intraday volatility U-shape on ES/NQ.
 
-Per [plan/h053_buildout_2026-04-28.md](../plan/h053_buildout_2026-04-28.md)
+Per [plan/buildouts/h053_buildout_2026-04-28.md](../plan/buildouts/h053_buildout_2026-04-28.md)
 Cycle 7: substrate-behavior validation against the
 [Heston, Korajczyk & Sadka 2010](https://doi.org/10.1111/j.1540-6261.2010.01573.x)
 published intraday volatility seasonality. **This is NOT a research

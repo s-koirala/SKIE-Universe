@@ -1,6 +1,6 @@
 """Instruments registry loader.
 
-Implements P0-4 per plan/implementation-plan_2026-04-15.md §P0-4.
+Implements P0-4 per plan/buildouts/implementation-plan_2026-04-15.md §P0-4.
 
 Pydantic-validated specs for CME equity-index front-month contracts
 (ES, NQ, MES, MNQ). Loader rejects missing fields.

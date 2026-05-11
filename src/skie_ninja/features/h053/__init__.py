@@ -1,5 +1,5 @@
 """H053 feature factory — Cycle 7 deliverable per
-[plan/h053_buildout_2026-04-28.md](../../../../plan/h053_buildout_2026-04-28.md).
+[plan/buildouts/h053_buildout_2026-04-28.md](../../../../plan/buildouts/h053_buildout_2026-04-28.md).
 
 The H053 feature factory diverges from the project-wide bar-grain
 ``FEATURE_REGISTRY`` in

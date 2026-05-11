@@ -7,11 +7,11 @@ Runtime config files for pre-registered hypotheses. One file per hypothesis ID, 
 Keeping runtime config here (rather than inside each hypothesis folder) serves two purposes:
 
 1. **Single import point** — `scripts/run_walk_forward.py --config config/hypotheses/H050.yaml` resolves without path games.
-2. **Drift detection** — if the YAML here diverges from the pre-registration `design.md`, a pre-commit hook (TODO, tracked in [plan/implementation-plan_2026-04-15.md](../../plan/implementation-plan_2026-04-15.md)) flags the mismatch before a run is dispatched.
+2. **Drift detection** — if the YAML here diverges from the pre-registration `design.md`, a pre-commit hook (TODO, tracked in [plan/buildouts/implementation-plan_2026-04-15.md](../../plan/buildouts/implementation-plan_2026-04-15.md)) flags the mismatch before a run is dispatched.
 
 ## Schema
 
-Each file must conform to the skeleton emitted by `scripts/hypothesis_new.py` and include at minimum the `power` block per [implementation-plan §5.1](../../plan/implementation-plan_2026-04-15.md).
+Each file must conform to the skeleton emitted by `scripts/hypothesis_new.py` and include at minimum the `power` block per [implementation-plan §5.1](../../plan/buildouts/implementation-plan_2026-04-15.md).
 
 ## Active files
 
