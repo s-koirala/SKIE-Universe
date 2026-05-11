@@ -143,7 +143,7 @@ positive results and protect against later rediscovery").
 
 ## Cycle 11 paper-trade scaffolding
 
-**NOT FIRED.** Per design.md §10.1 + plan/h053_buildout_2026-04-28.md
+**NOT FIRED.** Per design.md §10.1 + plan/buildouts/h053_buildout_2026-04-28.md
 Cycle 11 row, paper-trade scaffolding only fires on `archive(positive)`.
 H053 archives as null; Cycle 11 is **skipped**. The 60-session-day
 paper-trade clock does NOT start.

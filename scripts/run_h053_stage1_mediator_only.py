@@ -1,6 +1,6 @@
 """H053 Cycle 8 Stage-1 — mediator-only walk-forward (Gao 2018 replication).
 
-Per [plan/h053_buildout_2026-04-28.md](../plan/h053_buildout_2026-04-28.md)
+Per [plan/buildouts/h053_buildout_2026-04-28.md](../plan/buildouts/h053_buildout_2026-04-28.md)
 Cycle 8: walk-forward run with the H053 mediator vector
 ``M_{i,t} = (m_return, m_log_range, m_volume, m_ofi_tickrule)`` as the
 sole regressor on the design.md §1 predictand

@@ -6,7 +6,7 @@ date: 2026-04-15
 decision-owner: Lead researcher
 supersedes: none
 related:
-  - plan/implementation-plan_2026-04-15.md §5
+  - plan/buildouts/implementation-plan_2026-04-15.md §5
   - research/03_audits/audit-round1-quant_2026-04-15.md #7
 ---
 
@@ -18,7 +18,7 @@ Proposed. To be accepted in Phase 1 after empirical comparison on the first 10 h
 
 ## Context
 
-The inference gate ([plan §5](../../plan/implementation-plan_2026-04-15.md)) must control family-wise or false-discovery error across a growing universe of candidate strategies. Two candidate controls:
+The inference gate ([plan §5](../../plan/buildouts/implementation-plan_2026-04-15.md)) must control family-wise or false-discovery error across a growing universe of candidate strategies. Two candidate controls:
 
 - **Hansen SPA** ([Hansen 2005](https://doi.org/10.1198/073500105000000063)): test-of-superior-predictive-ability requires a *common OOS sample* across all candidates. Sequentially appending new strategies with heterogeneous OOS violates the null construction: each new strategy has its own OOS window, and the SPA p-value becomes ill-defined unless historical strategies are re-run on the new common window.
 - **Romano-Wolf stepwise** ([Romano-Wolf 2005 Econometrica](https://doi.org/10.1111/j.1468-0262.2005.00615.x)): step-down resampling method controlling FWER; more amenable to heterogeneous evaluation windows when paired with a block bootstrap accounting for serial dependence, though still assumes a comparable test statistic per hypothesis.
@@ -63,7 +63,7 @@ Final thresholds determined empirically in Phase 1 after the first 10 gate evalu
 
 ## Consequences
 
-- `GateReport.passed` logic ([§5](../../plan/implementation-plan_2026-04-15.md)) already accepts `hansen_spa_pvalue < alpha OR romano_wolf_pvalue < alpha`; this ADR's acceptance only fixes which is "primary" for reporting.
+- `GateReport.passed` logic ([§5](../../plan/buildouts/implementation-plan_2026-04-15.md)) already accepts `hansen_spa_pvalue < alpha OR romano_wolf_pvalue < alpha`; this ADR's acceptance only fixes which is "primary" for reporting.
 - CI job `gate-snapshot` (§9.2) extended to trigger full re-run on common OOS when Option A is in force.
 - BH q-value ([Benjamini-Hochberg 1995](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x)) and Storey q-value ([Storey 2002](https://doi.org/10.1111/1467-9868.00346)) provide FDR backstop independent of A/B choice.
 

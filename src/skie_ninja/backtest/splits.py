@@ -72,7 +72,7 @@ Design notes
   full path-reconstruction (AFML Chapter 12 "Combinatorial
   backtest paths") is tracked as ``P1-BACKTEST-CPCV``. The H050
   MVP-1 analysis uses purged walk-forward as primary per
-  [plan/tier2b_buildout_2026-04-23.md](../../plan/tier2b_buildout_2026-04-23.md).
+  [plan/buildouts/tier2b_buildout_2026-04-23.md](../../plan/buildouts/tier2b_buildout_2026-04-23.md).
 """
 
 from __future__ import annotations
@@ -643,7 +643,7 @@ def cpcv_split(
     sequences that average out block-selection noise) is **not**
     implemented here; that is tracked as ``P1-BACKTEST-CPCV``. The
     MVP-1 H050 run uses purged walk-forward as primary, per
-    [plan/tier2b_buildout_2026-04-23.md](../../plan/tier2b_buildout_2026-04-23.md).
+    [plan/buildouts/tier2b_buildout_2026-04-23.md](../../plan/buildouts/tier2b_buildout_2026-04-23.md).
     """
     _require_positive(n_groups, "n_groups")
     _require_positive(n_test_groups, "n_test_groups")

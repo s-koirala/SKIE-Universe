@@ -1,6 +1,6 @@
 """H053 Cycle 10 Stage-3 — full Arms 1+2 + SPA family + categorical table v2.
 
-Per [plan/h053_buildout_2026-04-28.md](../plan/h053_buildout_2026-04-28.md)
+Per [plan/buildouts/h053_buildout_2026-04-28.md](../plan/buildouts/h053_buildout_2026-04-28.md)
 Cycle 10: full design.md §5 estimator stack with Arm 1 ElasticNet
 ([Zou-Hastie 2005](https://doi.org/10.1111/j.1467-9868.2005.00503.x))
 and Arm 2 LightGBM ([Friedman 2001](https://doi.org/10.1214/aos/1013203451));

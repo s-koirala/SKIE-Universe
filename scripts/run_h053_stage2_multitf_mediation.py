@@ -1,6 +1,6 @@
 """H053 Cycle 9 Stage-2 — multi-timeframe + mediation analysis.
 
-Per [plan/h053_buildout_2026-04-28.md](../plan/h053_buildout_2026-04-28.md)
+Per [plan/buildouts/h053_buildout_2026-04-28.md](../plan/buildouts/h053_buildout_2026-04-28.md)
 Cycle 9: ElasticNet on full X (Block A + Block B + Block C, mediator
 partial-out per design.md §5.4) with partial-R² increment CI on the
 ``Med`` sub-fold; PC1 mediator collapse; E-value sensitivity; descriptive

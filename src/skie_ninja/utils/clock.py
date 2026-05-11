@@ -1,6 +1,6 @@
 """CME exchange-aware clock.
 
-Implements P0-3 per plan/implementation-plan_2026-04-15.md §P0-3.
+Implements P0-3 per plan/buildouts/implementation-plan_2026-04-15.md §P0-3.
 
 Session taxonomy (four-category enum, exactly as specified):
     RTH  : 08:30-15:15 CT weekday, exchange open

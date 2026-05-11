@@ -12,23 +12,23 @@ date: 2026-04-15
 
 Each item is a module or file with acceptance criteria enforceable by `pytest`.
 
-### P0-1. [src/skie_ninja/utils/reproducibility.py](../src/skie_ninja/utils/reproducibility.py)
+### P0-1. [src/skie_ninja/utils/reproducibility.py](../../src/skie_ninja/utils/reproducibility.py)
 - **Contents**: `@dataclass(frozen=True) class ReproLog` with fields `git_head: str`, `pip_freeze: str`, `dataset_checksums: dict[str, str]`, `rng_seed: int`, `model_hash: str | None`, `timestamp_utc: str`, `env_id: str`. Helpers: `capture() -> ReproLog`, `write(path: Path) -> Path` (JSON, sorted keys), `verify(path) -> bool`.
 - **Acceptance**: `tests/unit/test_reproducibility.py` asserts (a) all six required fields populate, (b) `write→read` round-trips byte-identically, (c) `capture()` is pure — two successive calls differ only in `timestamp_utc`, (d) Windows path serialization uses POSIX style.
 
-### P0-2. [src/skie_ninja/utils/paths.py](../src/skie_ninja/utils/paths.py)
+### P0-2. [src/skie_ninja/utils/paths.py](../../src/skie_ninja/utils/paths.py)
 - Central `ProjectPaths` resolver (no hard-coded absolutes). Drives `data/raw`, `data/interim`, `data/processed`, `artifacts/models`, `artifacts/reports`, `logs/reproducibility`.
 - **Acceptance**: test that every downstream module imports paths only through this resolver (grep-guard test).
 
-### P0-3. [src/skie_ninja/utils/clock.py](../src/skie_ninja/utils/clock.py)
+### P0-3. [src/skie_ninja/utils/clock.py](../../src/skie_ninja/utils/clock.py)
 - Exchange-aware clock: `to_exchange(ts)`, `session_of(ts) -> Literal["RTH","ETH","OVN","HALT"]`, `trading_day(ts)`. Uses CME calendar; RTH = 08:30–15:15 CT for ES/NQ.
 - **Acceptance**: property tests over DST transitions, half-days (Thanksgiving, Christmas Eve), roll days; never returns "RTH" outside 08:30–15:15 CT.
 
-### P0-4. [config/instruments.yaml](../config/instruments.yaml) population
+### P0-4. [config/instruments.yaml](../../config/instruments.yaml) population
 - Fields per contract: `root`, `exchange`, `tick_size`, `tick_value`, `multiplier`, `session_rth`, `session_eth`, `roll_rule` (`volume_crossover` with window), `commission_per_side_usd`, `exchange_fee_usd`, `nfa_fee_usd`, `micro_ratio`.
 - **Acceptance**: `tests/unit/test_instruments.py` validates via pydantic `InstrumentSpec` model; loader rejects missing fields; round-trip fixture for ES, NQ, MES, MNQ.
 
-### P0-5. [src/skie_ninja/utils/hashing.py](../src/skie_ninja/utils/hashing.py)
+### P0-5. [src/skie_ninja/utils/hashing.py](../../src/skie_ninja/utils/hashing.py)
 - Deterministic `file_sha256`, `frame_sha256(df, sort_cols)` for pandas/polars, `model_sha256(state_dict | sklearn_estimator)`.
 - **Acceptance**: property test — any row permutation of a stable-sorted frame yields the same hash; any value mutation changes it.
 
@@ -36,25 +36,25 @@ Each item is a module or file with acceptance criteria enforceable by `pytest`.
 - Hooks: `ruff`, `ruff-format`, `nbstripout`, `nbqa-ruff`, custom `check-repro-log` hook that fails if a notebook under `notebooks/reproducible/` lacks a `ReproLog` cell output.
 - **Acceptance**: `pre-commit run --all-files` green on a clean tree; a deliberate nb with no ReproLog fails.
 
-### P0-7. [src/skie_ninja/utils/logging_setup.py](../src/skie_ninja/utils/logging_setup.py)
+### P0-7. [src/skie_ninja/utils/logging_setup.py](../../src/skie_ninja/utils/logging_setup.py)
 - Structured JSON logger (stdlib `logging` + `rich` pretty console in dev). Required context keys: `run_id`, `phase`, `hypothesis_id`, `git_head`.
 - **Acceptance**: test that every log line is valid JSON and contains those keys.
 
-### P0-8. [scripts/bootstrap_env.py](../scripts/bootstrap_env.py) (read-only check)
+### P0-8. [scripts/bootstrap_env.py](../../scripts/bootstrap_env.py) (read-only check)
 - Verifies Python 3.11/3.12, `uv` present, writes a one-time `logs/reproducibility/env_{YYYYMMDD}.json`.
 - **Acceptance**: non-zero exit if `python --version` outside band.
 
-### P0-9. [ninjascript/strategies/TrivialSmokeTest.cs](../ninjascript/strategies/TrivialSmokeTest.cs)
+### P0-9. [ninjascript/strategies/TrivialSmokeTest.cs](../../ninjascript/strategies/TrivialSmokeTest.cs)
 - Buys 1 MES at 09:30 CT, flattens at 15:00 CT. Logs fills to CSV for cost-model ingestion.
 - **Acceptance**: runs against paper account for 3 sessions with zero errors; CSV validated by P1-3.
 
-### P0-10. [docs/decisions/ADR-0002-bridge-selection.md](../docs/decisions/ADR-0002-bridge-selection.md)
+### P0-10. [docs/decisions/ADR-0002-bridge-selection.md](../../docs/decisions/ADR-0002-bridge-selection.md)
 - Output of the execution-research agent. Selects exactly one of {ATI-socket, NTDirect-pythonnet, file-bridge, MCP-server}. Records measured one-way latency p50/p99 per option over **≥10k test messages per option** (1k is insufficient for stable p99 — standard error on an empirical p99 with n=1000 is ≈√(0.01·0.99/1000)/f(q) and dominates the quantile at heavy-tailed latencies).
 - **Acceptance**: decision is `accepted`; latency table present; losing options explicitly rejected with reason.
 
-### P0-11. [scripts/hypothesis_new.py](../scripts/hypothesis_new.py) (see §10)
+### P0-11. [scripts/hypothesis_new.py](../../scripts/hypothesis_new.py) (see §10)
 
-### P0-12. [src/skie_ninja/utils/runcontext.py](../src/skie_ninja/utils/runcontext.py)
+### P0-12. [src/skie_ninja/utils/runcontext.py](../../src/skie_ninja/utils/runcontext.py)
 - `RunContext` context manager that opens a run, captures `ReproLog`, sets RNG seeds (numpy, torch, python), registers cleanup, writes `logs/reproducibility/{run_id}.json`.
 - **Acceptance**: any `pytest` test using the `run_context` fixture produces exactly one repro-log file; crash path still flushes.
 
@@ -251,9 +251,9 @@ def evaluate(
 
 A `GateReport` is `passed = True` iff all of:
 1. `chosen_ci` (Opdyke 2007 primary) excludes 0.
-2. `hansen_spa_pvalue < alpha` OR `romano_wolf_pvalue < alpha`. Which of the two is primary is resolved by [ADR-0003](../docs/decisions/ADR-0003-spa-vs-romanowolf.md).
-3. `bh_qvalue < bh_threshold` evaluated at the current `universe_snapshot_size`. `bh_threshold` lives in [config/gate.yaml](../config/gate.yaml); initial value 0.10 tracks the [Benjamini-Hochberg 1995](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x) conventional FDR level but is tagged `# justify:` and is subject to Phase-1 empirical calibration (follow-up F-3-1).
-4. When `universe_snapshot_size > dsr_activation_size`: `deflated_sharpe_ratio > 0` and `psr_pvalue < alpha` are required; otherwise DSR/PSR are reported but not gating. `dsr_activation_size` lives in [config/gate.yaml](../config/gate.yaml); initial placeholder 10 is driven by DSR stability at small N and is subject to Phase-1 simulation calibration (follow-up F-3-1).
+2. `hansen_spa_pvalue < alpha` OR `romano_wolf_pvalue < alpha`. Which of the two is primary is resolved by [ADR-0003](../../docs/decisions/ADR-0003-spa-vs-romanowolf.md).
+3. `bh_qvalue < bh_threshold` evaluated at the current `universe_snapshot_size`. `bh_threshold` lives in [config/gate.yaml](../../config/gate.yaml); initial value 0.10 tracks the [Benjamini-Hochberg 1995](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x) conventional FDR level but is tagged `# justify:` and is subject to Phase-1 empirical calibration (follow-up F-3-1).
+4. When `universe_snapshot_size > dsr_activation_size`: `deflated_sharpe_ratio > 0` and `psr_pvalue < alpha` are required; otherwise DSR/PSR are reported but not gating. `dsr_activation_size` lives in [config/gate.yaml](../../config/gate.yaml); initial placeholder 10 is driven by DSR stability at small N and is subject to Phase-1 simulation calibration (follow-up F-3-1).
 5. Pre-registered power calc (§5.1) satisfied: `power_at_s_min >= 0.80` and sample meets `n_required_for_power_80`.
 
 ### Harvey-Liu-Zhu haircut reporting
@@ -326,7 +326,7 @@ NinjaTrader paper-trade fill exports → `data/raw/nt_fills/` (CSV). Schema: `or
 
 ### 6.3 Validation
 
-- **Expanding-window walk-forward** (not 60/40 single split): chronologically sort paper fills; starting from a minimum-train window `W_0` (data-driven via learning-curve inspection, logged), refit at each calendar week, evaluate pinball loss on the next-week holdout. Aggregate pinball and calibration (PIT) across folds. Matches the project's "walk-forward only; no k-fold" rule from [quant-project.md](../../.claude/rules/quant-project.md).
+- **Expanding-window walk-forward** (not 60/40 single split): chronologically sort paper fills; starting from a minimum-train window `W_0` (data-driven via learning-curve inspection, logged), refit at each calendar week, evaluate pinball loss on the next-week holdout. Aggregate pinball and calibration (PIT) across folds. Matches the project's "walk-forward only; no k-fold" rule from [quant-project.md](../../../.claude/rules/quant-project.md).
 - Recalibration: quarterly OR on KS drift p < 0.001 (KS threshold tracked as open item in "Open items for Phase 1"). Triggers `audit-loop`.
 
 ### 6.4 Commission and fees
@@ -451,7 +451,7 @@ research/01_hypothesis_register/H027/
   data_requirements.md
   README.md
 ```
-Also appends entry to `plan/hypothesis_backlog.md` with `queued` status.
+Also appends entry to `hypothesis_backlog.md` (repo root) with `queued` status.
 
 Template `docs/templates/hypothesis_design.md` sections (pre-registered):
 1. Hypothesis (H0, H1, mechanism, citations)
@@ -514,7 +514,7 @@ Gate failure at any ★ blocks next phase; remediation via `audit-remediate-loop
 
 ## Open items for Phase 1
 
-Tracked but not implemented in the Phase-0/Phase-1 scope of this plan. Each is a MEDIUM finding from [audit-round1-quant_2026-04-15.md](../research/03_audits/audit-round1-quant_2026-04-15.md) and is recorded here as a commitment, not a specification.
+Tracked but not implemented in the Phase-0/Phase-1 scope of this plan. Each is a MEDIUM finding from [audit-round1-quant_2026-04-15.md](../../research/03_audits/audit-round1-quant_2026-04-15.md) and is recorded here as a commitment, not a specification.
 
 | # | Item | Audit ref | Target |
 |---|---|---|---|
@@ -523,7 +523,7 @@ Tracked but not implemented in the Phase-0/Phase-1 scope of this plan. Each is a
 | O-12 | `bootstrap_reps` selection: cite MC SE target `SE ≈ √(p(1-p)/B)`; select B to hit target SE ≤ 10% of alpha. | M-12 | Phase 1 |
 | O-13 | Parameterize CPCV `n_groups`, `n_test_groups` per hypothesis; log selection rationale per AFML §12. (Partially covered in §4.1 edit; full rationale capture deferred.) | M-13 | Phase 1 |
 | O-14 | Triple-barrier `pt_sl` multipliers, vertical barrier duration, and volatility estimator choice pre-registered per hypothesis `config.yaml`. | M-14 | Phase 1 |
-| O-15 | Document CME volume-tier fee schedule in [config/instruments.yaml](../config/instruments.yaml) even if immaterial at retail. | M-15 | Phase 1 |
+| O-15 | Document CME volume-tier fee schedule in [config/instruments.yaml](../../config/instruments.yaml) even if immaterial at retail. | M-15 | Phase 1 |
 | O-16 | Add MBP-10 / depth schema to §2.1 ingest (blocker for H010 deep-OFI). | M-16 | Phase 1 |
 
 ## Reference anchors
@@ -542,4 +542,4 @@ Tracked but not implemented in the Phase-0/Phase-1 scope of this plan. Each is a
 - [Harvey-Liu-Zhu 2016](https://doi.org/10.1093/rfs/hhv059) — Sharpe haircut
 - [Politis-White 2004](https://doi.org/10.1081/ETC-120028836)
 - [Tóth et al. 2011](https://arxiv.org/abs/1104.1694) — square-root impact (context; misspecified at retail size)
-- [ADR-0003](../docs/decisions/ADR-0003-spa-vs-romanowolf.md) — SPA vs Romano-Wolf selection (proposed)
+- [ADR-0003](../../docs/decisions/ADR-0003-spa-vs-romanowolf.md) — SPA vs Romano-Wolf selection (proposed)

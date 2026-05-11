@@ -7,17 +7,17 @@ decision-owner: Lead researcher
 supersedes: none
 related:
   - docs/templates/hypothesis_config.yaml
-  - plan/implementation-plan_2026-04-15.md §5
-  - plan/implementation-plan_2026-04-15.md §5.1
+  - plan/buildouts/implementation-plan_2026-04-15.md §5
+  - plan/buildouts/implementation-plan_2026-04-15.md §5.1
   - research/03_audits/ F-2-19
-  - plan/implementation-plan_2026-04-15.md §5 line 255 (F-3-1 follow-up)
+  - plan/buildouts/implementation-plan_2026-04-15.md §5 line 255 (F-3-1 follow-up)
 ---
 
 # ADR-0004 — Project-level defaults for alpha and target_power
 
 ## Status
 
-Accepted. Subject to Phase-1 follow-up F-3-1 ([plan §5 line 255](../../plan/implementation-plan_2026-04-15.md)) which re-evaluates these defaults against realized gate behavior on the first cohort of hypotheses.
+Accepted. Subject to Phase-1 follow-up F-3-1 ([plan §5 line 255](../../plan/buildouts/implementation-plan_2026-04-15.md)) which re-evaluates these defaults against realized gate behavior on the first cohort of hypotheses.
 
 ## Context
 
@@ -41,7 +41,7 @@ Two options exist for every hypothesis: (i) inherit a project-wide default, or (
    - a primary-source citation tying the chosen value to the hypothesis's signal family, or
    - a pilot-power simulation (bootstrap or Monte Carlo) demonstrating the chosen value is required to detect the minimum-interesting effect at acceptable risk of type-I or type-II error.
 
-   Without such justification in design.md, the gate ([plan §5](../../plan/implementation-plan_2026-04-15.md)) rejects the hypothesis at pre-registration review.
+   Without such justification in design.md, the gate ([plan §5](../../plan/buildouts/implementation-plan_2026-04-15.md)) rejects the hypothesis at pre-registration review.
 
 ## Consequences
 

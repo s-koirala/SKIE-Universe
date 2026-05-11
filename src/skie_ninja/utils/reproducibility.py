@@ -1,7 +1,7 @@
 """Reproducibility log.
 
 Implements the JSON schema defined in
-[plan/implementation-plan_2026-04-15.md §9.3]. Every run that writes
+[plan/buildouts/implementation-plan_2026-04-15.md §9.3]. Every run that writes
 to `artifacts/` or `logs/` MUST emit one of these records so that
 `scripts/verify_repro.py` (CI `repro-verify` stage) can re-execute
 and assert byte equality on model hashes.

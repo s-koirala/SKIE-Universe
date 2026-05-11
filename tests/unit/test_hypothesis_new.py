@@ -66,7 +66,7 @@ def test_creates_all_four_files_and_backlog(tmp_path: Path) -> None:
     base = tmp_path / "research" / "01_hypothesis_register" / "H999"
     for fname in ("design.md", "config.yaml", "data_requirements.md", "README.md"):
         assert (base / fname).is_file(), fname
-    backlog_text = (tmp_path / "plan" / "hypothesis_backlog.md").read_text(
+    backlog_text = (tmp_path / "hypothesis_backlog.md").read_text(
         encoding="utf-8"
     )
     assert "H999" in backlog_text
@@ -81,7 +81,7 @@ def test_backlog_append_is_idempotent(tmp_path: Path) -> None:
     # (pre-registration immutability), and must NOT duplicate the backlog row.
     rc2 = _run(tmp_path)
     assert rc2 == _EXIT_DUPLICATE
-    backlog_text = (tmp_path / "plan" / "hypothesis_backlog.md").read_text(
+    backlog_text = (tmp_path / "hypothesis_backlog.md").read_text(
         encoding="utf-8"
     )
     assert backlog_text.count("| H999 |") == 1
@@ -94,7 +94,7 @@ def test_backlog_append_is_idempotent(tmp_path: Path) -> None:
         citations=("doi:10.1/x",),
         date="2026-04-15",
     )
-    backlog = tmp_path / "plan" / "hypothesis_backlog.md"
+    backlog = tmp_path / "hypothesis_backlog.md"
     assert hypothesis_new._append_backlog(backlog, spec) is True
     assert hypothesis_new._append_backlog(backlog, spec) is False
     assert backlog.read_text(encoding="utf-8").count("| H998 |") == 1
