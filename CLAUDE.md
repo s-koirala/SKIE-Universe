@@ -713,6 +713,52 @@ ES/NQ are NOT re-extracted; the existing [data/processed/vendor_legacy_1min_roll
 
 **Authorization-decision now in operator's hands**: $7.63 is well within the $30 tight budget, well within the project's identity-hygiene + sandbox-spend constraints. Operator may authorize `P1-DATABENTO-METALS-ENERGY-EXTRACTION-AUTHORIZE` for the actual Stage-A extraction immediately.
 
+### Phase O.0 Stage A extraction executed (2026-05-12 21:00 CT)
+
+Operator 2026-05-12 evening directive: "we have a budget of $80. Daily is not granular enough to be useful. MCL can get the job done since it matches CL closely. we do not need both GC and MGC. replace one with a silver futures ticker. i authorize download." Two binding amendments to the post-dossier plan:
+- **Schema override** from `ohlcv-1d` back to `ohlcv-1m`: operator-stated rationale that daily granularity is insufficient for the substrate investment; 1-min retains optionality for future intraday hypotheses on metals/energy. Substrate is shared across all current + future hypotheses on these instruments.
+- **Universe contraction** from {CL, MCL, GC, MGC} to {MCL, MGC, SIL}: micro-class crude (MCL, replacing full CL); micro-class gold (MGC, dropping full GC); replacement of the dropped gold with **Micro Silver SIL** (1000 troy oz; CME COMEX micro silver). All-micro pattern consistent with operator's stated "MCL matches CL" rationale + ADR-0001 retail-tier capacity ceiling.
+
+Cost-dossier swept all 4 silver/gold combinations (MCL + {GC, MGC} × {SI, SIL}) at ohlcv-1m; all 4 within $80; cheapest combo selected as operationally consistent with the operator's micro-class rationale:
+
+| Combo | Total (ohlcv-1m) | Within $80 |
+|---|---:|:---:|
+| MCL + GC + SI | $78.40 | YES |
+| MCL + GC + SIL | $62.82 | YES |
+| MCL + MGC + SI | $59.95 | YES |
+| **MCL + MGC + SIL** (selected) | **$44.37** | **YES** |
+
+**Stage A extraction outcome** (completed 2026-05-12 ~20:55 UTC):
+
+| Symbol | Rows pulled | CSV size | DBN-zst size | Pull duration | Quoted USD |
+|---|---:|---:|---:|---:|---:|
+| MCL.FUT | 3,692,453 | 266.9 MB | 45.0 MB | 115.1s | $13.4804 |
+| MGC.FUT | 5,769,051 | 432.4 MB | 69.1 MB | 219.9s | $21.0616 |
+| SIL.FUT | 2,692,073 | 197.5 MB | 30.6 MB | 108.0s | $9.8282 |
+| **TOTAL** | **12,153,577** | **896.8 MB** | **144.7 MB** | **7m 23s** | **$44.3702** |
+
+Files saved to `~/datasets/vendor_skie_ninja_legacy/raw_1min/`:
+- `MCL_1min_databento.csv` + `MCL_1min_databento.dbn.zst`
+- `MGC_1min_databento.csv` + `MGC_1min_databento.dbn.zst`
+- `SIL_1min_databento.csv` + `SIL_1min_databento.dbn.zst`
+
+CSVs use the existing vendor_legacy_1min schema (`ts_event,rtype,publisher_id,instrument_id,open,high,low,close,volume,symbol`) for direct Stage-B ingest compatibility per the H050 Cell-I §2.3 precedent.
+
+**Data-quality warnings flagged by Databento BentoWarning during streaming**: three degraded-quality days enumerated in the warning text (2017-11-13, 2018-10-21, 2019-01-15); SDK truncated the full list. Full degraded-day enumeration available via `metadata.get_dataset_condition` per [databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition](https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition). New non-blocking follow-up `P1-H060-DATA-QUALITY-DEGRADED-DAYS-CANARY`: the H060 walk-forward orchestrator must run a data-quality canary against these days + any others surfaced by `get_dataset_condition` before any KPI emission; per-day leakage-canary precedent at [src/skie_ninja/backtest/](src/skie_ninja/backtest/) Cycle-4 canaries.
+
+**Closes `P1-DATABENTO-METALS-ENERGY-EXTRACTION-AUTHORIZE`.** Total billed: $44.37 USD (within $80 operator-authorized budget). Substrate is now on disk and ready for Stage B (SKIE-Universe ingest + monthly-roll-adjust + per-instrument cost model + 24/5 session policy).
+
+**`P1-DATABENTO-KEY-ROTATE-POST-CHAT-EXPOSURE` remains OPEN + BLOCKING-BEFORE-NEXT-DATABENTO-CALL.** All Databento operations for this Phase O.0 cycle are now complete; no further calls until the key is rotated.
+
+**Next gate sequence** (all BLOCKING-BEFORE-H060-PRODUCTION-RUN; code-only, no further operator-action required):
+1. `P1-INSTRUMENTS-YAML-METALS-ENERGY-EXTEND` — add MCL/MGC/SIL entries to `config/instruments.yaml`. Lowest-effort gate (~30 min); first to land.
+2. `P1-MONTHLY-ROLL-MODULE-IMPL` — `src/skie_ninja/data/ingest/vendor_legacy_1min_monthly_roll_adjusted.py` new module for monthly-contract roll codes (F/G/H/J/K/M/N/Q/U/V/X/Z). Largest gate (~1-2 days); load-bearing for the substrate's roll-adjusted derivative.
+3. `P1-SESSION-POLICY-24-5-IMPL` — `src/skie_ninja/utils/clock.py` extension for energy/metals 24/5 session convention.
+4. `P1-METALS-ENERGY-COST-MODEL-IMPL` — `NT8CrudeOilRthV1CostModel` + `NT8GoldRthV1CostModel` + `NT8SilverRthV1CostModel` per CME Energy/Metals fee schedules.
+5. Stage B ingest run via `scripts/ingest.py --dataset vendor_legacy_1min` extended with the new symbols.
+6. Verification: row-count + checksum + roll-anchor invariants on the new substrate per `P1-H060-DATA-QUALITY-DEGRADED-DAYS-CANARY`.
+7. H060 production walk-forward + KPI emission per the existing orchestrator pattern.
+
 **Script-hardening committed alongside this amendment**: [scripts/databento_metals_energy_cost_dossier.py](scripts/databento_metals_energy_cost_dossier.py) (a) `_fingerprint_api_key` now returns `<suppressed-for-security>` instead of `len=N,tail=XXXX` to prevent even partial-key information from persisting to disk; (b) default `SCHEMA` constant changed from `ohlcv-1m` to `ohlcv-1d` to reflect H060's daily-cadence requirement; (c) inline docstring documents the 40× cost finding so future hypotheses inherit the lesson.
 
 **New follow-ups registered**:
