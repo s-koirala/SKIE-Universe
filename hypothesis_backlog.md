@@ -85,6 +85,13 @@ The active research front. Hypotheses H050-H055 carry pre-registered design.md +
 | H025 | FX carry unwind via SOFR-IOER spread → ES direction | — | queued |
 | H026 | Implied-realized correlation divergence (CBOE COR) as regime gate | — | queued |
 
+## Tier 2c — cross-asset futures (added 2026-05-12 per ADR-0023)
+
+| ID | Angle | Mechanism / citation | Status |
+|---|---|---|---|
+| H060 | Cross-futures time-series momentum (TSMOM) on equal-weighted basket {ES, NQ, MGC, SIL} — pre-cost research-only v1 per operator 2026-05-12 zero-cost decision | [Moskowitz-Ooi-Pedersen 2012 JFE 104(2):228-250](https://doi.org/10.1016/j.jfineco.2011.11.003) canonical; [Hurst-Ooi-Pedersen 2017 JPM 44(1):15-29](https://doi.org/10.3905/jpm.2017.44.1.015) 137-yr backtest; [Huang-Li-Wang-Zhou 2020 JFE 137(3):695-712](https://doi.org/10.1016/j.jfineco.2020.04.003) post-publication decay; [Hong-Stein 1999 JoF 54(6):2143-2184](https://doi.org/10.1111/0022-1082.00184) gradual-info-diffusion mechanism; design [H060/design.md](research/01_hypothesis_register/H060/design.md); lit-review [H060/lit_review_H060_2026-05-12.md](research/01_hypothesis_register/H060/lit_review_H060_2026-05-12.md) | designed |
+| H061 | H060 v2: cross-futures TSMOM with full-size NYMEX WTI (CL) added to the basket; brings energy futures to the cross-asset breadth | Same TSMOM canon as H060; substrate-extension blocked on `P1-H060-V2-WITH-CL-FULL-SIZE` follow-up (~$240 USD Databento extraction per 2026-05-12 cost-dossier) | queued |
+
 ## Tier 4 — execution / portfolio
 
 | ID | Angle | Mechanism | Status |
@@ -92,6 +99,40 @@ The active research front. Hypotheses H050-H055 carry pre-registered design.md +
 | H040 | Stack Tier-1 directional gates on existing vol/size/breakout models | internal SKIE-Ninja ensemble | queued |
 | H041 | Kelly-fractional sizing with Sharpe-bootstrap CI floor | [Opdyke 2007](https://doi.org/10.1057/palgrave.jam.2250084) | queued |
 | H042 | Hansen SPA gate across the full accumulated strategy universe | [Hansen 2005, JBES](https://doi.org/10.1198/073500105000000063) | queued |
+
+## Tier 5 — meta-portfolio (added 2026-05-12 per ADR-0020)
+
+| ID | Angle | Mechanism | Status |
+|---|---|---|---|
+| MPV1 | Meta-portfolio across emitted hypothesis arms (equal-weight 1/N default; inverse-variance and Ledoit-Wolf shrinkage-MVO alternatives) | [Grinold 1989 JPM 15(3):30-37 DOI 10.3905/jpm.1989.409211](https://doi.org/10.3905/jpm.1989.409211) Fundamental Law of Active Management `IR ≈ IC·√breadth`; [DeMiguel-Garlappi-Uppal 2009 RFS 22(5):1915-1953 DOI 10.1093/rfs/hhm075](https://doi.org/10.1093/rfs/hhm075) 1/N robustness under small-N | queued (pre-reg pending `P1-MPV1-PRE-REGISTRATION`) |
+
+## H100-H149 — liquidity-provision research track (reserved 2026-05-12 per ADR-0021)
+
+| ID | Angle | Mechanism | Status |
+|---|---|---|---|
+| H100 | First-hour-RTH passive limit-order quoting around the 09:30-10:00 ET opening range; Avellaneda-Stoikov reservation-price framework | [Avellaneda-Stoikov 2008 QF 8(3):217-224 DOI 10.1080/14697680701381228](https://doi.org/10.1080/14697680701381228); adverse-selection cost via [Glosten-Milgrom 1985 DOI 10.1016/0304-405X(85)90044-3](https://doi.org/10.1016/0304-405X(85)90044-3) / [Kyle 1985 Econometrica 53(6):1315-1335 DOI 10.2307/1913210](https://doi.org/10.2307/1913210) λ / [Hasbrouck 1991 J Finance 46(1):179-207 DOI 10.1111/j.1540-6261.1991.tb03749.x](https://doi.org/10.1111/j.1540-6261.1991.tb03749.x) VAR | reserved (BLOCKED on `P1-ORDERBOOK-INGEST-SCOPE-DESIGN` + `P1-CME-MDP3-LICENSE-NEGOTIATION`) |
+| H101-H149 | Successor liquidity-provision hypotheses (regime-gated, multi-symbol, options market-making, etc.) | TBD per ADR-0021 successor-tree pattern | reserved |
+
+## H200-H249 — synthetic-substrate-augmentation research track (reserved 2026-05-12 per memo)
+
+| ID | Angle | Mechanism | Status |
+|---|---|---|---|
+| H200 | TimeGAN-augmented H052a NQ unconditional ORB OOS evaluation across N=1,000 synthetic paths; pilot for the synthetic-substrate research thread | [Yoon-Jarrett-van der Schaar 2019 *NeurIPS* TimeGAN](https://papers.nips.cc/paper/8789-time-series-generative-adversarial-networks); [Wiese et al 2020 Quant GANs QF 20(9):1419-1440 DOI 10.1080/14697688.2020.1730426](https://doi.org/10.1080/14697688.2020.1730426); [Cont 2001 stylized facts QF 1(2):223-236 DOI 10.1080/713665670](https://doi.org/10.1080/713665670) validation gate | reserved (memo proposal-only; pre-reg gated on `P1-SYNTHETIC-SUBSTRATE-PHASE-0-LITCHECK`) |
+| H201-H249 | Successor synthetic-substrate hypotheses (multi-symbol, regime-conditional, diffusion-based, etc.) | TBD | reserved |
+
+---
+
+## 2026-05-12 — ADR-0018 + 0019 + 0020 + 0022 paradigm-expansion cascade
+
+[ADR-0018 regime-conditional aggressive-growth paradigm](docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) (2026-05-12) amends every hypothesis's §10 (decision rule) from Sharpe-differential to MPPM(ρ=1) per [Goetzmann-Ingersoll-Spiegel-Welch 2007 RFS](https://doi.org/10.1093/rfs/hhm025) and lifts the ¼-Kelly cap to a grid-search over `{0.25, 0.5, 1.0, 1.5, 2.0, 2.5} × f_Kelly-optimal`. §1-§7 frozen pre-reg sections preserved verbatim. Cascade tracked under `P1-ADR-0018-DESIGN-MD-CASCADE` (BLOCKING-BEFORE-NEXT-STAGE-3-RUN).
+
+[ADR-0019 barbell payoff-shape screening](docs/decisions/ADR-0019-barbell-payoff-shape-screening.md) (2026-05-12) adds mandatory `payoff-shape-{skew-positive, skew-flat, skew-negative}` KPI annotation via L-skewness τ_3 per [Hosking 1990](https://www.jstor.org/stable/2345653) on per-trade R-multiple distribution; extends ADR-0014 §3.2 canonical results summary to 13 tables when in force.
+
+[ADR-0020 meta-portfolio orchestrator](docs/decisions/ADR-0020-meta-portfolio-orchestrator.md) (2026-05-12) reserves the new MPV-series (above) for cross-hypothesis meta-portfolio research per [Grinold 1989](https://doi.org/10.3905/jpm.1989.409211) Fundamental Law `IR = IC·√breadth`.
+
+[ADR-0022 causal-mechanism vs correlation-only annotation](docs/decisions/ADR-0022-causal-mechanism-vs-correlation-only-annotation.md) (2026-05-12) mandates §1.3 in every new design.md from 2026-05-12 forward with claim-type label (`causal-mechanism` / `correlation-only` / `hybrid`), four-field *who/what/why/when* mechanism description, and E-value/robustness anchor. Retroactive labeling table for H050-H055 supplied at ADR-0022 §Consequences. Cascade tracked under `P1-ADR-0022-DESIGN-MD-CASCADE`.
+
+The [docs/research_notes/memo_synthetic-substrate-augmentation_2026-05-12.md](docs/research_notes/memo_synthetic-substrate-augmentation_2026-05-12.md) memo scopes the H200-series (above) as a research thread; decision-to-adopt deferred.
 
 ---
 

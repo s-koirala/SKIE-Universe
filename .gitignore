@@ -63,6 +63,12 @@ logs/**
 # be tracked, and the guard only detects deletion of tracked files).
 !logs/reproducibility/
 !logs/reproducibility/**
+# Databento cost dossiers: binding T_live records per ADR-0023 §Decision 6 +
+# H050 Cell-I precedent. Append-only operator-spend audit trail; api_key_fingerprint
+# is suppressed in script output by defense-in-depth hardening per the 2026-05-12
+# chat-transcript-exposure event (no key material persists to these files).
+!logs/databento_cost_dossiers/
+!logs/databento_cost_dossiers/**
 
 # NinjaTrader build output
 ninjascript/**/bin/

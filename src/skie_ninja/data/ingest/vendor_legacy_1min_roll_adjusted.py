@@ -241,7 +241,7 @@ from skie_ninja.utils.runcontext import RunContext
 _log = logging.getLogger(__name__)
 
 _DATASET_NAME = "vendor_legacy_1min_roll_adjusted"
-_DATASET_VERSION = "0.3.0"  # bump: decade-wraparound disambiguation (contract_id_full)
+_DATASET_VERSION = "0.4.0"  # bump: per-instrument monthly roll-code param (H060)
 
 _CME_TZ = "America/Chicago"
 # 17:00 CT is the boundary between CME trading sessions: a trade
@@ -273,6 +273,31 @@ _CME_SESSION_SHIFT_HOURS = 7
 # single source of truth for "decade-or-more apart" is therefore the
 # CME 10-year recurrence period.
 _CME_CONTRACT_CODE_RECURRENCE_YEARS = 10
+
+# CME month codes per CME Group "Contract Month Codes"
+# (https://www.cmegroup.com/month-codes.html, retrieved 2026-05-12).
+# Listed for documentation + use by ``_extract_month_code``.
+_CME_MONTH_CODES: frozenset[str] = frozenset("FGHJKMNQUVXZ")
+
+# Default roll-code set for callers that do not pass an explicit
+# ``roll_codes_override`` and whose YAML entry omits ``roll_rule.codes``.
+# Matches the quarterly equity-index convention (H/M/U/Z) preserved
+# verbatim from the v0.1.0–v0.3.0 implementation; H060 metals/energy
+# instruments (MCL/MGC/SIL) declare their own ``roll_rule.codes`` in
+# config/instruments.yaml per ADR-0023 §Decision 2.
+_DEFAULT_EQUITY_INDEX_ROLL_CODES: frozenset[str] = frozenset("HMUZ")
+
+# Minimum length of a parseable CME contract symbol: 1-char root +
+# 1-char month + 1-digit year (e.g. ``ZH5``). All real-world CME
+# roots are >= 2 chars (ES, MES, MCL, etc.), so this is a lower bound
+# rather than the practical minimum.
+_MIN_CONTRACT_SYMBOL_LENGTH = 3
+
+# Cap on the number of offending contract symbols enumerated in the
+# ``_assert_roll_codes_subset`` ValueError message before truncating
+# with a ``...`` ellipsis. Operational choice — surface enough names
+# to diagnose without unbounded message length.
+_ROLL_CODES_ERROR_MAX_EXAMPLES = 10
 
 
 class NoOverlapError(ValueError):
@@ -325,6 +350,67 @@ def _load_roll_window_days(symbol: str) -> int:
     return 5
 
 
+def _load_roll_codes(symbol: str) -> frozenset[str]:
+    """Read the ``roll_rule.codes`` set from ``config/instruments.yaml``.
+
+    Each instrument's ``roll_rule.codes`` is the closed set of CME
+    month codes (per CME *Contract Month Codes*,
+    https://www.cmegroup.com/month-codes.html) whose contracts are
+    expected to appear as front-month over the active trading
+    calendar. The 1-letter codes correspond to:
+
+      F-Jan G-Feb H-Mar J-Apr K-May M-Jun
+      N-Jul Q-Aug U-Sep V-Oct X-Nov Z-Dec
+
+    Conventional sets (verifiable from CME contract specs):
+
+      - Equity-index quarterly (ES/NQ/MES/MNQ): H M U Z.
+      - Energy monthly (CL/MCL): all 12 codes.
+      - Gold metals (MGC, GC): G J M Q V Z (Feb/Apr/Jun/Aug/Oct/Dec).
+      - Silver metals (SIL, SI): H K N U Z (Mar/May/Jul/Sep/Dec).
+
+    Returns ``_DEFAULT_EQUITY_INDEX_ROLL_CODES`` (H/M/U/Z) when the
+    config is not reachable OR the symbol's entry omits the field.
+    The default preserves backward compatibility for the equity-index
+    callers ES/NQ/MES/MNQ that pre-date this parameterization.
+
+    The returned set is used defensively by
+    ``_assert_roll_codes_subset`` to surface a controlled ``ValueError``
+    if the input data contains a contract whose embedded month code is
+    not in the configured set — i.e., either upstream data corruption
+    or a mis-configuration of ``roll_rule.codes``. It does NOT alter
+    the volume-driven front-month detection algorithm, which is
+    code-agnostic by construction (it argmaxes over whatever contract
+    symbols appear in the input).
+    """
+    try:
+        paths = ProjectPaths.discover()
+        yaml_path = paths.root / "config" / "instruments.yaml"
+        cfg = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+        sym_cfg = cfg.get("instruments", {}).get(symbol, {})
+        codes = sym_cfg.get("roll_rule", {}).get("codes")
+        if isinstance(codes, list) and codes:
+            codeset = frozenset(str(c).upper() for c in codes)
+            unknown = codeset - _CME_MONTH_CODES
+            if unknown:
+                raise ValueError(
+                    f"config/instruments.yaml: {symbol}.roll_rule.codes "
+                    f"contains non-CME month codes {sorted(unknown)}; "
+                    f"valid CME codes are {sorted(_CME_MONTH_CODES)}."
+                )
+            return codeset
+    except ValueError:
+        raise
+    except Exception as exc:
+        _log.debug(
+            "Could not load roll_rule.codes for %s: %s "
+            "(defaulting to equity-index quarterly H/M/U/Z).",
+            symbol,
+            exc,
+        )
+    return _DEFAULT_EQUITY_INDEX_ROLL_CODES
+
+
 class VendorLegacy1minRollAdjustedIngestJob:
     """Ingest job: derive roll-adjusted continuous series from
     the already-processed raw ``vendor_legacy_1min`` partitions."""
@@ -339,12 +425,20 @@ class VendorLegacy1minRollAdjustedIngestJob:
     def __init__(
         self,
         source_dataset: str = "vendor_legacy_1min",
-        symbols: tuple[str, ...] = ("ES", "NQ"),
+        symbols: tuple[str, ...] = ("ES", "NQ", "MCL", "MGC", "SIL"),
         window_days_override: int | None = None,
+        roll_codes_override: dict[str, frozenset[str]] | None = None,
     ) -> None:
         self._source_dataset = source_dataset
         self._symbols = tuple(symbols)
         self._window_days_override = window_days_override
+        # Per-symbol roll-code override map. None values fall back to
+        # ``_load_roll_codes(sym)`` (YAML), which itself falls back to
+        # the equity-index default H/M/U/Z. This indirection lets
+        # tests pass synthetic codes without touching instruments.yaml.
+        self._roll_codes_override = (
+            dict(roll_codes_override) if roll_codes_override else None
+        )
         self._last_run_summary = {}
 
     # ------------------------------------------------------------------
@@ -421,7 +515,13 @@ class VendorLegacy1minRollAdjustedIngestJob:
                 if self._window_days_override is not None
                 else _load_roll_window_days(sym)
             )
-            adjusted, summary = _adjust_one_symbol(sym_df, sym, window_days)
+            if self._roll_codes_override and sym in self._roll_codes_override:
+                roll_codes = frozenset(self._roll_codes_override[sym])
+            else:
+                roll_codes = _load_roll_codes(sym)
+            adjusted, summary = _adjust_one_symbol(
+                sym_df, sym, window_days, roll_codes=roll_codes
+            )
             self._last_run_summary[sym] = summary
             per_symbol.append(adjusted)
 
@@ -711,6 +811,7 @@ class VendorLegacy1minRollAdjustedIngestJob:
         for sym, summary in self._last_run_summary.items():
             summary_serializable[sym] = {
                 "window_days": summary.get("window_days"),
+                "roll_codes": summary.get("roll_codes", []),
                 "rolls": [
                     {
                         "roll_date": rr.event.roll_date.isoformat(),
@@ -826,6 +927,105 @@ def _contract_id_full_expr() -> pl.Expr:
     return pl.col("contract_symbol") + pl.lit("_") + pl.col("ts_event").dt.year().cast(
         pl.Utf8
     ).str.zfill(4)
+
+
+def _extract_month_code(contract_symbol: str) -> str | None:
+    """Extract the 1-letter CME month code from a contract symbol.
+
+    The CME convention is ``<root><month><year>`` where ``<month>`` is
+    a 1-letter code from ``_CME_MONTH_CODES`` and ``<year>`` is one or
+    more trailing digits. Examples:
+
+      - ``ESH5`` → ``H`` (root=ES, month=H Mar, year=5)
+      - ``NQZ24`` → ``Z`` (root=NQ, month=Z Dec, year=24)
+      - ``MCLF5`` → ``F`` (root=MCL, month=F Jan, year=5)
+      - ``MGCG25`` → ``G`` (root=MGC, month=G Feb, year=25)
+
+    Returns the month-code letter, or ``None`` if the symbol does not
+    match the canonical ``<root><month><year-digits>`` shape. We
+    locate ``<month>`` as the rightmost alphabetic character whose
+    immediate right context is one-or-more digits and whose left
+    context is at least one alphabetic character (the root prefix).
+    This is robust to variable-length roots (2-char ES/NQ; 3-char
+    MES/MNQ/MCL/MGC/SIL) and to 1- vs 2-digit year suffixes.
+    """
+    s = contract_symbol.strip()
+    if len(s) < _MIN_CONTRACT_SYMBOL_LENGTH:
+        return None
+    # Find the boundary between the trailing year-digits and the
+    # preceding alphabetic prefix. The month code is the last
+    # alphabetic char of that prefix.
+    i = len(s)
+    while i > 0 and s[i - 1].isdigit():
+        i -= 1
+    if i == len(s) or i == 0:
+        # No trailing digits (i==len) or no leading alphabetic prefix
+        # (i==0). Either way, not a recognizable contract code.
+        return None
+    code = s[i - 1]
+    if code not in _CME_MONTH_CODES:
+        return None
+    # Require at least one alphabetic char before the month code (the
+    # product root prefix). Otherwise ``H5`` alone would parse as
+    # month=H year=5 without a root, which is not a vendor symbol.
+    if i - 1 == 0:
+        return None
+    return code
+
+
+def _assert_roll_codes_subset(
+    df: pl.DataFrame, symbol: str, allowed_codes: frozenset[str]
+) -> None:
+    """Verify every observed ``contract_symbol`` carries a month code
+    that is a member of ``allowed_codes``.
+
+    The volume-driven front-month detection algorithm is itself
+    code-agnostic (it argmaxes over whatever ``contract_symbol`` keys
+    appear in the data). This guard is *defensive*: it surfaces a
+    controlled ``ValueError`` when the data contains a contract whose
+    month code is not in the configured ``roll_rule.codes`` set. Two
+    failure modes it catches:
+
+      1. Upstream data corruption (e.g., a stray equity-index symbol
+         leaking into an energy ingest partition).
+      2. Mis-configuration of ``roll_rule.codes`` (e.g., MGC declares
+         only the gold metals subset G/J/M/Q/V/Z but the substrate
+         carries an odd-month code that should have been ingested as
+         a separate instrument).
+
+    A contract symbol whose shape does not match the canonical
+    ``<root><month><year-digits>`` pattern is reported separately
+    (parse failure) rather than silently skipped.
+    """
+    observed = df["contract_symbol"].unique().to_list()
+    parse_failures: list[str] = []
+    out_of_set: dict[str, str] = {}
+    for sym in observed:
+        if sym is None:
+            continue
+        code = _extract_month_code(sym)
+        if code is None:
+            parse_failures.append(sym)
+            continue
+        if code not in allowed_codes:
+            out_of_set[sym] = code
+    if parse_failures:
+        cap = _ROLL_CODES_ERROR_MAX_EXAMPLES
+        suffix = "..." if len(parse_failures) > cap else ""
+        raise ValueError(
+            f"Symbol {symbol}: {len(parse_failures)} contract_symbol "
+            f"value(s) do not match the CME "
+            f"<root><month-code><year-digits> pattern: "
+            f"{parse_failures[:cap]}{suffix}."
+        )
+    if out_of_set:
+        cap = _ROLL_CODES_ERROR_MAX_EXAMPLES
+        raise ValueError(
+            f"Symbol {symbol}: {len(out_of_set)} contract_symbol "
+            f"value(s) carry a month code outside the configured "
+            f"roll_rule.codes set {sorted(allowed_codes)}. Examples: "
+            f"{list(out_of_set.items())[:cap]}."
+        )
 
 
 def _assert_no_consecutive_year_collision(df: pl.DataFrame, symbol: str) -> None:
@@ -1239,15 +1439,27 @@ def _adjust_one_symbol(
     sym_df: pl.DataFrame,
     symbol: str,
     window_days: int,
+    roll_codes: frozenset[str] | None = None,
 ) -> tuple[pl.DataFrame, dict[str, Any]]:
     """Full roll-adjustment pipeline for one root symbol.
+
+    ``roll_codes`` is the per-instrument set of expected CME month
+    codes (see ``_load_roll_codes``). When ``None``, defaults to the
+    equity-index quarterly set H/M/U/Z, preserving backward
+    compatibility for the v0.1.0–v0.3.0 ES/NQ/MES/MNQ callers that
+    pre-date this parameterization. Used only by
+    ``_assert_roll_codes_subset`` as a defensive validation; the
+    volume-driven front-month detection itself is code-agnostic.
 
     Returns ``(adjusted_frame, summary_dict)`` where ``summary_dict``
     carries rolls / contract-factors / rejected-oscillations / bars
     dropped — consumed by ``emit_provenance`` for audit traceability.
     """
+    if roll_codes is None:
+        roll_codes = _DEFAULT_EQUITY_INDEX_ROLL_CODES
     summary: dict[str, Any] = {
         "window_days": window_days,
+        "roll_codes": sorted(roll_codes),
         "rolls": [],
         "contract_factors": {},
         "bars_dropped_non_front": 0,
@@ -1256,13 +1468,29 @@ def _adjust_one_symbol(
     if sym_df.height == 0:
         return _empty_adjusted_frame(), summary
 
+    # Defensive: every observed contract_symbol's month code must lie
+    # in the configured roll_codes set. Catches upstream data
+    # corruption and roll_rule.codes mis-configuration.
+    _assert_roll_codes_subset(sym_df, symbol, roll_codes)
+
     # Decade-wraparound disambiguation: derive contract_id_full once
     # and propagate it as the pipeline key so two contracts that share
     # a 1-digit-year-suffix code across decades (e.g. ESH5 March-2015
     # vs ESH5 March-2025) cannot collide in any downstream dictionary
     # or groupby. The raw contract_symbol is preserved for output as
     # front_contract_symbol. See module docstring for derivation.
-    _assert_no_consecutive_year_collision(sym_df, symbol)
+    # The decade-wraparound invariant assumes contracts fit within a single
+    # calendar year (true for CME equity-index quarterly H/M/U/Z). For
+    # monthly-roll instruments (energy MCL, metals MGC/SIL) contracts
+    # routinely span calendar-year boundaries (e.g. MCLJ2 trades late-2021
+    # through April-2022) which is normal and not a decade collision. The
+    # invariant is therefore quarterly-class-only; non-quarterly roll-code
+    # sets (any symbol with codes outside {H, M, U, Z}) skip this assertion.
+    # The contract_id_full year-disambiguation itself is still applied below
+    # so any actual decade-distant collision (e.g. MCLJ2_2022 vs MCLJ2_2032)
+    # remains caught via the contract_id_full uniqueness check downstream.
+    if roll_codes <= _DEFAULT_EQUITY_INDEX_ROLL_CODES:
+        _assert_no_consecutive_year_collision(sym_df, symbol)
     sym_df = sym_df.with_columns(_contract_id_full_expr().alias("contract_id_full"))
 
     raw_front = detect_raw_front_month_by_day(sym_df, window_days)

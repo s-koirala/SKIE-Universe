@@ -44,6 +44,7 @@ References:
 from __future__ import annotations
 
 from datetime import date, datetime, time
+from enum import Enum
 from typing import Literal
 from zoneinfo import ZoneInfo
 
@@ -296,9 +297,129 @@ def _advance_to_trading_day(d: date) -> date:
     return cur
 
 
+# ---------------------------------------------------------------------------
+# Energy / metals 24/5 session convention (H060, ADR-0023 §Decision 3).
+#
+# API design choice (per H060 brief 2026-05-12):
+#
+#   Approach 2 — parallel function set. The existing equity-index API
+#   (``session_of``, ``trading_day``, ``SessionLabel``) is left untouched;
+#   energy/metals callers invoke the dedicated ``classify_energy_metals_session``
+#   / ``is_energy_metals_session_active`` entry points. Rationale: at landing
+#   time there are zero non-test production callers of the existing
+#   ``session_of`` (only docstring references in
+#   ``data/ingest/vendor_legacy_1min_roll_adjusted.py``), so a parameter-
+#   threading refactor (Approach 1) has no payoff. Config-driven dispatch
+#   (Approach 3) is deferred until a multi-asset orchestrator needs it.
+#
+# Contract — CL/MCL/GC/MGC/SI/SIL/HG/etc. on CME Globex (per CME product specs
+# for NYMEX / COMEX energy + metals; the historical pit-session RTH window is
+# NOT the project-relevant convention since electronic trading displaced floor):
+#
+#     ACTIVE              : Mon-Fri (17:00 CT prev-day, 16:00 CT same-day],
+#                           plus Sun [17:00 CT → 24:00 CT) which is the weekly
+#                           reopen ramp counted as Monday's session.
+#     MAINTENANCE_BREAK   : every weekday [16:00 CT, 17:00 CT) Mon-Thu (the
+#                           daily 1-hour Globex halt); on Fri the 16:00 CT
+#                           close is the weekly close and the subsequent hours
+#                           are WEEKEND_CLOSED, not MAINTENANCE_BREAK.
+#     WEEKEND_CLOSED      : Fri [16:00 CT, 24:00 CT) + Sat all-day +
+#                           Sun [00:00 CT, 17:00 CT).
+#
+# Boundary convention (per the H060 brief's "closing-bar-inclusive" directive):
+#
+#     - 16:00 CT exactly = ACTIVE (the closing tick prints inside the active
+#       session per CME settlement convention).
+#     - 17:00 CT exactly = ACTIVE (the re-open tick prints inside the new
+#       active session).
+#     - The MAINTENANCE_BREAK interval is therefore the half-open (16:00, 17:00)
+#       which excludes both endpoints.
+#
+# Holidays: NOT in scope for v1 per the H060 brief. Full-day energy/metals
+# holidays (Christmas Day, New Year's Day, etc.) and shortened sessions are
+# deferred to ``P1-CLOCK-ENERGY-METALS-HOLIDAY-CALENDAR``.
+# ---------------------------------------------------------------------------
+
+
+class SessionKind(str, Enum):
+    """Energy/metals 24/5 session classification (H060 / ADR-0023 §Decision 3)."""
+
+    ACTIVE = "ACTIVE"
+    MAINTENANCE_BREAK = "MAINTENANCE_BREAK"
+    WEEKEND_CLOSED = "WEEKEND_CLOSED"
+
+
+def classify_energy_metals_session(
+    ts: pd.Timestamp | datetime,
+) -> SessionKind:
+    """Classify a timestamp under the energy/metals 24/5 session convention.
+
+    Parameters
+    ----------
+    ts
+        Timezone-aware (UTC or America/Chicago) or naive timestamp; naive
+        input is interpreted as UTC, matching the existing ``to_exchange``
+        contract.
+
+    Returns
+    -------
+    SessionKind
+        ``ACTIVE`` during the weekday Globex active session,
+        ``MAINTENANCE_BREAK`` during the daily 16:00-17:00 CT halt Mon-Thu,
+        ``WEEKEND_CLOSED`` from Fri 16:00 CT post-close through Sun 17:00 CT
+        pre-reopen (exclusive of the 17:00 CT reopen tick itself).
+
+    Notes
+    -----
+    Boundary convention: 16:00 CT and 17:00 CT are ACTIVE (closing/opening tick
+    is inclusive in the active session). The MAINTENANCE_BREAK interval is the
+    open interval (16:00 CT, 17:00 CT).
+    """
+    local = to_exchange(ts)
+    wday = local.weekday()  # Mon=0..Sun=6
+    t_local = local.time()
+
+    # Saturday: weekend closed all day.
+    if wday == 5:
+        return SessionKind.WEEKEND_CLOSED
+
+    # Sunday: closed pre-17:00 CT; the 17:00 CT reopen is ACTIVE.
+    if wday == 6:
+        if t_local < ETH_OPEN:
+            return SessionKind.WEEKEND_CLOSED
+        return SessionKind.ACTIVE
+
+    # Friday after 16:00 CT (exclusive of 16:00 itself) is the weekly close.
+    if wday == 4 and t_local > HALT_START:
+        return SessionKind.WEEKEND_CLOSED
+
+    # Mon-Thu daily maintenance break: open interval (16:00, 17:00) CT.
+    # 16:00 CT exact = ACTIVE (closing tick); 17:00 CT exact = ACTIVE (reopen).
+    if wday in (0, 1, 2, 3) and HALT_START < t_local < HALT_END:
+        return SessionKind.MAINTENANCE_BREAK
+
+    # Otherwise weekday or Friday up-to-16:00 inclusive = ACTIVE.
+    return SessionKind.ACTIVE
+
+
+def is_energy_metals_session_active(
+    ts: pd.Timestamp | datetime,
+) -> bool:
+    """Return True iff ts falls in the energy/metals 24/5 active session.
+
+    Convenience wrapper around ``classify_energy_metals_session``; returns
+    True only for ``SessionKind.ACTIVE``. False for both MAINTENANCE_BREAK
+    and WEEKEND_CLOSED.
+    """
+    return classify_energy_metals_session(ts) is SessionKind.ACTIVE
+
+
 __all__ = [
     "CME_TZ",
+    "SessionKind",
     "SessionLabel",
+    "classify_energy_metals_session",
+    "is_energy_metals_session_active",
     "session_of",
     "to_exchange",
     "trading_day",

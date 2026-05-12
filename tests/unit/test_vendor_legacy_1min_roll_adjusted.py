@@ -29,11 +29,14 @@ import polars as pl
 import pytest
 
 from skie_ninja.data.ingest.vendor_legacy_1min_roll_adjusted import (
+    _DEFAULT_EQUITY_INDEX_ROLL_CODES,
     NoOverlapError,
     RollEvent,
     VendorLegacy1minRollAdjustedIngestJob,
     _adjust_one_symbol,
     _assert_no_consecutive_year_collision,
+    _assert_roll_codes_subset,
+    _extract_month_code,
     apply_persistence_guard,
     compute_roll_ratio_afml,
     detect_raw_front_month_by_day,
@@ -838,3 +841,288 @@ class TestDecadeWraparound:
         df = pl.DataFrame(rows)
         # No exception — the 10y gap is the legitimate decade-wraparound case.
         _assert_no_consecutive_year_collision(df, "ES")
+
+
+# ---------------------------------------------------------------------------
+# Per-instrument monthly roll-code parametrization (v0.4.0; H060
+# metals/energy expansion per ADR-0023 §Decision 2)
+# ---------------------------------------------------------------------------
+
+
+def _monthly_contract_frame(
+    symbol: str,
+    contracts: tuple[tuple[str, int, int, float], ...],
+    window_days: int = 3,
+) -> pl.DataFrame:
+    """Synthesize a multi-contract monthly futures fixture.
+
+    Each entry in ``contracts`` is ``(contract_symbol, year, month,
+    base_price)``. For each contract we lay down ``window_days + 2``
+    consecutive trading sessions of 5 bars each at high volume, then
+    move to the next contract. The first bar of each non-leading
+    contract is set to ``base_price`` so the inter-contract ratio
+    is exactly ``base_price[k] / last_close[k-1]``.
+
+    The first contract starts on the 2nd of its (year, month) — far
+    enough into the month to avoid weekend/holiday landings for the
+    purpose of these synthetic tests. Sessions are densely packed
+    across consecutive calendar days; CME's session-date attribution
+    via the +7h CT shift means each calendar day becomes one session
+    date for these UTC-14:30 bars.
+    """
+    rows: list[dict] = []
+    last_close: float | None = None
+    for contract, year, month, base_price in contracts:
+        for session_idx in range(window_days + 2):
+            day = 2 + session_idx
+            for minute in range(5):
+                ts = datetime(year, month, day, 14, 30 + minute, tzinfo=UTC)
+                price = base_price + session_idx * 0.5 + minute * 0.1
+                rows.append(_bar(ts, contract, symbol, price, 500))
+        # Force first bar's open to ``base_price`` (anchor) and the
+        # last bar's close to be a known round number to chain into
+        # the next contract's anchor.
+        # First bar of this contract:
+        first_idx = len(rows) - (window_days + 2) * 5
+        rows[first_idx]["open"] = base_price
+        rows[first_idx]["high"] = base_price + 0.25
+        rows[first_idx]["low"] = base_price - 0.25
+        rows[first_idx]["close"] = base_price + 0.05
+        # Last bar of this contract: round close (the next contract's
+        # anchor is its own ``base_price``).
+        rows[-1]["close"] = base_price + 10.0
+        rows[-1]["open"] = base_price + 9.95
+        rows[-1]["high"] = base_price + 10.10
+        rows[-1]["low"] = base_price + 9.80
+        last_close = rows[-1]["close"]
+    assert last_close is not None
+    return pl.DataFrame(rows)
+
+
+class TestExtractMonthCode:
+    @pytest.mark.parametrize(
+        "sym,expected",
+        [
+            ("ESH5", "H"),
+            ("ESH25", "H"),
+            ("NQZ24", "Z"),
+            ("MESH5", "H"),
+            ("MCLF5", "F"),
+            ("MCLG25", "G"),
+            ("MGCG25", "G"),
+            ("MGCV5", "V"),
+            ("SILK5", "K"),
+            ("CLN25", "N"),
+        ],
+    )
+    def test_known_shapes(self, sym: str, expected: str) -> None:
+        assert _extract_month_code(sym) == expected
+
+    @pytest.mark.parametrize(
+        "sym",
+        [
+            "",        # empty
+            "ES",      # no month/year
+            "H5",      # no root prefix
+            "1234",    # no alphabetic part
+            "ESXX",    # no trailing digits
+            "ESS5",    # non-CME letter S in month slot
+        ],
+    )
+    def test_unparseable_returns_none(self, sym: str) -> None:
+        assert _extract_month_code(sym) is None
+
+
+class TestRollCodesAssertion:
+    def test_subset_accepts_in_set(self) -> None:
+        rows = [
+            _bar(datetime(2024, 3, 1, 14, 30, tzinfo=UTC), "ESH4", "ES", 4000.0, 100),
+            _bar(datetime(2024, 6, 1, 14, 30, tzinfo=UTC), "ESM4", "ES", 4020.0, 100),
+        ]
+        df = pl.DataFrame(rows)
+        # H and M are members of H/M/U/Z — no exception.
+        _assert_roll_codes_subset(df, "ES", _DEFAULT_EQUITY_INDEX_ROLL_CODES)
+
+    def test_subset_rejects_out_of_set(self) -> None:
+        # F (January) is not in the equity-index H/M/U/Z set.
+        rows = [
+            _bar(datetime(2024, 1, 5, 14, 30, tzinfo=UTC), "ESF4", "ES", 4000.0, 100),
+        ]
+        df = pl.DataFrame(rows)
+        with pytest.raises(ValueError, match="month code outside"):
+            _assert_roll_codes_subset(df, "ES", _DEFAULT_EQUITY_INDEX_ROLL_CODES)
+
+    def test_subset_rejects_unparseable(self) -> None:
+        rows = [
+            _bar(datetime(2024, 3, 1, 14, 30, tzinfo=UTC), "GARBAGE", "ES", 4000.0, 100),
+        ]
+        df = pl.DataFrame(rows)
+        with pytest.raises(ValueError, match="do not match"):
+            _assert_roll_codes_subset(df, "ES", _DEFAULT_EQUITY_INDEX_ROLL_CODES)
+
+
+class TestMonthlyRollCodes:
+    """End-to-end tests for the per-instrument roll-code parametrization
+    that enables the H060 metals/energy expansion per ADR-0023
+    §Decision 2 and P1-MONTHLY-ROLL-MODULE-IMPL."""
+
+    def test_es_quarterly_default_preserves_backward_compat(self) -> None:
+        """No explicit ``roll_codes`` passed → default H/M/U/Z applies;
+        the existing two-contract ES fixture still adjusts identically
+        to v0.3.0. Locked in via direct comparison against the
+        explicit-pass result."""
+        df = _two_contract_frame(old_last_close=4000.0, new_first_open=4020.0)
+        out_default, summary_default = _adjust_one_symbol(df, "ES", window_days=3)
+        out_explicit, summary_explicit = _adjust_one_symbol(
+            df, "ES", window_days=3, roll_codes=_DEFAULT_EQUITY_INDEX_ROLL_CODES
+        )
+        # Bit-identical pipeline output between the two paths.
+        assert out_default.equals(out_explicit)
+        assert summary_default["contract_factors"] == summary_explicit["contract_factors"]
+        # Factor for the older contract is exactly the canonical ratio
+        # (4020/4000) — backward-compat anchor for ES.
+        assert math.isclose(
+            summary_default["contract_factors"]["ESH4_2024"],
+            4020.0 / 4000.0,
+            abs_tol=1e-12,
+        )
+
+    def test_mcl_energy_monthly_rolls_through_all_codes(self) -> None:
+        """MCL (Micro Crude) uses all 12 monthly codes per ADR-0023
+        §Decision 2. A synthetic 4-contract chain MCLF5 → MCLG5 →
+        MCLH5 → MCLJ5 (Jan→Feb→Mar→Apr 2025) must commit 3 roll events
+        and produce a fully back-adjusted continuous series."""
+        contracts = (
+            ("MCLF5", 2024, 12, 70.00),
+            ("MCLG5", 2025, 1, 72.00),
+            ("MCLH5", 2025, 2, 74.00),
+            ("MCLJ5", 2025, 3, 76.00),
+        )
+        df = _monthly_contract_frame("MCL", contracts, window_days=3)
+        energy_codes = frozenset("FGHJKMNQUVXZ")
+        out, summary = _adjust_one_symbol(
+            df, "MCL", window_days=3, roll_codes=energy_codes
+        )
+        # 3 commit events for 4 contracts.
+        assert len(summary["rolls"]) == 3
+        # The newest contract (MCLJ5_2025) anchors at factor 1.0.
+        factors = summary["contract_factors"]
+        anchored = {k: v for k, v in factors.items() if math.isclose(v, 1.0, abs_tol=1e-12)}
+        assert len(anchored) == 1
+        assert "MCLJ5_2025" in anchored
+        # Every other contract has a strictly non-unit factor.
+        for k, v in factors.items():
+            if k == "MCLJ5_2025":
+                continue
+            assert not math.isclose(v, 1.0, abs_tol=1e-12)
+        # All 4 contracts appear in the factor map.
+        assert set(factors.keys()) == {
+            "MCLF5_2024",
+            "MCLG5_2025",
+            "MCLH5_2025",
+            "MCLJ5_2025",
+        }
+        # Adjusted OHLC consistency preserved.
+        violations = out.filter(
+            (pl.col("low") > pl.col("open"))
+            | (pl.col("low") > pl.col("close"))
+            | (pl.col("high") < pl.col("open"))
+            | (pl.col("high") < pl.col("close"))
+        )
+        assert violations.height == 0
+        # roll_codes flow through to provenance summary.
+        assert summary["roll_codes"] == sorted(energy_codes)
+
+    def test_mgc_selective_metals_codes(self) -> None:
+        """MGC (Micro Gold) actively trades G/J/M/Q/V/Z (bi-monthly).
+        A 3-contract chain MGCG5 → MGCJ5 → MGCM5 (Feb/Apr/Jun 2025)
+        must work under the selective metals code set."""
+        contracts = (
+            ("MGCG5", 2025, 1, 2000.0),
+            ("MGCJ5", 2025, 3, 2010.0),
+            ("MGCM5", 2025, 5, 2025.0),
+        )
+        df = _monthly_contract_frame("MGC", contracts, window_days=3)
+        gold_codes = frozenset("GJMQVZ")
+        out, summary = _adjust_one_symbol(
+            df, "MGC", window_days=3, roll_codes=gold_codes
+        )
+        assert len(summary["rolls"]) == 2
+        factors = summary["contract_factors"]
+        # Newest anchors at 1.0.
+        assert math.isclose(factors["MGCM5_2025"], 1.0, abs_tol=1e-12)
+        # Both older contracts present with non-unit factors.
+        assert "MGCG5_2025" in factors
+        assert "MGCJ5_2025" in factors
+
+    def test_rejects_out_of_set_code(self) -> None:
+        """A contract whose month-code is NOT in the configured set must
+        surface a controlled ValueError, not be silently included."""
+        # MGC declares G/J/M/Q/V/Z but the fixture leaks an MGCF5
+        # (January, not in set). Should reject before any
+        # back-adjust math.
+        rows = [
+            _bar(datetime(2024, 12, 5, 14, 30, tzinfo=UTC), "MGCF5", "MGC", 2000.0, 100),
+        ]
+        df = pl.DataFrame(rows)
+        with pytest.raises(ValueError, match="month code outside"):
+            _adjust_one_symbol(df, "MGC", window_days=3, roll_codes=frozenset("GJMQVZ"))
+
+    def test_decade_disambiguation_invariant_holds_for_monthly(self) -> None:
+        """The v0.3.0 decade-wraparound invariant (each
+        contract_id_full has a unique factor; exactly one anchor at
+        1.0) must continue to hold under the v0.4.0 monthly-codes
+        path. Sanity-check with a synthetic MCL chain that spans the
+        same calendar year (no decade wrap) and verify the
+        adjustment-factor invariants via the public ``validate``."""
+        contracts = (
+            ("MCLF5", 2024, 12, 70.00),
+            ("MCLG5", 2025, 1, 72.00),
+            ("MCLH5", 2025, 2, 74.00),
+        )
+        df = _monthly_contract_frame("MCL", contracts, window_days=3)
+        energy_codes = frozenset("FGHJKMNQUVXZ")
+        out, _ = _adjust_one_symbol(
+            df, "MCL", window_days=3, roll_codes=energy_codes
+        )
+        # Public validate() runs the cross-row decade-disambiguation
+        # invariants (exactly one factor==1.0; constant factor per
+        # contract_id_full; roll_flag <=> first session per contract).
+        VendorLegacy1minRollAdjustedIngestJob().validate(out.lazy())
+
+    def test_es_default_path_unchanged_when_roll_codes_none(self) -> None:
+        """Explicit regression: ``roll_codes=None`` (the v0.1.0–v0.3.0
+        call signature) defaults to H/M/U/Z and produces the same
+        contract-factor map as passing the default explicitly. Locks
+        in backward compatibility for every ES/NQ/MES/MNQ caller that
+        pre-dates v0.4.0."""
+        df = _two_contract_frame(old_last_close=4000.0, new_first_open=4020.0)
+        _, s_none = _adjust_one_symbol(df, "ES", window_days=3, roll_codes=None)
+        _, s_default = _adjust_one_symbol(
+            df, "ES", window_days=3, roll_codes=_DEFAULT_EQUITY_INDEX_ROLL_CODES
+        )
+        # Identical factor dictionaries.
+        assert s_none["contract_factors"] == s_default["contract_factors"]
+        # roll_codes summary entry is the sorted H/M/U/Z list.
+        assert s_none["roll_codes"] == ["H", "M", "U", "Z"]
+
+    def test_job_constructor_threads_override(self) -> None:
+        """The new ``roll_codes_override`` constructor parameter
+        propagates through ``adjust()`` into ``_adjust_one_symbol``."""
+        contracts = (
+            ("MCLF5", 2024, 12, 70.00),
+            ("MCLG5", 2025, 1, 72.00),
+        )
+        df = _monthly_contract_frame("MCL", contracts, window_days=3)
+        job = VendorLegacy1minRollAdjustedIngestJob(
+            symbols=("MCL",),
+            window_days_override=3,
+            roll_codes_override={"MCL": frozenset("FGHJKMNQUVXZ")},
+        )
+        # adjust() routes the override through to the per-symbol
+        # invocation; no exception means the F-coded MCL contract
+        # was accepted.
+        job.adjust(df.lazy())
+        summary = job._last_run_summary["MCL"]
+        assert summary["roll_codes"] == sorted("FGHJKMNQUVXZ")
+        assert len(summary["rolls"]) == 1

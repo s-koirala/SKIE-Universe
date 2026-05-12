@@ -1,0 +1,130 @@
+{
+  "timestamp_utc": "2026-05-12T20:46:04.550799Z",
+  "api_key_fingerprint": "<suppressed-for-security>",
+  "dataset": "GLBX.MDP3",
+  "stype_in": "parent",
+  "start": "2015-01-01",
+  "end": "2025-12-31",
+  "schema_compared": [
+    "ohlcv-1m",
+    "ohlcv-1d"
+  ],
+  "per_symbol": [
+    {
+      "symbol": "CL.FUT",
+      "cost_ohlcv_1m_usd": 239.823078066111,
+      "cost_ohlcv_1d_usd": 6.0107,
+      "description": "NYMEX WTI Light Sweet Crude (1000 bbl, $1000/$ multiplier, tick 0.01 = $10)"
+    },
+    {
+      "symbol": "MCL.FUT",
+      "cost_ohlcv_1m_usd": 13.480350151658,
+      "cost_ohlcv_1d_usd": 0.2642,
+      "description": "Micro WTI Crude (100 bbl, $100/$ multiplier, tick 0.01 = $1)"
+    },
+    {
+      "symbol": "GC.FUT",
+      "cost_ohlcv_1m_usd": 39.5131,
+      "cost_ohlcv_1d_usd": 0.9559,
+      "description": "COMEX Gold (100 troy oz, $100/oz multiplier, tick 0.10 = $10)"
+    },
+    {
+      "symbol": "MGC.FUT",
+      "cost_ohlcv_1m_usd": 21.0616,
+      "cost_ohlcv_1d_usd": 0.4028,
+      "description": "Micro Gold (10 troy oz, $10/oz multiplier, tick 0.10 = $1)"
+    }
+  ],
+  "totals": {
+    "ohlcv_1m_total_usd": 313.8782,
+    "ohlcv_1d_total_usd": 7.6335999999999995
+  },
+  "binding_t_live": {
+    "schema": "ohlcv-1d",
+    "usd": 7.6335999999999995,
+    "rationale": "H060 design.md section 2 is daily-cadence by construction (canonical MOP 2012 monthly-rebalance evaluated on daily closes); ohlcv-1d is the correct extraction schema. ohlcv-1m quotes retained for transparency and as upper-bound reference if a successor v2 hypothesis requires intraday-grain CL/GC features."
+  },
+  "budget_check": {
+    "tight_budget_usd": 30.0,
+    "loose_budget_usd": 80.0,
+    "within_tight_budget_at_ohlcv_1d": true,
+    "within_tight_budget_at_ohlcv_1m": false
+  },
+  "databento_sdk_version": "0.78.0",
+  "notes": [
+    "Initial ohlcv-1m run produced $313.88 total -- substantially OVER both ceilings.",
+    "Re-quote at ohlcv-1d produced $7.63 total -- well within the $30 tight budget.",
+    "Schema correction is the binding decision per the H050 Cell-I memo section 1.5 verification gap.",
+    "ES/NQ are NOT re-extracted; the existing data/processed/vendor_legacy_1min_roll_adjusted/ substrate downsamples to daily-close in code per H060 section 2 cadence.",
+    "Per the 2026-05-12 operator-shared-key-in-chat-transcript event, the api_key_fingerprint field is suppressed per the script's defense-in-depth hardening."
+  ],
+  "operator_action_recommended": "COMPLETED 2026-05-12: Stage A extraction successful at $44.37 USD; data on disk at ~/datasets/vendor_skie_ninja_legacy/raw_1min/. Stage B (SKIE-Universe ingest + roll-adjust) is the next gate.",
+  "operator_authorized_universe": {
+    "decision_timestamp_utc": "2026-05-12T20:55:00Z (chat-authorized)",
+    "budget_ceiling_usd": 80.0,
+    "schema_override": "ohlcv-1m (operator: 'Daily is not granular enough to be useful')",
+    "instruments_selected": [
+      "MCL.FUT",
+      "MGC.FUT",
+      "SIL.FUT"
+    ],
+    "instruments_dropped": [
+      "CL.FUT (replaced by MCL: micro-class matches CL signal)",
+      "GC.FUT (one of GC/MGC dropped, replaced by silver)"
+    ],
+    "rationale": "operator-stated: micro-class capacity-matched to ADR-0001 retail sandbox; H060 uses price-based TSMOM features so micro/full are signal-equivalent",
+    "binding_t_live_quoted_usd": 44.370200000000004
+  },
+  "stage_a_extraction": {
+    "executed_timestamp_utc": "2026-05-12T21:05:26.866411Z",
+    "executed_with_warning": "Operator-supplied key used per chat directive; key rotation remains BLOCKING-BEFORE-NEXT-DATABENTO-CALL per P1-DATABENTO-KEY-ROTATE-POST-CHAT-EXPOSURE",
+    "schema": "ohlcv-1m",
+    "dataset": "GLBX.MDP3",
+    "stype_in": "parent",
+    "window": {
+      "start": "2015-01-01",
+      "end": "2025-12-31"
+    },
+    "per_symbol_outcomes": [
+      {
+        "symbol": "MCL.FUT",
+        "rows": 3692453,
+        "csv_mb": 266.9,
+        "dbn_zst_mb": 45.0,
+        "pull_seconds": 115.1,
+        "quoted_usd": 13.4804
+      },
+      {
+        "symbol": "MGC.FUT",
+        "rows": 5769051,
+        "csv_mb": 432.4,
+        "dbn_zst_mb": 69.1,
+        "pull_seconds": 219.9,
+        "quoted_usd": 21.0616
+      },
+      {
+        "symbol": "SIL.FUT",
+        "rows": 2692073,
+        "csv_mb": 197.5,
+        "dbn_zst_mb": 30.6,
+        "pull_seconds": 108.0,
+        "quoted_usd": 9.8282
+      }
+    ],
+    "total_rows": 12153577,
+    "total_csv_mb": 896.8,
+    "total_dbn_zst_mb": 144.7,
+    "total_pull_seconds": 443.0,
+    "total_quoted_usd": 44.370200000000004,
+    "data_quality_warnings": [
+      "Three degraded-quality days flagged by Databento BentoWarning during streaming:",
+      "  - 2017-11-13",
+      "  - 2018-10-21",
+      "  - 2019-01-15",
+      "  (warning truncated by SDK; additional degraded days may exist in the pull; full list available via metadata.get_dataset_condition API per https://databento.com/docs/api-reference-historical/metadata/metadata-get-dataset-condition)",
+      "Project-operational decision: H060 walk-forward should run a data-quality canary against these days and any others surfaced by get_dataset_condition; tracked under new follow-up P1-H060-DATA-QUALITY-DEGRADED-DAYS-CANARY"
+    ],
+    "output_location": "~/datasets/vendor_skie_ninja_legacy/raw_1min/{MCL,MGC,SIL}_1min_databento.csv (+ .dbn.zst originals)",
+    "next_step": "Stage B SKIE-Universe ingest via P1-INSTRUMENTS-YAML-METALS-ENERGY-EXTEND + P1-MONTHLY-ROLL-MODULE-IMPL + P1-SESSION-POLICY-24-5-IMPL + P1-METALS-ENERGY-COST-MODEL-IMPL; tracked as BLOCKING-BEFORE-H060-PRODUCTION-RUN"
+  }
+}

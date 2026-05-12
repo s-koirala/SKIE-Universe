@@ -128,6 +128,87 @@ instruments:
         exchange_fee_usd: 0.29                      # CME Equity Index VIP schedule, eff. 2024-02
         source: "CME Equity Index VIP schedule, effective 2024-02"
 
+  # ------------------------------------------------------------------------
+  # Metals/energy expansion per ADR-0023 + H060 successor track.
+  # Appended 2026-05-12; substrate Stage-A extraction completed same day
+  # via Databento parent-symbology covering 2015-01-01 -> 2025-12-31.
+  #
+  # CME contract spec sources (all retrieved 2026-05-12):
+  #   MCL: https://www.cmegroup.com/markets/energy/crude-oil/micro-wti-crude-oil-futures.contractSpecs.html
+  #   MGC: https://www.cmegroup.com/markets/metals/precious/e-micro-gold.contractSpecs.html
+  #   SIL: https://www.cmegroup.com/markets/metals/precious/1000-oz-silver.contractSpecs.html
+  #
+  # Energy/metals trade nearly continuously (Sun 17:00 CT -> Fri 16:00 CT
+  # with the daily 16:00-17:00 CT maintenance halt); RTH vs ETH distinction
+  # is not canonical for these classes. session_rth is therefore marked
+  # "n/a (24/5)" and session_eth carries the full daily window. Downstream
+  # regime splitters MUST detect this and skip the RTH/ETH partition for
+  # these symbols (P1-METALS-ENERGY-SESSION-HANDLING).
+  #
+  # All fee figures (commission_per_side_usd / exchange_fee_usd /
+  # nfa_fee_usd) are retail placeholders pending
+  # P1-METALS-ENERGY-CME-FEE-VERIFY; the CME Energy/Metals fee schedule
+  # was NOT primary-source-verified in the 2026-05-12 session. Users MUST
+  # override before any live-capital run and set
+  # commission_reviewed_for_broker accordingly.
+  MCL:
+    exchange: NYMEX                                 # delivered on CME Globex
+    description: Micro WTI Light Sweet Crude Oil
+    tick_size: 0.01                                 # CME product spec
+    tick_value: 1.00                                # $100 * 0.01 = $1.00/tick
+    multiplier: 100.0                               # USD per barrel * 100 bbl, CME product spec
+    session_rth: "n/a (24/5)"                       # justify: energy/metals trade ~continuously; RTH not canonical (P1-METALS-ENERGY-SESSION-HANDLING)
+    session_eth: "17:00-16:00"                      # CT, full Globex day spanning calendar boundary
+    roll_rule:
+      codes: [F, G, H, J, K, M, N, Q, U, V, X, Z]      # justify: MCL active months per CME product spec; verified 2026-05-12 against contract calendar
+      method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD); energy/metals roll cadence calibrated separately under P1-ROLL-METALS-ENERGY-CALIBRATE
+      window_days: 3                                # justify: energy rolls typically migrate volume/OI 3-5 sessions before LTD per CME energy rolldates page; provisional, pending P1-ROLL-METALS-ENERGY-CALIBRATE
+      reference: "CME Micro WTI contract spec https://www.cmegroup.com/markets/energy/crude-oil/micro-wti-crude-oil-futures.contractSpecs.html (retrieved 2026-05-12); window_days pending calibration"
+    commission_per_side_usd: 0.85                   # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY; NinjaTrader Brokerage Q1-2026 retail rate
+    exchange_fee_usd: 0.50                          # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY; approximate CME Energy fee for micro
+    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    micro_ratio: 0.1                                # 1 MCL = 1/10 CL (full CL is 1000 bbl, MCL is 100 bbl), CME product specs
+    data_vendor_symbol_databento: "MCL.FUT"
+    commission_reviewed_for_broker: null            # placeholder; pre-live checklist MUST bind to real broker id
+  MGC:
+    exchange: COMEX                                 # delivered on CME Globex
+    description: Micro Gold Futures (10 troy oz)
+    tick_size: 0.10                                 # CME product spec
+    tick_value: 1.00                                # $10 * 0.10 = $1.00/tick
+    multiplier: 10.0                                # USD per troy oz * 10 oz, CME product spec
+    session_rth: "n/a (24/5)"                       # justify: see MCL session note
+    session_eth: "17:00-16:00"
+    roll_rule:
+      codes: [F, G, H, J, K, M, N, Q, U, V, X, Z]      # justify: MGC primary active months per CME are G/J/M/Q/V/Z; Databento parent-symbology returns all 12 monthly contracts in raw stream; volume-driven argmax selects the actual front-month. Expanded to all 12 codes 2026-05-12.
+      method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD); metals roll cadence under P1-ROLL-METALS-ENERGY-CALIBRATE
+      window_days: 3                                # justify: metals roll typically migrates 3-5 sessions before LTD; active months for MGC per CME are G/J/M/Q/V/Z (P1-ROLL-METALS-ENERGY-CALIBRATE)
+      reference: "CME Micro Gold contract spec https://www.cmegroup.com/markets/metals/precious/e-micro-gold.contractSpecs.html (retrieved 2026-05-12); window_days pending calibration"
+    commission_per_side_usd: 0.85                   # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY
+    exchange_fee_usd: 0.45                          # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY; approximate CME Metals fee for micro
+    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    micro_ratio: 0.1                                # 1 MGC = 1/10 GC (full GC is 100 oz, MGC is 10 oz), CME product specs
+    data_vendor_symbol_databento: "MGC.FUT"
+    commission_reviewed_for_broker: null            # placeholder
+  SIL:
+    exchange: COMEX                                 # delivered on CME Globex
+    description: Micro Silver Futures (1000 troy oz)
+    tick_size: 0.005                                # CME product spec
+    tick_value: 5.00                                # $1000 * 0.005 = $5.00/tick
+    multiplier: 1000.0                              # USD per troy oz * 1000 oz, CME product spec
+    session_rth: "n/a (24/5)"                       # justify: see MCL session note
+    session_eth: "17:00-16:00"
+    roll_rule:
+      codes: [F, G, H, J, K, M, N, Q, U, V, X, Z]      # justify: SIL primary active months per CME are H/K/N/U/Z; Databento parent-symbology returns all 12 monthly contracts in raw stream; volume-driven argmax selects the actual front-month. Expanded to all 12 codes 2026-05-12.
+      method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD); metals roll cadence under P1-ROLL-METALS-ENERGY-CALIBRATE
+      window_days: 3                                # justify: metals roll typically migrates 3-5 sessions before LTD; active months for SIL per CME are H/K/N/U/Z (P1-ROLL-METALS-ENERGY-CALIBRATE)
+      reference: "CME 1000 oz Silver contract spec https://www.cmegroup.com/markets/metals/precious/1000-oz-silver.contractSpecs.html (retrieved 2026-05-12); window_days pending calibration"
+    commission_per_side_usd: 0.85                   # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY
+    exchange_fee_usd: 0.45                          # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY; approximate CME Metals fee for micro
+    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    micro_ratio: 0.2                                # 1 SIL = 1/5 SI (full SI is 5000 oz, SIL is 1000 oz), CME product specs
+    data_vendor_symbol_databento: "SIL.FUT"
+    commission_reviewed_for_broker: null            # placeholder
+
 # ES/NQ-level volume tiers (documented per audit M-15; immaterial at
 # retail capacity ceiling).
 fee_tiers_es_nq:
