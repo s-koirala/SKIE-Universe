@@ -1,14 +1,23 @@
-"""Vendor-legacy 1-minute ES/NQ ingest (Databento via sibling repo).
+"""Vendor-legacy 1-minute ES/NQ/MCL/MGC/SIL ingest (Databento via sibling repo).
 
 Imports raw Databento 1-minute OHLCV CSVs for ES and NQ from the
-sibling SKIE_Ninja research repo into SKIE-Universe's shared-data
-namespace + processed parquet tree.
+sibling SKIE_Ninja research repo, plus the 2026-05-12 metals/energy
+expansion (MCL/MGC/SIL per ADR-0023 + H060 successor track), into
+SKIE-Universe's shared-data namespace + processed parquet tree.
 
-Source files (canonical list per sibling repo's CANONICAL_REFERENCE.md):
+Source files (canonical list):
   - ES_{2020,2021,2022,2025}_1min_databento.csv (OOS + forward test)
   - ES_1min_databento.csv                       (in-sample 2023–2024)
   - NQ_{2020,2021,2022}_1min_databento.csv      (OOS)
   - NQ_1min_databento.csv                       (in-sample 2023–2024)
+  - MCL_1min_databento.csv                      (full 2015-2025; Stage-A 2026-05-12)
+  - MGC_1min_databento.csv                      (full 2015-2025; Stage-A 2026-05-12)
+  - SIL_1min_databento.csv                      (full 2015-2025; Stage-A 2026-05-12)
+
+Metals/energy CSVs are single-file-per-symbol (Databento parent-symbology
+pull) rather than the per-year sharding used for ES/NQ. The SHA256
+idempotency guard treats them identically — each (filename, sha256) pair
+is the unit of work.
 
 Copy policy: SHA256-idempotent — re-runs skip files whose source
 bytes are unchanged. Two-phase commit on the processed parquet tree
@@ -80,10 +89,18 @@ _CANONICAL_SOURCES: tuple[_SourceFile, ...] = (
     _SourceFile("NQ", "oos_2021", "NQ_2021_1min_databento.csv"),
     _SourceFile("NQ", "oos_2022", "NQ_2022_1min_databento.csv"),
     _SourceFile("NQ", "in_sample_2023_2024", "NQ_1min_databento.csv"),
+    # Metals/energy expansion (ADR-0023 + H060). Stage-A 2026-05-12:
+    # single-file-per-symbol full-window pull via Databento
+    # parent-symbology covering 2015-01-01 -> 2025-12-31.
+    _SourceFile("MCL", "full_2015_2025", "MCL_1min_databento.csv"),
+    _SourceFile("MGC", "full_2015_2025", "MGC_1min_databento.csv"),
+    _SourceFile("SIL", "full_2015_2025", "SIL_1min_databento.csv"),
 )
 
 
-_VALID_SYMBOLS: frozenset[str] = frozenset({"ES", "NQ", "MES", "MNQ"})
+_VALID_SYMBOLS: frozenset[str] = frozenset(
+    {"ES", "NQ", "MES", "MNQ", "MCL", "MGC", "SIL"}
+)
 
 
 def load_sources_yaml(yaml_path: Path) -> tuple[_SourceFile, ...]:
@@ -314,15 +331,22 @@ class VendorLegacy1minIngestJob:
                     pl.col("instrument_id").cast(pl.Int64),
                     # Preserve the raw contract code (e.g., ESH0) and
                     # derive the root symbol. CME mini roots are 2 char
-                    # (ES, NQ) but micros are 3 char (MES, MNQ); a naive
-                    # first-2 slice corrupts MES → 'ME'. Explicit prefix
-                    # mapping keeps this correct if MES/MNQ files are
-                    # later added to _CANONICAL_SOURCES.
+                    # (ES, NQ) but micros are 3 char (MES, MNQ, MCL, MGC,
+                    # SIL); a naive first-2 slice corrupts MES → 'ME' and
+                    # MCL → 'MC'. Explicit prefix mapping with 3-char
+                    # branches FIRST (MES/MNQ/MCL/MGC/SIL) so the 2-char
+                    # ES/NQ branches don't shadow them.
                     pl.col("symbol").cast(pl.Utf8).alias("contract_symbol"),
                     pl.when(pl.col("symbol").cast(pl.Utf8).str.starts_with("MES"))
                     .then(pl.lit("MES"))
                     .when(pl.col("symbol").cast(pl.Utf8).str.starts_with("MNQ"))
                     .then(pl.lit("MNQ"))
+                    .when(pl.col("symbol").cast(pl.Utf8).str.starts_with("MCL"))
+                    .then(pl.lit("MCL"))
+                    .when(pl.col("symbol").cast(pl.Utf8).str.starts_with("MGC"))
+                    .then(pl.lit("MGC"))
+                    .when(pl.col("symbol").cast(pl.Utf8).str.starts_with("SIL"))
+                    .then(pl.lit("SIL"))
                     .when(pl.col("symbol").cast(pl.Utf8).str.starts_with("ES"))
                     .then(pl.lit("ES"))
                     .when(pl.col("symbol").cast(pl.Utf8).str.starts_with("NQ"))

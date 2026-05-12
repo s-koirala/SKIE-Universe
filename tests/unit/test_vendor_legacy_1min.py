@@ -18,6 +18,7 @@ import polars as pl
 import pytest
 
 from skie_ninja.data.ingest.vendor_legacy_1min import (
+    _CANONICAL_SOURCES,
     VendorLegacy1minIngestJob,
     _SourceFile,
 )
@@ -332,3 +333,33 @@ class TestWriteAndProvenance:
         assert payload["roll_adjustment"].startswith("none")
         # ctx.add_dataset_checksum side-effect.
         assert ctx._checksums == payload["source_checksums"]
+
+
+# ---------------------------------------------------------------------------
+# Metals/energy expansion (ADR-0023 + H060): canonical-sources lookup
+# ---------------------------------------------------------------------------
+
+
+class TestMetalsEnergyCanonicalSources:
+    """Confirm MCL/MGC/SIL appear in _CANONICAL_SOURCES with the expected
+    single-file-per-symbol full-window pattern (Stage-A 2026-05-12)."""
+
+    @pytest.mark.parametrize(
+        ("symbol", "filename"),
+        [
+            ("MCL", "MCL_1min_databento.csv"),
+            ("MGC", "MGC_1min_databento.csv"),
+            ("SIL", "SIL_1min_databento.csv"),
+        ],
+    )
+    def test_canonical_sources_contains_metals_energy_symbol(
+        self, symbol: str, filename: str
+    ) -> None:
+        matches = [s for s in _CANONICAL_SOURCES if s.symbol == symbol]
+        assert len(matches) == 1, (
+            f"Expected exactly one _CANONICAL_SOURCES entry for {symbol}; "
+            f"got {len(matches)}: {matches}"
+        )
+        entry = matches[0]
+        assert entry.filename == filename
+        assert entry.coverage == "full_2015_2025"

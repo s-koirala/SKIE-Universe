@@ -21,6 +21,9 @@ from skie_ninja.utils.clock import (
     CME_TZ,
     RTH_CLOSE,
     RTH_OPEN,
+    SessionKind,
+    classify_energy_metals_session,
+    is_energy_metals_session_active,
     session_of,
     to_exchange,
     trading_day,
@@ -270,3 +273,111 @@ def test_hand_coded_holidays_subset_of_mcal() -> None:
         f"early-close sessions in pandas_market_calendars: {sorted(divergent_early)}. "
         "Refresh the snapshot against the CME holiday calendar."
     )
+
+
+# -----------------------------------------------------------------------
+# Energy / metals 24/5 session convention (H060 / ADR-0023 §Decision 3).
+# Holiday-shortened sessions are NOT in v1 scope per the H060 brief;
+# deferred to P1-CLOCK-ENERGY-METALS-HOLIDAY-CALENDAR.
+# -----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "ts,expected",
+    [
+        # Active session — Mon 09:30 CT.
+        (_ct(2026, 4, 13, 9, 30), SessionKind.ACTIVE),
+        # Maintenance break — Tue 16:30 CT (inside (16:00, 17:00) Mon-Thu).
+        (_ct(2026, 4, 14, 16, 30), SessionKind.MAINTENANCE_BREAK),
+        # Weekend closed — Sat 12:00 CT.
+        (_ct(2026, 4, 11, 12, 0), SessionKind.WEEKEND_CLOSED),
+        # Boundary 16:00 CT exactly (Tue close) — ACTIVE per closing-tick-inclusive.
+        (_ct(2026, 4, 14, 16, 0), SessionKind.ACTIVE),
+        # Boundary 17:00 CT exactly (Tue reopen) — ACTIVE per opening-tick-inclusive.
+        (_ct(2026, 4, 14, 17, 0), SessionKind.ACTIVE),
+        # Boundary 16:00:01 CT (Tue) — MAINTENANCE_BREAK (just past close).
+        (_ct(2026, 4, 14, 16, 0) + pd.Timedelta(seconds=1), SessionKind.MAINTENANCE_BREAK),
+        # Boundary 16:59:59 CT (Tue) — MAINTENANCE_BREAK (just before reopen).
+        (_ct(2026, 4, 14, 17, 0) - pd.Timedelta(seconds=1), SessionKind.MAINTENANCE_BREAK),
+        # Friday 16:00 CT exactly — ACTIVE (weekly close tick included).
+        (_ct(2026, 4, 17, 16, 0), SessionKind.ACTIVE),
+        # Friday 16:00:01 CT — WEEKEND_CLOSED (weekly close begins).
+        (_ct(2026, 4, 17, 16, 0) + pd.Timedelta(seconds=1), SessionKind.WEEKEND_CLOSED),
+        # Sunday 16:59 CT — WEEKEND_CLOSED (pre-reopen).
+        (_ct(2026, 4, 12, 16, 59), SessionKind.WEEKEND_CLOSED),
+        # Sunday 17:00 CT — ACTIVE (weekly reopen tick).
+        (_ct(2026, 4, 12, 17, 0), SessionKind.ACTIVE),
+        # Sunday 20:00 CT — ACTIVE (post-reopen Globus ramp).
+        (_ct(2026, 4, 12, 20, 0), SessionKind.ACTIVE),
+        # Monday 03:00 CT — ACTIVE (overnight ramp continuation).
+        (_ct(2026, 4, 13, 3, 0), SessionKind.ACTIVE),
+    ],
+)
+def test_classify_energy_metals_session(
+    ts: pd.Timestamp, expected: SessionKind
+) -> None:
+    assert classify_energy_metals_session(ts) is expected
+
+
+def test_is_energy_metals_session_active_matches_classifier() -> None:
+    # ACTIVE.
+    assert is_energy_metals_session_active(_ct(2026, 4, 13, 9, 30)) is True
+    # MAINTENANCE_BREAK.
+    assert is_energy_metals_session_active(_ct(2026, 4, 14, 16, 30)) is False
+    # WEEKEND_CLOSED.
+    assert is_energy_metals_session_active(_ct(2026, 4, 11, 12, 0)) is False
+
+
+def test_energy_metals_dst_spring_forward_2024() -> None:
+    # 2024-03-10 02:00 CST -> 03:00 CDT (US spring-forward).
+    # The active session that began Fri 2024-03-08 17:00 CT (Sun-night reopen
+    # at 17:00 CDT) must continue uninterrupted across the DST shift.
+    # Sun 2024-03-10 18:30 CT (post-reopen, post-DST) -> ACTIVE.
+    assert (
+        classify_energy_metals_session(_ct(2024, 3, 10, 18, 30))
+        is SessionKind.ACTIVE
+    )
+    # Mon 2024-03-11 02:30 CDT (deep overnight, post-DST) -> ACTIVE.
+    assert (
+        classify_energy_metals_session(_ct(2024, 3, 11, 2, 30))
+        is SessionKind.ACTIVE
+    )
+    # Mon 2024-03-11 16:30 CDT (maintenance break, post-DST).
+    assert (
+        classify_energy_metals_session(_ct(2024, 3, 11, 16, 30))
+        is SessionKind.MAINTENANCE_BREAK
+    )
+
+
+def test_energy_metals_dst_fall_back_2024() -> None:
+    # 2024-11-03 02:00 CDT -> 01:00 CST (US fall-back).
+    # Sun 2024-11-03 18:30 CT (post-reopen, post-DST) -> ACTIVE.
+    assert (
+        classify_energy_metals_session(_ct(2024, 11, 3, 18, 30))
+        is SessionKind.ACTIVE
+    )
+    # Mon 2024-11-04 01:30 CST (deep overnight, post-DST) -> ACTIVE.
+    assert (
+        classify_energy_metals_session(_ct(2024, 11, 4, 1, 30))
+        is SessionKind.ACTIVE
+    )
+    # Mon 2024-11-04 16:30 CST -> MAINTENANCE_BREAK.
+    assert (
+        classify_energy_metals_session(_ct(2024, 11, 4, 16, 30))
+        is SessionKind.MAINTENANCE_BREAK
+    )
+
+
+def test_energy_metals_utc_input_handled() -> None:
+    # 14:30 UTC on Mon 2026-04-13 = 09:30 CT (CDT in April) -> ACTIVE.
+    ts = pd.Timestamp("2026-04-13 14:30", tz="UTC")
+    assert classify_energy_metals_session(ts) is SessionKind.ACTIVE
+    # 22:30 UTC on Mon 2026-04-13 = 17:30 CT -> ACTIVE (post-reopen).
+    ts = pd.Timestamp("2026-04-13 22:30", tz="UTC")
+    assert classify_energy_metals_session(ts) is SessionKind.ACTIVE
+
+
+def test_energy_metals_naive_input_treated_as_utc() -> None:
+    # Naive ts at 14:30 UTC on Mon 2026-04-13 -> 09:30 CDT -> ACTIVE.
+    ts = pd.Timestamp("2026-04-13 14:30")
+    assert classify_energy_metals_session(ts) is SessionKind.ACTIVE

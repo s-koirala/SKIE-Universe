@@ -134,15 +134,29 @@ class VendorLegacy1minSchema(pa.DataFrameModel):
     rtype: pl.Int64 = pa.Field(nullable=False)
     publisher_id: pl.Int64 = pa.Field(nullable=False)
     instrument_id: pl.Int64 = pa.Field(nullable=False)
-    open: pl.Float64 = pa.Field(nullable=False, gt=0)
-    high: pl.Float64 = pa.Field(nullable=False, gt=0)
-    low: pl.Float64 = pa.Field(nullable=False, gt=0)
-    close: pl.Float64 = pa.Field(nullable=False, gt=0)
+    # Note: prices can be NEGATIVE for commodity futures during stress events.
+    # Canonical example: WTI Light Sweet Crude (CL/MCL) settled at -$37.63 on
+    # 2020-04-20 due to physical-delivery supply imbalance + Cushing storage
+    # capacity exhaustion. Validation must accept negative prices to preserve
+    # this historically real signal; the prior `gt=0` rule was equity-index
+    # specific (equity-index prices are bounded below by zero by construction).
+    # We retain a finite lower bound to catch obvious data corruption while
+    # allowing the documented commodity-negative-price regime; -1000 USD is a
+    # generous lower bound vs the -$37.63 historical extremum.
+    open: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
+    high: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
+    low: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
+    close: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
     volume: pl.Int64 = pa.Field(nullable=False, ge=0)
     # Contract-specific symbol from Databento (e.g., ESH0, NQM3).
     contract_symbol: pl.Utf8 = pa.Field(nullable=False)
-    # Normalized root symbol — first 2 chars of contract_symbol.
-    symbol: pl.Utf8 = pa.Field(nullable=False, isin=["ES", "NQ", "MES", "MNQ"])
+    # Normalized root symbol — product-root prefix of contract_symbol
+    # (2 chars for equity-index ES/NQ; 3 chars for micros MES/MNQ and
+    # for H060 energy/metals MCL/MGC/SIL).
+    symbol: pl.Utf8 = pa.Field(
+        nullable=False,
+        isin=["ES", "NQ", "MES", "MNQ", "MCL", "MGC", "SIL"],
+    )
 
     class Config:
         """Uniqueness at the contract level: one bar per (contract, minute).
@@ -203,15 +217,22 @@ class VendorLegacy1minRollAdjustedSchema(pa.DataFrameModel):
     """
 
     ts_event: pl.Datetime(time_zone="UTC") = pa.Field(nullable=False)
-    open: pl.Float64 = pa.Field(nullable=False, gt=0)
-    high: pl.Float64 = pa.Field(nullable=False, gt=0)
-    low: pl.Float64 = pa.Field(nullable=False, gt=0)
-    close: pl.Float64 = pa.Field(nullable=False, gt=0)
+    # Allows commodity-stress negative prices per the WTI 2020-04-20 precedent
+    # (cf. VendorLegacy1MinSchema docstring). adjustment_factor remains gt=0
+    # since the multiplier is by construction positive; roll-adjusted prices
+    # inherit the sign of the raw price.
+    open: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
+    high: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
+    low: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
+    close: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
     volume: pl.Int64 = pa.Field(nullable=False, ge=0)
-    symbol: pl.Utf8 = pa.Field(nullable=False, isin=["ES", "NQ", "MES", "MNQ"])
+    symbol: pl.Utf8 = pa.Field(
+        nullable=False,
+        isin=["ES", "NQ", "MES", "MNQ", "MCL", "MGC", "SIL"],
+    )
     front_contract_symbol: pl.Utf8 = pa.Field(nullable=False)
     adjustment_factor: pl.Float64 = pa.Field(nullable=False, gt=0)
-    unadjusted_close: pl.Float64 = pa.Field(nullable=False, gt=0)
+    unadjusted_close: pl.Float64 = pa.Field(nullable=False, ge=-1000.0)
     roll_flag: pl.Boolean = pa.Field(nullable=False)
 
     class Config:

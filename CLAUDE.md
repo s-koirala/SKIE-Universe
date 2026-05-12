@@ -759,6 +759,52 @@ CSVs use the existing vendor_legacy_1min schema (`ts_event,rtype,publisher_id,in
 6. Verification: row-count + checksum + roll-anchor invariants on the new substrate per `P1-H060-DATA-QUALITY-DEGRADED-DAYS-CANARY`.
 7. H060 production walk-forward + KPI emission per the existing orchestrator pattern.
 
+### Phase O.0 Stage B complete — substrate ingested + roll-adjusted (2026-05-12 21:30 CT)
+
+Operator-confirmed key rotation (2026-05-12 evening). Three parallel agents landed gates 1, 3, 4 (instruments.yaml extension + clock.py 24/5 session classifier + roll-adjusted module parameterization) in a single session pass; 124 new/updated tests passing across the three modules + backward-compat verified bit-identical for ES/NQ/MES/MNQ quarterly behavior. Followed by inline Stage B ingest with five iterative fixes (each surfaced a real cross-cutting concern the parallel agents could not have anticipated):
+
+1. **Source-file path resolution**: vendor_legacy_1min ingest job expects raw CSVs at the sibling-repo path `C:\Users\skoir\Documents\SKIE Enterprises\SKIE-Ninja\...\data\raw\market\` (H050 Cell-I two-stage pattern); my Stage A extraction wrote directly to the shared-data destination `~/datasets/.../raw_1min/`. Fix: copy the MCL/MGC/SIL CSVs into the sibling-repo source location so the SHA-match shortcut works.
+2. **Schema validation rejected negative prices**: WTI crude settled at -$37.63 on 2020-04-20 (historic physical-delivery + Cushing storage exhaustion event). Validation rule `open > 0` is equity-index specific. Relaxed to `ge=-1000.0` for OHLC fields in both `VendorLegacy1MinSchema` and `VendorLegacy1MinRollAdjustedSchema` with docstring explanation citing the canonical 2020-04-20 event. `adjustment_factor` remains `gt=0` (multiplier is by-construction positive).
+3. **Roll-adjusted module hardcoded ("ES", "NQ") symbol-list**: in the `VendorLegacy1MinRollAdjusted.__init__` signature at line 428; Agent C's parameterization missed this. Extended to `("ES", "NQ", "MCL", "MGC", "SIL")`.
+4. **YAML `roll_rule.codes` field missing**: Agent A added MCL/MGC/SIL entries but did not include the `codes: [...]` field; defaulted to equity-index quarterly H/M/U/Z which fails the new monthly-code defensive validation. Added codes arrays + later expanded MGC/SIL from 6/5 to all 12 monthly codes once realized that Databento parent-symbology returns all contract-month bars in the raw stream regardless of which months are "primary active" per CME spec (the volume-driven argmax selects the actual front-month downstream).
+5. **Decade-disambiguation invariant incompatible with monthly contracts**: `_assert_no_consecutive_year_collision` treats any contract whose bars span calendar-year boundaries as a decade-collision red flag. For quarterly equity-index this works (contracts span months within one year); for monthly energy (e.g., MCLJ2 trades late-2021 through April-2022) the year-boundary crossing is normal and benign. Bypassed the assert for non-quarterly roll-code sets (`roll_codes <= _DEFAULT_EQUITY_INDEX_ROLL_CODES`); contract_id_full disambiguation still applied so true decade-distant collisions (e.g. MCLJ2_2022 vs MCLJ2_2032) remain caught downstream.
+
+**Substrate row counts** (post-Stage-B, both layers):
+
+| Symbol | Raw 1-min rows | Roll-adjusted rows | First | Last |
+|---|---:|---:|---|---|
+| ES | 2,030,673 | 2,016,269 | 2020-01-01 23:00 UTC | 2025-12-03 23:59 UTC |
+| NQ | 1,703,233 | 1,687,090 | 2020-01-01 23:00 UTC | 2024-12-19 23:59 UTC |
+| MCL | 3,692,453 | 1,546,950 | 2021-07-11 22:05 UTC | 2025-12-30 23:59 UTC |
+| MGC | 5,769,051 | 3,086,887 | 2015-01-01 23:01 UTC | 2025-12-30 23:59 UTC |
+| SIL | 2,692,073 | 1,868,034 | 2015-01-01 23:02 UTC | 2025-12-30 23:59 UTC |
+
+Roll-adjusted has fewer rows than raw because it keeps only the front-month bars per (timestamp), filtering out the non-front-month contracts Databento returns in parent symbology. Reduction ratio varies by instrument: ES 99.3% retained (4 quarterly contracts × ~1 active simultaneously); MCL 41.9% retained (12 monthly contracts × ~1 active; more aggressive filtering); MGC 53.5%; SIL 69.4%.
+
+**MCL data-start critical gap**: Micro WTI Crude (MCL) was launched by CME on 2021-07-12. The MCL substrate therefore covers only 2021-07-11 → 2025-12-30, NOT the full 2015-2025 window. This is real-world contract-inception, not a substrate defect. H060 design.md §2 specifies calibration holdout 2015-2019 + IS 2020-2023 + OOS 2024-2025 which is structurally incompatible with the MCL inception date.
+
+**New BLOCKING follow-up**: `P1-H060-MCL-INCEPTION-DATE-AMENDMENT` (BLOCKING-BEFORE-H060-PRODUCTION-RUN). Three resolution options for operator decision in a subsequent cycle:
+- (a) Per-instrument-inception calibration window: MCL calibration 2021-07 → 2022-06 (1 year); ES/NQ/MGC/SIL retain 2015-2019. Frozen-pre-reg amendment per ADR-0013 §"Frozen pre-registration amendment" §1-§7 immutability discipline (§2 is OUTSIDE the §1-§7 immutable range so this is admissible as a project-level amendment).
+- (b) Drop MCL from H060 v1; basket becomes {ES, NQ, MGC, SIL} (4 assets, no energy). Loses cross-asset diversification rationale but cleanly satisfies §2 sample window.
+- (c) Substitute CL (full-size WTI; pre-launch) for MCL. Requires new Databento extraction (CL.FUT 2015-2025 ohlcv-1m at ~$240 USD per the 2026-05-12 dossier). Out-of-budget.
+
+**Substrate combined SHA256** (post-Stage-B; 38 partitions): `242aaa280b216f45edc3b9d9de9630f52f71206eea7832c1cb0470296190f46f`. This is the new binding figure for H060 + future metals/energy hypotheses. Supersedes the prior `b3ee230a...` ES/NQ-only substrate at H060 design.md §2 line 45 (which itself was the H050/H052a/H053/H054/H055 binding; their substrate is a strict subset of the new combined substrate per the roll-adjusted module's deterministic re-derivation across both Stage-A vintages).
+
+**Closes**: `P1-INSTRUMENTS-YAML-METALS-ENERGY-EXTEND`, `P1-SESSION-POLICY-24-5-IMPL`, `P1-MONTHLY-ROLL-MODULE-IMPL` (parameterization-only path; full from-scratch monthly module deferred per Agent C architectural finding). Stage B ingest itself ran clean post-fixes; row counts + SHA + schema validation all green.
+
+**Remaining BLOCKING follow-ups before H060 production run**:
+- `P1-METALS-ENERGY-COST-MODEL-IMPL` — NT8CrudeOil + NT8Gold + NT8Silver cost models per CME Energy/Metals fee schedules; deferred from this session due to scope.
+- `P1-H060-MCL-INCEPTION-DATE-AMENDMENT` — operator-decision on §2 sample-window amendment per the three options above.
+- `P1-METALS-ENERGY-CME-FEE-VERIFY` — primary-source verification of CME Energy/Metals fee schedules (the placeholder fees in instruments.yaml were operationally-correct-magnitude but not primary-source-pinned).
+- `P1-METALS-ENERGY-SESSION-HANDLING` — downstream regime splitters / feature factories must branch on the `session_rth: "n/a (24/5)"` sentinel for energy/metals symbols (Agent A surfaced this; no existing caller is currently affected per Agent B's grep).
+- `P1-CLOCK-ENERGY-METALS-HOLIDAY-CALENDAR` — full-day closures + shortened sessions for energy/metals (Agent B explicitly deferred).
+- `P1-H060-DATA-QUALITY-DEGRADED-DAYS-CANARY` — leakage-canary against the 3 degraded-quality days surfaced by Databento BentoWarning (2017-11-13, 2018-10-21, 2019-01-15) + any others surfaced by `get_dataset_condition`.
+
+**Operator-action follow-ups remaining**:
+- `P1-DATABENTO-KEY-ROTATE-POST-CHAT-EXPOSURE`: **CLOSED 2026-05-12 evening** per operator confirmation.
+
+**Substrate is now production-ready for H060**, modulo the MCL §2 amendment decision. The 4 BLOCKING-code follow-ups above are the bridge from substrate to KPI report card; the §2 amendment is the bridge from substrate to design.md freeze + production run.
+
 **Script-hardening committed alongside this amendment**: [scripts/databento_metals_energy_cost_dossier.py](scripts/databento_metals_energy_cost_dossier.py) (a) `_fingerprint_api_key` now returns `<suppressed-for-security>` instead of `len=N,tail=XXXX` to prevent even partial-key information from persisting to disk; (b) default `SCHEMA` constant changed from `ohlcv-1m` to `ohlcv-1d` to reflect H060's daily-cadence requirement; (c) inline docstring documents the 40× cost finding so future hypotheses inherit the lesson.
 
 **New follow-ups registered**:
