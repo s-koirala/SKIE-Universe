@@ -1,0 +1,77 @@
+# H060 hypothesis configuration.
+#
+# Cross-futures TSMOM on {ES, NQ, MGC, SIL}. Pre-cost research-only v1.
+# Frozen pre-reg at: research/01_hypothesis_register/H060/design.md
+# Note: §2 mentions MCL+CL+GC; operator-decision 2026-05-12 substitutes
+# the 4-asset basket {ES, NQ, MGC, SIL} for v1 (MCL/CL deferred to H061).
+hypothesis_id: H060
+test_statistic: "SR_TSMOM - SR_passive_EW"  # design.md §1
+universe: [ES, NQ, MGC, SIL]
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  calibration: {start: "2015-01-01", end: "2019-12-31"}
+  is:   {start: "2020-01-01", end: "2023-12-31"}
+  oos:  {start: "2024-01-01", end: "2025-12-30"}  # per-symbol right-edge clip
+
+# Daily-cadence; UTC close ≈ 21:00 (= 16:00 CT settlement)
+session_close_utc_hour: 21
+
+# H060 inner-CV grid (reduced from 432-cell to 72-cell for daily-cadence)
+inner_cv_grid:
+  lookback_sessions: [126, 252]
+  vol_halflife_com: [30, 60]
+  vol_target: [0.05, 0.10, 0.15]
+  kelly_multiplier: [0.25, 0.5, 1.0, 1.5, 2.0, 2.5]
+
+# Capacity ceilings per ADR-0001 + H060 §3
+capacity_caps:
+  ES: 20
+  NQ: 40
+  MGC: 5
+  SIL: 5
+
+# Walk-forward
+splitter:
+  outer_train_sessions: 252
+  outer_test_sessions: 60
+  embargo_sessions: 1
+
+# Cost model: PRE-COST RESEARCH-ONLY V1
+cost_model: zero_cost_v1_pre_cost_research_only
+zero_cost_v1: true
+
+# Inference + secondary KPIs
+gates:
+  ledoit_wolf_2008_differential_ci:
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 1000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+  hansen_spa:
+    alpha: 0.05
+    variant: consistent
+    n_bootstrap: 1000
+    omega_method: hac
+  bh_q: {threshold: 0.10}
+
+# ADR-0018 / ADR-0019 fitness layer
+mppm:
+  rho: 1.0
+  delta_t: 0.003968253968253968  # = 1/252
+  n_bootstrap: 1000
+bocd:
+  hazard_rate: 0.01  # = 1/100 per H050 BOCD sensitivity finding 2026-05-12
+  window: 60
+  threshold: 0.5
+
+# Projection
+forward_projection:
+  n_paths: 5000
+  n_sessions: 252
+
+# Vol-target reference for sizing-rule
+vol_target_default: 0.10
+
+random_seed: 20260512

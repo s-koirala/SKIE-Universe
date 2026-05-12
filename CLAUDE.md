@@ -805,6 +805,23 @@ Roll-adjusted has fewer rows than raw because it keeps only the front-month bars
 
 **Substrate is now production-ready for H060**, modulo the MCL §2 amendment decision. The 4 BLOCKING-code follow-ups above are the bridge from substrate to KPI report card; the §2 amendment is the bridge from substrate to design.md freeze + production run.
 
+### Phase O.0 amendment: operator-resolved MCL/CL/cost-model decisions; H060 v1 scope-locked (2026-05-12 evening, post-Stage-B)
+
+Operator 2026-05-12 evening: "We will drop MCL for now then circle back to CL in the future, placing it in plans... drop fees and commissions for now. the rest look great."
+
+Four decisions locked:
+
+1. **v1 basket = {ES, NQ, MGC, SIL}**. MCL dropped due to 2021-07-12 inception precluding the §2 2015-2019 calibration holdout. The metals/energy expansion at v1 contains NO energy — silver substitutes for crude.
+2. **H061 reserved for "TSMOM with full CL"**. Full NYMEX WTI Light Sweet Crude has 2015-onward substrate (pre-Micro launch) but extraction cost is ~$240 USD (out-of-budget at 2026-05-12 $80 ceiling). H061 entered into [hypothesis_backlog.md](hypothesis_backlog.md) Tier 2c at `queued`; new follow-up `P1-H060-V2-WITH-CL-FULL-SIZE` tracks the substrate-extension cycle.
+3. **Zero-cost v1** — pre-cost research-only. No commissions, no exchange fees, no NFA fees, no slippage. Realized OOS = pre-cost upper bound; live + paper P/L will be strictly worse. KPI report card carries `cost-zero-v1-pre-cost-research-only` annotation per ADR-0017 cost-realism convention. Track `P1-H060-COST-EMPIRICAL-CALIBRATION` BLOCKING-BEFORE-PAPER-TRADE-EVALUATED-STAGE-TRANSITION.
+4. **Code-only progression authorized** through KPI emission — no further operator round-trip required for the H060 v1 production run; placeholder-fee verification + degraded-day canary + holiday-calendar follow-ups are non-blocking at v1.
+
+**§1 + §2 pre-`run` rectification landed** in H060 design.md. The original agent-drafted §1 + §2 specified basket {ES, NQ, CL, GC} but the operator's substrate authorization (and Stage A extraction) was {MCL, MGC, SIL}; the original draft never matched operationally-realised substrate. Amendment treats this as pre-`run` rectification per ADR-0013 §"Frozen pre-registration amendment" §1-§7 immutability discipline since the design.md was committed at `status: designed` in commit `0453cad` but never run. §17 revision-log carries the full amendment record. Combined substrate SHA256 `242aaa280b216f45edc3b9d9de9630f52f71206eea7832c1cb0470296190f46f` now bound in §2.
+
+**H060 walk-forward orchestrator** at `scripts/run_h060_walk_forward.py` and KPI report card v1 at `research/01_hypothesis_register/H060/H060_kpi_report_v1.md` are landing in the same commit as this amendment under a background agent task. KPI v1 will report under the ADR-0017 + ADR-0018 + ADR-0019 + ADR-0022 paradigm: primary metric vector (terminal-wealth-q05, Calmar-differential, profit-factor, R-multiple-mean), MPPM(ρ=1) fitness, Kelly-multiplier grid selection, BOCD decay-detector annotation, L-skewness payoff-shape, causal-mechanism `hybrid` annotation per H060 §1.3. All on a daily-cadence TSMOM construction (MOP 2012 12-month signal + COM-60-day-EWMA vol-scaling + monthly rebalance) on the {ES, NQ, MGC, SIL} basket.
+
+**Next mandatory transition for H060** (per ADR-0013 §1): on KPI emission, `exploration-in-progress` → `kpi-report-emitted`. Then per ADR-0013 §5 mandatory NinjaScript implementation per operator-discretionary review.
+
 **Script-hardening committed alongside this amendment**: [scripts/databento_metals_energy_cost_dossier.py](scripts/databento_metals_energy_cost_dossier.py) (a) `_fingerprint_api_key` now returns `<suppressed-for-security>` instead of `len=N,tail=XXXX` to prevent even partial-key information from persisting to disk; (b) default `SCHEMA` constant changed from `ohlcv-1m` to `ohlcv-1d` to reflect H060's daily-cadence requirement; (c) inline docstring documents the 40× cost finding so future hypotheses inherit the lesson.
 
 **New follow-ups registered**:
