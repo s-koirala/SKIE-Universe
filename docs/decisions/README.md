@@ -16,6 +16,7 @@ Grouped by domain. Click an ADR ID for the full text.
 | [ADR-0013](ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) | **Permanent Exploration** — KPI-only evaluation, no-archive policy, NinjaScript terminus, non-loss mandate | accepted | 2026-05-03 |
 | [ADR-0016](ADR-0016-sibling-repo-audit-and-lift-protocol.md) | Sibling-repo audit-and-lift protocol — promoting SKIE-Ninja / Volatility / 0DTE / V3 artifacts | proposed | 2026-05-06 |
 | [ADR-0021](ADR-0021-liquidity-provision-research-track-scoping.md) | Liquidity-provision research-track scoping — H100-series reserved; orderbook substrate deferred | proposed | 2026-05-12 |
+| [ADR-0023](ADR-0023-metals-energy-futures-substrate-expansion.md) | Metals/energy futures substrate expansion — CL/MCL/GC/MGC via Databento; monthly-roll calendar; 24/5 session policy | proposed | 2026-05-12 |
 
 ### Inference and statistical methodology
 

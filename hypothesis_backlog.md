@@ -85,6 +85,12 @@ The active research front. Hypotheses H050-H055 carry pre-registered design.md +
 | H025 | FX carry unwind via SOFR-IOER spread → ES direction | — | queued |
 | H026 | Implied-realized correlation divergence (CBOE COR) as regime gate | — | queued |
 
+## Tier 2c — cross-asset futures (added 2026-05-12 per ADR-0023)
+
+| ID | Angle | Mechanism / citation | Status |
+|---|---|---|---|
+| H060 | Cross-futures time-series momentum (TSMOM) on equal-weighted basket {ES, NQ, CL, GC} | [Moskowitz-Ooi-Pedersen 2012 JFE 104(2):228-250](https://doi.org/10.1016/j.jfineco.2011.11.003) canonical; [Hurst-Ooi-Pedersen 2017 JPM 44(1):15-29](https://doi.org/10.3905/jpm.2017.44.1.015) 137-yr backtest; [Huang-Li-Wang-Zhou 2020 JFE 137(3):695-712](https://doi.org/10.1016/j.jfineco.2020.04.003) post-publication decay; [Hong-Stein 1999 JoF 54(6):2143-2184](https://doi.org/10.1111/0022-1082.00184) gradual-info-diffusion mechanism; design [H060/design.md](research/01_hypothesis_register/H060/design.md); lit-review [H060/lit_review_H060_2026-05-12.md](research/01_hypothesis_register/H060/lit_review_H060_2026-05-12.md) | designed |
+
 ## Tier 4 — execution / portfolio
 
 | ID | Angle | Mechanism | Status |
