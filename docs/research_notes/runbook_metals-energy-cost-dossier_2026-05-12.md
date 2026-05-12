@@ -32,6 +32,8 @@ Window: **2015-01-01 → 2025-12-31** (matches the H060 design.md §2 calibratio
 
 Symbology: **parent symbols** `CL.FUT`, `MCL.FUT`, `GC.FUT`, `MGC.FUT` (Databento smart-symbology resolves to all front-month contracts within the window). This matches the existing H050/H052a/etc. substrate convention (continuous front-month series).
 
+**Schema** (load-bearing decision; revised 2026-05-12 per first-run cost-finding): `ohlcv-1d` (daily-bar) is the operationally correct schema for H060 per §2 daily-cadence. Initial dry-run with `ohlcv-1m` (1-min bar) returned $313.88 total — substantially over budget. Re-quote at `ohlcv-1d` returned $7.63 total — well within $30 tight budget. Schema-constant in the script was updated to `ohlcv-1d` as the default. Use `ohlcv-1m` only if a future H060 v2 successor requires intraday-grain CL/GC microstructure features.
+
 ## 2. Pre-flight check
 
 - [ ] Operator has `DATABENTO_API_KEY` env var available (same key used for H050 Cell-I; sibling repo at `C:\Users\skoir\Documents\SKIE Enterprises\SKIE-Ninja\SKIE-Ninja-Project\SKIE_Ninja\config\api_keys.py`).

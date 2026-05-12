@@ -697,3 +697,24 @@ Operator 2026-05-12 strategic-redirect ("stick to futures moving forward. includ
 **Audit-remediate-loop discipline at Phase O.0**: Round-1 lit-check agent surfaced three load-bearing user-prompt-errors during the H060 lit-review draft (corrected MOP 2012 ex-ante-vol; corrected Hutchinson-O'Brien 2020 venue; corrected lookback grid omission). Inline-remediation applied to the design.md §1.4 partial-decay caveat + cross-link + DOI fixes. Round-2 verification deferred to first H060 KPI report card emission per the ADR-0018 R3 precedent.
 
 **Path forward**: operator authorization required for `P1-DATABENTO-METALS-ENERGY-COST-DOSSIER` + `P1-DATABENTO-METALS-ENERGY-EXTRACTION-AUTHORIZE` (the ~$30-80 USD spend). On authorization the BLOCKING-BEFORE-H060-PRODUCTION-RUN infrastructure tasks (`P1-MONTHLY-ROLL-MODULE-IMPL` + `P1-SESSION-POLICY-24-5-IMPL` + `P1-METALS-ENERGY-COST-MODEL-IMPL` + `P1-INSTRUMENTS-YAML-METALS-ENERGY-EXTEND`) fall in a single subsequent commit cycle; production walk-forward and KPI emission follow as a multi-session execution.
+
+### Phase O.0 amendment: cost-dossier executed; schema-correction discovered (2026-05-12 evening)
+
+Operator-authorized + executed the `metadata.get_cost` call (operator-supplied API key in chat with "DO NOT PUBLISH" directive; key used ephemerally as subprocess env var, not committed; api_key_fingerprint suppressed in dossier output per defensive hardening; **operator-action follow-up `P1-DATABENTO-KEY-ROTATE-POST-CHAT-EXPOSURE` registered — chat transcripts are an exposure surface and the key should be rotated**). Two-step finding:
+
+1. **Initial `ohlcv-1m` quote: $313.88 USD total** — substantially over both the $30 tight and $80 loose budget ceilings per ADR-0023 §Decision 6. CL alone was $239.82 (dominant cost; CL trades nearly 24/5 with 12 monthly contracts/year so the 1-min substrate is ~40× denser than equity-index RTH 1-min).
+2. **Re-quote at `ohlcv-1d` (daily-bar): $7.63 USD total** — well within the $30 tight budget. The 1-min schema was a script-default inheritance from the existing ES/NQ pattern, but H060 §2 is explicitly daily-cadence (MOP 2012 monthly rebalance evaluated on daily closes). ohlcv-1d is the operationally correct schema. Per-symbol: CL.FUT $6.01, MCL.FUT $0.26, GC.FUT $0.96, MGC.FUT $0.40.
+
+ES/NQ are NOT re-extracted; the existing [data/processed/vendor_legacy_1min_roll_adjusted/](data/processed/vendor_legacy_1min_roll_adjusted/) substrate downsamples to daily-close in code per H060 §2 cadence requirement.
+
+**Binding T_live: $7.6336 USD at `ohlcv-1d`**, captured in the consolidated dossier at [logs/databento_cost_dossiers/metals_energy_consolidated_2026-05-12.json](logs/databento_cost_dossiers/metals_energy_consolidated_2026-05-12.json). Both 1m and 1d figures preserved for transparency + as upper-bound reference if a future H060 v2 requires intraday CL/GC features.
+
+**Closes `P1-DATABENTO-METALS-ENERGY-COST-DOSSIER`.** The cost-dossier deliverable is on disk; the T_live figure is binding per the H050 Cell-I precedent.
+
+**Authorization-decision now in operator's hands**: $7.63 is well within the $30 tight budget, well within the project's identity-hygiene + sandbox-spend constraints. Operator may authorize `P1-DATABENTO-METALS-ENERGY-EXTRACTION-AUTHORIZE` for the actual Stage-A extraction immediately.
+
+**Script-hardening committed alongside this amendment**: [scripts/databento_metals_energy_cost_dossier.py](scripts/databento_metals_energy_cost_dossier.py) (a) `_fingerprint_api_key` now returns `<suppressed-for-security>` instead of `len=N,tail=XXXX` to prevent even partial-key information from persisting to disk; (b) default `SCHEMA` constant changed from `ohlcv-1m` to `ohlcv-1d` to reflect H060's daily-cadence requirement; (c) inline docstring documents the 40× cost finding so future hypotheses inherit the lesson.
+
+**New follow-ups registered**:
+- `P1-DATABENTO-KEY-ROTATE-POST-CHAT-EXPOSURE` (operator-action; BLOCKING-BEFORE-NEXT-DATABENTO-CALL): chat-transcript exposure surface; rotate the key + revoke the exposed one.
+- `P1-COST-DOSSIER-SCHEMA-PARAMETERIZATION` (non-blocking; nice-to-have): expose `SCHEMA` as a CLI flag instead of a constant so future hypotheses can dossier multiple schemas in one run.

@@ -51,8 +51,18 @@ from pathlib import Path
 # --- Configuration: ADR-0023 §Decision 1 Tier-1 + sample window per H060 §2 ---
 
 DATASET = "GLBX.MDP3"           # CME Globex (covers CME/NYMEX/COMEX)
-SCHEMA = "ohlcv-1m"             # H060 §3 features computed on 1-min bars,
-                                # then aggregated to daily-cadence per §2
+SCHEMA = "ohlcv-1d"             # H060 §2 is daily-cadence by construction (MOP 2012
+                                # monthly rebalance on daily closes); ohlcv-1d is the
+                                # operationally correct schema. Initial dry run on
+                                # 2026-05-12 with schema='ohlcv-1m' returned $313.88
+                                # total -- substantially over both budget ceilings;
+                                # re-quote at 'ohlcv-1d' returned $7.63 total. The
+                                # ~40x cost reduction reflects the per-byte pricing
+                                # convention (1-min has ~390 bars/session vs 1d's 1
+                                # bar/session). For hypotheses that need intraday
+                                # microstructure features (e.g., a future H060 v2
+                                # with bar-cadence CL features), override to
+                                # 'ohlcv-1m' or use a coarser intraday schema.
 STYPE_IN = "parent"             # parent symbology resolves to front-month continuous
 START = "2015-01-01"            # H060 §2 sample window (calibration + IS + OOS)
 END = "2025-12-31"              # H060 §2 OOS right-edge upper bound
@@ -108,10 +118,18 @@ class CostDossier:
 
 
 def _fingerprint_api_key(api_key: str) -> str:
-    """Return safe fingerprint for provenance logging — last 4 chars + length."""
+    """Return defanged fingerprint for provenance logging.
+
+    Per the 2026-05-12 operator-shared-key-in-chat-transcript incident (where the
+    "DO NOT PUBLISH" directive was emphasized), this fingerprint suppresses even
+    the last-4-chars + length to prevent any partial-key information from
+    persisting to the JSON dossier on disk. Replace with the prior
+    `f"len={len(api_key)},tail={api_key[-4:]}"` convention only if the dossier
+    output path is hardened (e.g., chmod 600 + .gitignore'd directory).
+    """
     if not api_key:
         return "<missing>"
-    return f"len={len(api_key)},tail={api_key[-4:]}"
+    return "<suppressed-for-security>"
 
 
 def main() -> int:
@@ -140,7 +158,7 @@ def main() -> int:
     sdk_version = getattr(db, "__version__", "unknown")
     print(f"[info] databento SDK version: {sdk_version}")
     print(f"[info] dataset={DATASET}, schema={SCHEMA}, stype_in={STYPE_IN}")
-    print(f"[info] window: {START} → {END}")
+    print(f"[info] window: {START} -> {END}")
     print(f"[info] symbols: {[s['symbol'] for s in SYMBOLS]}")
     print()
 
