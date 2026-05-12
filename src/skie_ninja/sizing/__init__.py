@@ -49,19 +49,38 @@ Implementation per `P1-SURVIVAL-CONSTRAINED-SIZING-PRIMITIVE`
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 from scipy.optimize import minimize_scalar
 
 __all__ = [
+    "KELLY_MULTIPLIER_GRID_DEFAULT",
+    "KELLY_MULTIPLIER_SUPER_KELLY_THRESHOLD",
     "compute_position_size",
     "drawdown_constrained_kelly",
     "kelly_fraction_from_r_multiples",
+    "kelly_multiplier_annotation",
+    "select_kelly_multiplier_by_grid",
 ]
 
 # Project-canonical quarter-Kelly upper-bound clamp per ADR-0017 §4.1.
 _KELLY_CAP_DEFAULT = 0.25
+
+# Per ADR-0018 D-2 (2026-05-12 lift of the ADR-0017 §4.1 fixed quarter-Kelly cap):
+# grid-searched Kelly multiplier over {0.25, 0.5, 1.0, 1.5, 2.0, 2.5}. The grid
+# intentionally extends into the literature-uniformly-dominated super-Kelly
+# regime per the operator's $10K-sandbox carve-out; super-Kelly cells (multiplier
+# > 1.0) require a `super-kelly-operator-discretionary` KPI annotation per
+# ADR-0018 §Consequences. The literature cap at full-Kelly (multiplier = 1.0)
+# follows MacLean-Thorp-Ziemba 2010 *Kelly Capital Growth*, World Scientific
+# DOI 10.1142/7598 §"Fractional-Kelly shrinkage" — fractional-Kelly shrinkage
+# in [0.25, 0.5] is the canonical practitioner range; betting above full-Kelly
+# is uniformly dominated in long-run growth + reduces survival probability.
+KELLY_MULTIPLIER_GRID_DEFAULT: tuple[float, ...] = (0.25, 0.5, 1.0, 1.5, 2.0, 2.5)
+KELLY_MULTIPLIER_SUPER_KELLY_THRESHOLD: float = 1.0
 
 # Numerical floor on the lower bound for f to avoid log(0) at f * min(R) → -1.
 _F_LOWER = 1e-9
@@ -299,6 +318,7 @@ def compute_position_size(
     capacity_ceiling: int,
     k_atr: float = 2.0,
     risk_budget_pct: float = 0.01,
+    kelly_multiplier: float = 0.25,
 ) -> int:
     """Project-canonical position-size computation per ADR-0017 §4.1.
 
@@ -351,6 +371,25 @@ def compute_position_size(
             2N convention per Faith 2007 *practitioner*).
         risk_budget_pct: Per-trade risk budget as fraction of equity
             (default 0.01 = 1%; Turtle convention per Faith 2007).
+        kelly_multiplier: Per ADR-0018 D-2 (2026-05-12 lift of the §4.1 fixed
+            quarter-Kelly cap), a scalar applied to `kelly_fraction` BEFORE
+            the cap-clamp. The effective Kelly fraction becomes
+            `clamp(kelly_fraction × kelly_multiplier, 0, max(KELLY_MULTIPLIER_GRID_DEFAULT))`
+            (= 2.5 upper bound). At the legacy default `kelly_multiplier=0.25`
+            with `kelly_fraction=1.0`, the effective Kelly is `0.25` — byte-
+            identical to the pre-ADR-0018 behavior under the call pattern
+            `compute_position_size(..., kelly_fraction=1.0)` (and structurally
+            identical to the legacy formula `kelly_fraction × equity / notional`
+            whenever the caller's pre-ADR-0018 `kelly_fraction` value satisfies
+            `kelly_fraction == effective_legacy_fraction` and the new caller
+            passes that same value with `kelly_multiplier=0.25`). The clamp
+            upper bound is now 2.5 (vs the pre-ADR-0018 implicit 1.0 from
+            `kelly_fraction ∈ [0, 1]`); the supplied `kelly_fraction` parameter
+            range is unchanged at [0, 1]. Multipliers > 1.0 are "super-Kelly"
+            per ADR-0018 §Consequences and KPI report cards consuming the
+            returned size must carry a `super-kelly-operator-discretionary`
+            annotation. Default 0.25 = quarter-Kelly per MacLean-Thorp-Ziemba
+            2010 fractional-Kelly shrinkage convention.
 
     Returns:
         Integer position size to deploy at entry. Always in [0, capacity_ceiling].
@@ -375,12 +414,146 @@ def compute_position_size(
         raise ValueError(f"k_atr must be positive, got {k_atr}.")
     if not (0.0 <= risk_budget_pct <= 1.0):
         raise ValueError(f"risk_budget_pct must be in [0, 1], got {risk_budget_pct}.")
+    if kelly_multiplier < 0.0:
+        raise ValueError(f"kelly_multiplier must be non-negative, got {kelly_multiplier}.")
 
     risk_budget_dollars = risk_budget_pct * equity
     dollar_loss_per_contract = k_atr * atr * multiplier
     dollar_notional_per_contract = entry_price * multiplier
 
+    # Per ADR-0018 D-2: multiply BEFORE clamping at the grid-max upper bound
+    # (2.5 = max(KELLY_MULTIPLIER_GRID_DEFAULT)). Backward-compatibility note:
+    # at the new default `kelly_multiplier=0.25`, the call
+    # `compute_position_size(..., kelly_fraction=1.0, kelly_multiplier=0.25)`
+    # produces `effective_kelly = 0.25`, structurally identical to the legacy
+    # `compute_position_size(..., kelly_fraction=0.25)` (where 0.25 was the
+    # legacy quarter-Kelly notional cap). The clamp upper bound moves from
+    # 1.0 to 2.5 to accommodate super-Kelly grid cells.
+    kelly_cap_upper = max(KELLY_MULTIPLIER_GRID_DEFAULT)
+    effective_kelly = max(0.0, min(kelly_fraction * kelly_multiplier, kelly_cap_upper))
+
     risk_bound = risk_budget_dollars / dollar_loss_per_contract
-    kelly_bound = (kelly_fraction * equity) / dollar_notional_per_contract
+    kelly_bound = (effective_kelly * equity) / dollar_notional_per_contract
 
     return int(math.floor(min(risk_bound, kelly_bound, float(capacity_ceiling))))
+
+
+def kelly_multiplier_annotation(multiplier: float) -> str:
+    """Return the KPI annotation string for a chosen Kelly multiplier.
+
+    Per ADR-0018 §Consequences (2026-05-12), every KPI report card that
+    consumes a grid-searched Kelly multiplier MUST carry a
+    `kelly-multiplier-{value}` annotation; values strictly greater than the
+    full-Kelly threshold (1.0; per MacLean-Thorp-Ziemba 2010 *Kelly Capital
+    Growth*, World Scientific DOI 10.1142/7598) further require a
+    `+super-kelly-operator-discretionary` suffix to flag the literature-
+    uniformly-dominated regime.
+
+    Args:
+        multiplier: The selected Kelly multiplier (typically from
+            `select_kelly_multiplier_by_grid`).
+
+    Returns:
+        Annotation string of the form `"kelly-multiplier-{val}"` or
+        `"kelly-multiplier-{val}+super-kelly-operator-discretionary"`.
+    """
+    base = f"kelly-multiplier-{multiplier}"
+    if multiplier > KELLY_MULTIPLIER_SUPER_KELLY_THRESHOLD:
+        return f"{base}+super-kelly-operator-discretionary"
+    return base
+
+
+def select_kelly_multiplier_by_grid(
+    r_multiples: npt.ArrayLike,
+    mppm_fn: Callable[..., float],
+    grid: tuple[float, ...] = KELLY_MULTIPLIER_GRID_DEFAULT,
+    **mppm_kwargs: Any,
+) -> dict[str, Any]:
+    """Grid-search the Kelly multiplier maximizing MPPM(ρ=1) per ADR-0018 D-2.
+
+    For each candidate multiplier `m ∈ grid`, the implied sized R-multiple
+    stream is `sized_R_i = m × raw_kelly_f × R_i` where `raw_kelly_f =
+    kelly_fraction_from_r_multiples(R)` is the Vince 1990 optimal-f on the
+    empirical R-multiple distribution (R-multiple form per the `kelly_fraction_
+    from_r_multiples` semantic). The sized stream is then floored at -1.0
+    (no more than total-bankroll loss per trade — the canonical risk-of-ruin
+    boundary) and passed to `mppm_fn`. The best-scoring multiplier is
+    returned along with the full grid result table.
+
+    Per ADR-0018 D-2 the grid intentionally extends to 2.5× full-Kelly to
+    cover the operator's $10K-sandbox carve-out for super-Kelly exploration;
+    super-Kelly cells (`m > 1.0`) carry the `super-kelly-operator-discretionary`
+    annotation per ADR-0018 §Consequences + MacLean-Thorp-Ziemba 2010 (full-
+    Kelly is the literature growth-optimum; multipliers > 1.0 are uniformly
+    dominated in expected long-run growth and reduce survival probability).
+
+    Args:
+        r_multiples: 1-D array of per-trade R-multiples from the IS fold
+            (R-multiple form: R_i = realized P/L / |1R|, with R = -1 for a
+            full-stop loss). Must contain at least one finite value.
+        mppm_fn: Callable returning MPPM(ρ=1) given a sized R-multiple stream.
+            Typically `skie_ninja.inference.mppm.mppm_rho_1`. The callable is
+            invoked as `mppm_fn(sized_stream, **mppm_kwargs)`. Passed as a
+            parameter (not imported at module level) to avoid circular imports
+            between `skie_ninja.sizing` and `skie_ninja.inference.mppm`.
+        grid: Tuple of multipliers to evaluate. Defaults to
+            `KELLY_MULTIPLIER_GRID_DEFAULT = (0.25, 0.5, 1.0, 1.5, 2.0, 2.5)`
+            per ADR-0018 D-2.
+        **mppm_kwargs: Additional keyword arguments forwarded to `mppm_fn`.
+
+    Returns:
+        Dict with keys:
+        - `best_multiplier` (float): the grid cell maximizing MPPM.
+        - `best_mppm` (float): the maximum MPPM value.
+        - `grid_results` (list[dict]): per-cell `{"multiplier", "mppm"}` rows.
+        - `is_super_kelly` (bool): True iff `best_multiplier > 1.0` per
+          ADR-0018 §Consequences.
+        - `annotation` (str): the KPI annotation per
+          `kelly_multiplier_annotation(best_multiplier)`.
+
+    Raises:
+        ValueError: if `r_multiples` is empty after finite-filtering, or if
+            `grid` is empty.
+    """
+    rm = np.asarray(r_multiples, dtype=float).ravel()
+    rm = rm[np.isfinite(rm)]
+    if rm.size == 0:
+        raise ValueError("r_multiples must contain at least one finite value.")
+    if len(grid) == 0:
+        raise ValueError("grid must contain at least one multiplier.")
+
+    raw_kelly_f = kelly_fraction_from_r_multiples(rm)
+
+    grid_results: list[dict[str, float]] = []
+    best_multiplier = float(grid[0])
+    best_mppm = -math.inf
+    found_any_finite = False
+    for m in grid:
+        sized = np.clip(float(m) * raw_kelly_f * rm, -1.0, None)
+        try:
+            mppm_val = float(mppm_fn(sized, **mppm_kwargs))
+        except Exception:
+            mppm_val = float("nan")
+        grid_results.append({"multiplier": float(m), "mppm": mppm_val})
+        if math.isfinite(mppm_val):
+            found_any_finite = True
+            if mppm_val > best_mppm:
+                best_mppm = mppm_val
+                best_multiplier = float(m)
+
+    if not found_any_finite:
+        best_mppm = float("nan")
+        # When no finite MPPM is recovered, default to the smallest (least-
+        # levered) multiplier — the conservative choice consistent with the
+        # pure-loss edge case where every multiplier produces a negative
+        # MPPM and the smallest cell preserves the most bankroll.
+        best_multiplier = float(min(grid))
+
+    is_super_kelly = best_multiplier > KELLY_MULTIPLIER_SUPER_KELLY_THRESHOLD
+    return {
+        "best_multiplier": best_multiplier,
+        "best_mppm": best_mppm,
+        "grid_results": grid_results,
+        "is_super_kelly": is_super_kelly,
+        "annotation": kelly_multiplier_annotation(best_multiplier),
+    }
