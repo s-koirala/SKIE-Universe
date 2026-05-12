@@ -15,6 +15,7 @@ Grouped by domain. Click an ADR ID for the full text.
 | [ADR-0012](ADR-0012-disposition-philosophy-aspirational-mvp.md) | Disposition philosophy — aspirational-MVP, KPI-reported | superseded by ADR-0013 | — |
 | [ADR-0013](ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) | **Permanent Exploration** — KPI-only evaluation, no-archive policy, NinjaScript terminus, non-loss mandate | accepted | 2026-05-03 |
 | [ADR-0016](ADR-0016-sibling-repo-audit-and-lift-protocol.md) | Sibling-repo audit-and-lift protocol — promoting SKIE-Ninja / Volatility / 0DTE / V3 artifacts | proposed | 2026-05-06 |
+| [ADR-0021](ADR-0021-liquidity-provision-research-track-scoping.md) | Liquidity-provision research-track scoping — H100-series reserved; orderbook substrate deferred | proposed | 2026-05-12 |
 
 ### Inference and statistical methodology
 
@@ -27,6 +28,10 @@ Grouped by domain. Click an ADR ID for the full text.
 | [ADR-0014](ADR-0014-canonical-end-of-simulation-results-summary-tables.md) | Canonical end-of-simulation results-summary tables — KPI report card §3.2 mandate | accepted | 2026-05-04 |
 | [ADR-0015](ADR-0015-component-stacking-master-architecture.md) | Per-component → stacking-master → multi-TF-attention architecture pattern | proposed | 2026-05-06 |
 | [ADR-0017](ADR-0017-survival-constrained-optimization-paradigm.md) | **Survival-constrained optimization paradigm** — profit-and-drawdown-primary inference, Sharpe demoted to KPI | accepted | 2026-05-08 |
+| [ADR-0018](ADR-0018-regime-conditional-aggressive-growth-paradigm.md) | **Regime-conditional aggressive-growth paradigm** — MPPM(ρ=1) fitness, Kelly grid-search, BOCD decay, switching-bandit | proposed | 2026-05-12 |
+| [ADR-0019](ADR-0019-barbell-payoff-shape-screening.md) | Barbell payoff-shape screening — L-skewness annotation in every KPI report card | proposed | 2026-05-12 |
+| [ADR-0020](ADR-0020-meta-portfolio-orchestrator.md) | Meta-portfolio orchestrator across emitted hypothesis arms (IR = IC·√breadth) | proposed | 2026-05-12 |
+| [ADR-0022](ADR-0022-causal-mechanism-vs-correlation-only-annotation.md) | Mandatory causal-mechanism vs correlation-only annotation in every design.md | proposed | 2026-05-12 |
 
 ### Modeling
 
@@ -49,6 +54,7 @@ For a new reader trying to understand the current research posture:
 
 1. **[ADR-0013](ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md)** — the central governance ADR. No promotion gates; every hypothesis progresses to NinjaScript regardless of KPI; non-loss mandate forbids deletion of audit / report card / sidecar files.
 2. **[ADR-0017](ADR-0017-survival-constrained-optimization-paradigm.md)** — the central inferential ADR. Sharpe demoted to KPI; primary metrics are terminal-wealth-q05 + Calmar-differential + profit-factor + R-multiple-mean. Mandatory inheritance from H055 forward.
+2a. **[ADR-0018](ADR-0018-regime-conditional-aggressive-growth-paradigm.md)** — the aggressive-growth amendment to ADR-0017. MPPM(ρ=1) replaces Sharpe in inner-CV fitness; Kelly multiplier grid-searched (including super-Kelly under explicit literature caveat); BOCD decay detector; switching-bandit meta-strategy. Adopts Lo 2004 Adaptive Markets Hypothesis as project-canonical philosophical framing.
 3. **[ADR-0014](ADR-0014-canonical-end-of-simulation-results-summary-tables.md)** — the central reporting ADR. Every KPI report card carries 9 mandatory tables (12 from 2026-05-08 per ADR-0017 §3.2).
 4. **[ADR-0005](ADR-0005-hmm-regime-toolkit.md)** — the central modeling ADR for the HMM regime track (Baum-Welch + causal forward-filter inference; warm-cold sidecar diagnostics).
 5. **[ADR-0001](ADR-0001-project-scope.md)** — the foundational scope ADR (universe, capacity, walk-forward-only).
