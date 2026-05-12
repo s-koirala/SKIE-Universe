@@ -21,6 +21,7 @@ No stage is terminal. There is no `archive` stage. Operator-discretionary review
 | **H053** | Multi-TF 09:45→10:30 ET ES/NQ regression with opening-bar mediation | 2b | `kpi-report-emitted` (v3) | [design.md](H053/design.md) | [stage.md](H053/stage.md) | [v1](H053/H053_kpi_report_v1.md) · [v2](H053/H053_kpi_report_v2.md) · [v3](H053/H053_kpi_report_v3.md) | [failure_log.md](H053/failure_log.md) |
 | **H054** | Anti-gate first-hour ORB on CME ES | 2b | `kpi-report-emitted` | [design.md](H054/design.md) | [stage.md](H054/stage.md) | [v1](H054/H054_kpi_report_v1.md) | [failure_log.md](H054/failure_log.md) |
 | **H055** | Mechanized intraday wick-rejection scalping (HMM-deferred v3) | 2b | `exploration-in-progress` (`designed` frozen) | [design.md](H055/design.md) | [stage.md](H055/stage.md) | [v0 skeleton](H055/H055_kpi_report_v0.md) | [failure_log.md](H055/failure_log.md) |
+| **H060** | Cross-futures TSMOM on {ES, NQ, MGC, SIL} (pre-cost research-only v1) | 2c | `kpi-report-emitted` (non-significant null) | [design.md](H060/design.md) | [stage.md](H060/stage.md) | [v1](H060/H060_kpi_report_v1.md) | [failure_log.md](H060/failure_log.md) |
 
 ## Queued (per the H055 successor tree)
 
