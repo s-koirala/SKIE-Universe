@@ -105,7 +105,7 @@ gates:
     variant: consistent
     n_bootstrap: 1000
     omega_method: hac
-    K_max: 500  # justify: PLACEHOLDER pending P1-H062-POWER-SIMULATION-EXECUTE; rebound at empirical value at first running run
+    K_max: 500  # justify: PLACEHOLDER pending P1-H062-POWER-SIMULATION-EXECUTE (Phase O.2 quick-mode bound: K_max_recommended=50 at sigma=0.01, effect=0.005, T=500; type-I=0.04 at K=50 → use 500 as conservative upper bound for v1; tighten in production run per artifacts/runs/H062/power_*/power_sidecar.json)
   romano_wolf_2005_stepwise_fwer:  # H062 family-wise correction across 4 sibling instruments per H055 §RW2005 precedent
     alpha: 0.05
     n_bootstrap: 1000

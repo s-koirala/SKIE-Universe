@@ -1,0 +1,39 @@
+{
+  "K_grid": [
+    50,
+    200
+  ],
+  "K_max_placeholder_in_yaml": 500,
+  "K_max_recommended": 50,
+  "T_basket": 500,
+  "alpha": 0.05,
+  "config_resolved_sha256": "9bb1774ccb927f4a1d12cccdf58ac33a7d278bd50785352e33b1d1e41927c99a",
+  "effect_size_min": 0.005,
+  "hypothesis_id": "H062",
+  "interpretation": "K_max_recommended is the smallest K in K_grid where empirical_power >= 0.80 at effect_size_min. If None, no K in K_grid achieves the power target; rerun with a wider K grid or larger effect_size.",
+  "n_bootstrap": 200,
+  "n_replicates": 50,
+  "power_curve": [
+    {
+      "K": 50,
+      "T": 500,
+      "effect_size": 0.005,
+      "empirical_power_estimate": 1.0,
+      "n_replicates": 50,
+      "sigma": 0.01,
+      "type_1_error_estimate": 0.04
+    },
+    {
+      "K": 200,
+      "T": 500,
+      "effect_size": 0.005,
+      "empirical_power_estimate": 1.0,
+      "n_replicates": 50,
+      "sigma": 0.01,
+      "type_1_error_estimate": 0.12
+    }
+  ],
+  "rng_seed": 20260514,
+  "sigma": 0.01,
+  "written_at_utc": "2026-05-15T22:35:40.368339+00:00"
+}
