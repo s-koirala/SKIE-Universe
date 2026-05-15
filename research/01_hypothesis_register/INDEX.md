@@ -22,6 +22,7 @@ No stage is terminal. There is no `archive` stage. Operator-discretionary review
 | **H054** | Anti-gate first-hour ORB on CME ES | 2b | `kpi-report-emitted` | [design.md](H054/design.md) | [stage.md](H054/stage.md) | [v1](H054/H054_kpi_report_v1.md) | [failure_log.md](H054/failure_log.md) |
 | **H055** | Mechanized intraday wick-rejection scalping (HMM-deferred v3) | 2b | `exploration-in-progress` (`designed` frozen) | [design.md](H055/design.md) | [stage.md](H055/stage.md) | [v0 skeleton](H055/H055_kpi_report_v0.md) | [failure_log.md](H055/failure_log.md) |
 | **H060** | Cross-futures TSMOM on {ES, NQ, MGC, SIL} (pre-cost research-only v1) | 2c | `kpi-report-emitted` (non-significant null) | [design.md](H060/design.md) | [stage.md](H060/stage.md) | [v1](H060/H060_kpi_report_v1.md) | [failure_log.md](H060/failure_log.md) |
+| **H062** | Intraday Donchian-channel breakout on {ES, NQ, MGC, SIL} at super-Kelly grid with BOCD halt + switching-bandit redirect | 2c | `exploration-in-progress` (`designed` frozen) | [design.md](H062/design.md) | [stage.md](H062/stage.md) | [v0 skeleton](H062/H062_kpi_report_v0.md) | [failure_log.md](H062/failure_log.md) |
 
 ## Queued (per the H055 successor tree)
 

@@ -1,0 +1,218 @@
+# H062 hypothesis configuration.
+#
+# Intraday N-bar Donchian-channel breakout on a 4-asset CME-Globex retail-tier
+# basket {ES, NQ, MGC, SIL} at super-Kelly multiplier grid with BOCD decay-
+# detector halt + switching-bandit redirect under the Phase N + Phase O.0
+# paradigm stack (ADR-0013 / ADR-0014 / ADR-0017 / ADR-0018 / ADR-0019 /
+# ADR-0022 / ADR-0023).
+#
+# Pre-reg design at:
+#   research/01_hypothesis_register/H062/design.md
+#
+# Per ADR-0014 §3.2: end-of-simulation results-summary tables MANDATORY
+# in every KPI report card emitted from this hypothesis.
+hypothesis_id: H062
+test_statistic: "MPPM_rho1_basket"  # PRIMARY per ADR-0018 D-1; basket-level MPPM(ρ=1)
+test_statistic_secondary: "SR_breakout_minus_SR_passive_BH"  # secondary informational per ADR-0017 §1.2 demotion
+universe: [ES, NQ, MGC, SIL]  # 4-asset basket; CL/MCL deferred to H062-v2 per P1-H062-V2-WITH-CL-MCL-EXTEND
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  # Pre-Phase-O.0 substrate (b3ee230a...) covers ES + NQ 2015-2025 only;
+  # Post-Phase-O.0 substrate (verified 1247dc7e..., NOT the CLAUDE.md ledger's
+  # claimed 242aaa28...; reconciliation under P1-CLAUDE-MD-LEDGER-SUBSTRATE-
+  # SHA-RECONCILE) covers ES + NQ 2020-2025 + MGC + SIL 2015-2025. H062 v1
+  # binds the post-Phase-O.0 substrate per the H060 v1 precedent; ES + NQ
+  # calibration holdout (2015-2019) is empty by substrate construction;
+  # equity-index channel-N + k_atr selected on inner-CV of IS instead.
+  calibration_holdout: {start: "2015-01-01", end: "2019-12-31"}  # justify: disjoint from test folds of H050/H052a/H053/H054/H055/H060 per data_requirements.md cross-hypothesis fit-set isolation; MGC + SIL only (ES + NQ have no pre-2020 substrate in this frame)
+  is:   {start: "2020-01-01", end: "2023-12-31"}  # justify: matches H050 train + H055 IS + H060 IS window; all 4 v1 symbols present
+  oos:  {start: "2024-01-01", end: "2025-12-30"}  # per-symbol right-edge clip
+  oos_per_symbol:
+    ES:   {end: "2025-12-03"}  # justify: substrate ES right-edge per data_requirements.md §Coverage
+    NQ:   {end: "2024-12-19"}  # justify: substrate NQ right-edge per data_requirements.md §Coverage
+    MGC:  {end: "2025-12-30"}  # justify: substrate MGC right-edge per data_requirements.md §Coverage
+    SIL:  {end: "2025-12-30"}  # justify: substrate SIL right-edge per data_requirements.md §Coverage
+
+# Per-bar features per design.md §3 (production assembly under P1-H062-FEATURE-FACTORY-IMPL).
+features:
+  - donchian_channel_high_n
+  - donchian_channel_low_n
+  - atr_n_wilder
+  - trend_filter_id_1  # selected from {tsmom_sign, adx_threshold, hac_ols_slope, ma_crossover_sign} per design.md §5.1 Brier-score competition
+  - h_dwell_first_fire_state
+
+# Per-trade entry/exit labels per design.md §4 (ATR-scaled stop + opposite-channel exit + EOD-flatten).
+labels:
+  method: per_trade_donchian_breakout_atr_stop_eod_flatten
+  pt_inf: true  # no profit target per Faith 2007 Turtle System 1 convention; let winners run to opposite-channel exit or EOD-flatten
+  sl_atr_mult_grid: [1.0, 1.5, 2.0, 2.5]  # justify: Turtle 2N is canonical k_atr=2.0; sensitivity neighbors at ±0.5
+  vertical_barrier: eod_flatten
+
+# Splitter per design.md §5.6.
+splitter:
+  method: purged_walk_forward
+  outer_train_sessions: 252  # 1 year IS per Bergmeir-Benitez 2012 + Tashman 2000
+  outer_test_sessions: 60  # 60-day OOS roll; H055 + H060 precedent
+  # Embargo per design.md §5.6: max-holding-period × minutes_per_T_L_bar
+  # = 480 bars × 5 min/bar = 2400 minutes for max channel-N at 5-min cadence
+  embargo_minutes: 2400  # justify: design.md §5.6 + max channel-N=480 × 5 min/bar; R1 F1-001 fix: RTH-equivalent ≈ 5.93 sessions (2400/405), 24/5-equivalent ≈ 1.74 sessions (2400/1380); canonical units = minutes
+  embargo_sessions_equivalent_rth: 5.93  # informational; ES/NQ RTH session = 405 min
+  embargo_sessions_equivalent_24_5: 1.74  # informational; MGC/SIL 24/5 session = 1380 min
+  purge_minutes: 2400  # justify: matches embargo per ADR-0007 stacked-embargo convention
+  inner_cv_n_folds: 3
+
+# Donchian-channel breakout signal-construction grid per design.md §5.
+donchian_signal_grid:
+  cadence_min:  [1, 5, 15]  # justify: 5-min primary; 1-min + 15-min as sensitivity exhibits per design.md §13; Brier-score competition per design.md §5.2 selects empirically
+  channel_n_5min_bars: [20, 40, 60, 120, 240, 480]  # justify: Turtle N=20 + N=55 anchored, geometrically extended for intraday cadence (100min / 200min / 5hr / 10hr / 20hr / 40hr); design.md §5.2
+  h_dwell_5min_bars: [1, 2, 5, 10]  # justify: re-arm dwell after channel reset; bounded above by typical breakout-cluster persistence
+  atr_lookback_bars: [14, 21, 60]  # justify: Wilder 1978 default 14 + sensitivity neighbors; 60 captures longer-horizon vol smoothing
+  trend_filter_id_1: [tsmom_sign, adx_threshold, hac_ols_slope, ma_crossover_sign]  # justify: design.md §5.1 candidates; selected per-instrument by Brier-score competition on calibration holdout (MGC + SIL) + inner-CV bootstrap (ES + NQ)
+
+# Sizing rule per design.md §5.3 (ADR-0017 §4.1 drawdown-constrained Kelly + ADR-0018 D-2 Kelly-multiplier grid).
+sizing:
+  per_trade_risk_pct_equity: 0.01  # 1% Turtle 2N convention per Faith 2007 (practitioner)
+  kelly_multiplier_grid: [0.25, 0.5, 1.0, 1.5, 2.0, 2.5]  # justify: ADR-0018 D-2; quarter-Kelly lower bound per MacLean-Thorp-Ziemba 2010 ruin-controlled regime; 2.5× upper bound at theoretical defensibility ceiling per ADR-0017 §4.1
+  super_kelly_threshold: 1.0  # justify: cells above 1.0 carry mandatory `super-kelly-operator-discretionary` annotation per ADR-0018 D-2
+  use_current_equity: true  # justify: ADR-0017 §4.1 rebases on current equity NOT starting equity — structural defense against operator-pilot-ledger size-with-runup failure mode
+  retail_capacity_caps:
+    ES: 20
+    NQ: 40
+    MGC: 5
+    SIL: 5
+
+# Inference + KPI-only annotations per ADR-0013 (no binding gates).
+gates:
+  mppm_rho1_bootstrap_ci:  # PRIMARY per ADR-0018 D-1; basket-level MPPM(ρ=1) inferential test
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 1000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+  ledoit_wolf_2008_differential_ci:  # SECONDARY informational; SR_breakout - SR_passive_BH per ADR-0017 §1.2 demotion
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 1000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+    benchmarks:
+      - buy_and_hold
+      - ar1_lag1
+  hansen_spa:  # SECONDARY informational per ADR-0008 KPI-only at M=4 family + TPE-conditioned trial set
+    alpha: 0.05
+    variant: consistent
+    n_bootstrap: 1000
+    omega_method: hac
+    K_max: 500  # justify: PLACEHOLDER pending P1-H062-POWER-SIMULATION-EXECUTE; rebound at empirical value at first running run
+  romano_wolf_2005_stepwise_fwer:  # H062 family-wise correction across 4 sibling instruments per H055 §RW2005 precedent
+    alpha: 0.05
+    n_bootstrap: 1000
+    block_length: auto
+  power: {target: 0.80}
+
+# Phase L survival-constrained primary metric vector per ADR-0017 §3.
+survival_metrics:
+  terminal_wealth_q05:
+    n_paths: 5000
+    n_sessions: 252
+    starting_equity: 10000
+  calmar_differential:
+    alpha: 0.05
+    n_bootstrap: 1000
+    block_length: auto
+  profit_factor_differential:
+    alpha: 0.05
+    n_bootstrap: 1000
+    block_length: auto
+  r_multiple_mean:
+    alpha: 0.05
+    n_bootstrap: 1000
+    block_length: auto
+    underpowered_n_min: 30  # justify: Phase L commit 546b828 n<30 boundary per R-multiple CI design
+
+# ADR-0018 / ADR-0019 fitness layer.
+mppm:
+  rho: 1.0
+  delta_t: 0.003968253968253968  # = 1/252 daily basis; R1 F1-005 fix — input series is per-SESSION-AGGREGATED log returns (not per-trade); aggregation per design.md §1
+  n_bootstrap: 1000
+  input_periodicity: per_session_aggregated  # justify: GISW 2007 §2 requires Δt match input periodicity; per design.md §1 per-trade returns aggregated to per-session level then equal-weight-basket then MPPM
+bocd:
+  hazard_rate: 0.01  # = 1/100 per H050 + H060 BOCD sensitivity finding 2026-05-12; Adams-MacKay 2007 §2.2 default
+  window: 60  # trades; project-operational default per H050 + H060 BOCD precedent; calibrated empirically under P1-BOCD-WINDOW-W-EMPIRICAL
+  threshold: 0.5  # justify: change-point posterior threshold; R1 F1-009 fix — project-operational default inherited from H050 + H060 BOCD sensitivity findings 2026-05-12; calibrated empirically under P1-BOCD-HAZARD-RATE-EMPIRICAL
+  run_length_threshold: 3  # folds; justify: project-operational default per H050 + H060 BOCD precedent (3 folds = ~3 months at monthly walk-forward roll cadence); calibrated empirically under P1-BOCD-HAZARD-RATE-EMPIRICAL
+switching_bandit:
+  algorithms_candidate: [d_ucb, glr_klucb]  # justify: ADR-0018 D-4; per-instrument selected by cumulative-regret minimization per design.md §5.5 (R2 F2-005 fix: prior draft said Brier-score; cumulative-regret is canonical bandit metric per Garivier-Moulines 2011 + Besson-Kaufmann-Maillard-Seznec 2019)
+  d_ucb:
+    discount_factor: 0.99  # placeholder; calibrated empirically
+    exploration_constant: 2.0
+  glr_klucb:
+    confidence_alpha: 0.05
+  floor_allocation_pct: 0.10  # justify: ADR-0018 D-4 — original arm retains 10% allocation floor for revisit per Lo 2004 AMH
+l_skewness:
+  threshold: 0.1  # justify: project-operational cutoff per ADR-0019; calibrated empirically under P1-ADR-0019-PAYOFF-SHAPE-THRESHOLD-EMPIRICAL
+  expected_sign: positive  # justify: Donchian-channel-breakout construction is skew-positive (truncate left tail at ATR-stop; let right tail run via opposite-channel exit)
+
+# Cost model: PRE-COST RESEARCH-ONLY V1 per operator 2026-05-08 + 2026-05-12 standing directive.
+cost_model: zero_cost_v1_pre_cost_research_only
+zero_cost_v1: true  # justify: v1 = pre-cost upper-bound research-only artifact per H060 v1 precedent; empirical cost calibration deferred to P1-H062-COST-EMPIRICAL-CALIBRATION (BLOCKING-BEFORE-PAPER-TRADE-EVALUATED-STAGE-TRANSITION)
+cost_sensitivity_mult_v2: [1.0, 2.0]  # justify: 1-tick primary + 2-tick sensitivity per ADR-0013 §3.1 convention; v2 only
+
+# Session policy per design.md §2.
+session_policy:
+  ES: rth_only_cme  # 08:30-15:15 CT
+  NQ: rth_only_cme  # 08:30-15:15 CT
+  MGC: full_24_5_with_maintenance_break  # exclude 16:00-17:00 CT
+  SIL: full_24_5_with_maintenance_break  # exclude 16:00-17:00 CT
+
+eod_flatten:
+  ES: "15:00:00"  # 60-min buffer before RTH close per H052a convention
+  NQ: "15:00:00"
+  MGC: "15:55:00"  # 5-min buffer before daily settlement
+  SIL: "15:55:00"
+eod_flatten_tz: "America/Chicago"
+
+# R1 F1-008 fix: EOD-flatten entry buffer per design.md §4(iii).
+eod_flatten_entry_buffer_minutes:
+  ES: 30   # justify: provisional operator convention; no NEW entries within 30 min of EOD-flatten time per design.md §4(iii); calibrated empirically under new follow-up P1-H062-EOD-FLATTEN-BUFFER-EMPIRICAL
+  NQ: 30   # justify: matches ES per equity-index symmetry
+  MGC: 15  # justify: provisional operator convention; metals 5-min daily-settlement buffer + 15-min entry-buffer = no new entries 15:40-15:55 CT
+  SIL: 15  # justify: matches MGC per metals symmetry
+
+# News-calendar exclusion per design.md §4.
+news_calendar_exclusion:
+  fomc:
+    envelope_minutes: 15  # ±15 min per Lucca-Moench 2015 pre-FOMC drift window
+    release_source: fred_release_id
+  nfp:
+    envelope_minutes: 5  # ±5 min per H055 §4 BLS NFP release-time bracket
+    release_source: bls_calendar
+  cpi:
+    envelope_minutes: 5  # ±5 min per H055 §4 BLS CPI release-time bracket
+    release_source: bls_calendar
+  opec:  # for v2 forward-compatibility; v1 universe has no energy leg
+    envelope_minutes: 15
+    release_source: opec_meeting_calendar
+    applies_to: []  # v1 empty; v2 will populate with CL/MCL once added
+
+# HMM IS DEFERRED to a future H062 successor; v1 uses deterministic trend filter only.
+hmm_excluded: true  # justify: H062 v1 mirrors H055 v1 HMM-deferred convention; HMM-conditioned variant tracked under future P1-H062-V2-WITH-HMM-REGIME-GATE
+
+# Forward projection per ADR-0013 §3.1.
+forward_projection:
+  n_paths: 5000
+  n_sessions: 252
+  starting_equity: 10000
+
+# Risk-of-ruin Monte Carlo per ADR-0017 §4.2 (R2 F2-001 fix; MANDATORY).
+risk_of_ruin:
+  n_paths: 5000
+  n_sessions: 252
+  starting_equity: 10000
+  ruin_threshold_pct: 0.50  # justify: 50% of starting bankroll per project-canonical default per Vince 1990 Ch. 4 + Feller 1968 Ch. XIV
+  sizing_mode: r_multiple_with_compute_position_size  # justify: maps to src/skie_ninja/sizing/__init__.py compute_position_size; per ADR-0017 §4.2 sizing_fn callable mode
+
+# Reproducibility per design.md §16.
+random_seed: 20260514  # justify: design-date YYYYMMDD per project convention
