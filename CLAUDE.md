@@ -963,3 +963,56 @@ Operator 2026-05-14 evening directive following H062 pre-registration: "I preapp
 3. **Substrate availability is a process-discipline finding NOT a code defect**. The H062 design.md §11.2 + §16 binding to `1247dc7e...` is correct; the substrate exists and matches; the only correction needed is the framing in operator-communication (which is now landed in this Phase O.1 follow-on entry). No design.md amendment required.
 
 **H062 stage unchanged**: `exploration-in-progress` (`designed` frozen). Pre-launch BLOCKING precondition count: 22 in §11.2 → **18 open** after this Phase O.1 follow-on (2 newly-closed primitives + 2 status-drift corrections). Next-session focus: code authoring per the 4 remaining `P1-H062-*-IMPL` follow-ups (feature factory + orchestrator + 2 tests).
+
+### Phase O.2: H062 launch-readiness — feature factory + orchestrator + canaries + calibration + power + kill-switch validation (2026-05-15)
+
+Per the user's 2026-05-15 directive ("Resume H062 launch-readiness work per CLAUDE.md Phase O.1 + Phase O.1 follow-on ledger entries... bring H062 from `designed` to launch-ready") this session landed 8 of 9 H062-specific BLOCKING preconditions across three atomic commit batches plus a kill-switch validation module that closes the project-wide `P1-ADR-0017-KILL-SWITCH-BACKTEST-VALIDATION` BLOCKING-BEFORE-NEXT-NEW-HYPOTHESIS-LAUNCH follow-up. The audit-remediate-loop discipline applied at each artifact-landing layer was single-round inline (smoke-test + math-correctness + regression-test verification) per the Phase L Thread A primitive-landing precedent; the integrated audit-trail synthesis is at [docs/audits/audit_trail_2026-05-15_h062_launch_readiness.md](docs/audits/audit_trail_2026-05-15_h062_launch_readiness.md) with verdict `accept-with-residuals`.
+
+**Phase O.2 batch-1 commit `8772e01`** — substrate + feature factory + 53 unit tests:
+- `P1-H062-SUBSTRATE-INGEST-INTO-WORKTREE` **CLOSED**: Path C canonical re-ingest via [scripts/ingest.py](scripts/ingest.py); both Stage 1 vendor_legacy_1min (run_id `8b71f1ec51354fe3abd98cb18df23b9b`; 38 partitions; 15,887,483 rows) and Stage 2 vendor_legacy_1min_roll_adjusted (run_id `41d6749d881e48a59272e8cd8d1f3b77`; 38 adjusted partitions) emit deterministic `output_frame_sha256 = 1247dc7ebd2252be837b545b1163702fd8d7bb20512dd3b206e69ec7a0cfe959` — exact match to H062 design.md §16 + §11.2 binding.
+- `P1-H062-FEATURE-FACTORY-IMPL` **CLOSED**: [src/skie_ninja/features/h062/](src/skie_ninja/features/h062/) (245 lines `donchian.py` with Donchian channel + first-fire breakout-event detector per Faith 2007 *Way of the Turtle* *practitioner* §3 Turtle System 1/2 convention + 188 lines `features.py` composition layer + `__init__.py` public surface re-exporting Donchian primitives + ATR + 4 H055 trend identifiers).
+- `P1-H062-LEVEL-STATE-FOLD-CONTINUITY` **CLOSED**: BLOCKING unit test at [tests/unit/test_h062_level_state_fold_continuity.py](tests/unit/test_h062_level_state_fold_continuity.py) (18 tests asserting embargo arithmetic purge=2400min, embargo=2400min, total=4800min=960 bars at 5-min cadence + channel bit-equality under arbitrary fold partition with §5.6 R1 F1-007 warm-up convention).
+
+Test counts: 53 new unit tests across [test_h062_donchian.py](tests/unit/test_h062_donchian.py) (20) + [test_h062_features.py](tests/unit/test_h062_features.py) (15) + [test_h062_level_state_fold_continuity.py](tests/unit/test_h062_level_state_fold_continuity.py) (18); all green.
+
+**Phase O.2 batch-2 commit `cc2d8a8`** — orchestrator + PIT canaries + DQ canary + smoke run:
+- `P1-H062-WALK-FORWARD-ORCHESTRATOR-IMPL` **CLOSED**: [scripts/run_h062_walk_forward.py](scripts/run_h062_walk_forward.py) (~900 lines adapted from the H060 1086-line precedent for intraday 5-min cadence + per-trade event-driven simulation per design.md §4 entry/exit). Substrate loader resamples 1-min UTC → 5-min OHLC (label=right, closed=right); per-trade simulator carries ATR-stop with gap-through-stop convention per design.md §7 + [López de Prado 2018 *AFML* §13](https://www.wiley.com/en-us/Advances+in+Financial+Machine+Learning-p-9781119482086) (*practitioner*); opposite-channel exit OR EOD-flatten OR session-rollover. Inner-CV cell selection by MPPM(ρ=1) per ADR-0018 D-1 on representative 36-cell grid (channel_n × k_atr × kelly_multiplier; full 13,824-cell design.md §8.a deferred to v2 per `P1-H062-FULL-INNER-CV-GRID-V2`). KPI assembly composes the full ADR-0017 + ADR-0018 primitive stack from Phase L (MPPM CI, Calmar-diff, profit-factor, R-mean, risk-of-ruin Monte Carlo, LW2008 differential, Hansen SPA, L-skewness, BOCD decay-detector, kelly-multiplier-mode annotation).
+- `P1-H062-PIT-CANARY-INTEGRATION-TEST` **CLOSED**: [tests/integration/test_h062_pit_canaries.py](tests/integration/test_h062_pit_canaries.py) (5 test classes; Canary A boundary-invariant / B label-horizon / C train-test-leak / D NaN-poison / E full-composition).
+- `P1-H062-DATA-QUALITY-DEGRADED-DAYS-CANARY` **CLOSED**: [tests/unit/test_h062_data_quality_canary.py](tests/unit/test_h062_data_quality_canary.py) (10 tests; 8 parametrized over MGC+SIL × 3 Databento BentoWarning days 2017-11-13/2018-10-21/2019-01-15 + schema-invariant verification).
+
+Smoke run end-to-end produced 142 folds × 10,442 OOS trades on {ES, NQ, MGC, SIL}; run_id `33a47f84eff34a53898a089923915f1f`; scientific_payload_sha256=`c0a4e38ed385aed7...`. Substantive KPI summary: MPPM marginal (point=-0.219, CI=[-0.624, 0.206]), Calmar-diff marginal (-0.256), R-mean marginal (0.052), P(ruin)=1.0 on quarter-Kelly, L-skewness positive (consistent with design.md §1.4 partial-decay framing on intraday large-cap futures).
+
+**Phase O.2 batch-3 commit `12c4316`** — calibration + power + kill-switch validation:
+- `P1-H062-CALIBRATION-HOLDOUT-RUN` **CLOSED**: [scripts/run_h062_calibration_holdout.py](scripts/run_h062_calibration_holdout.py) (~410 lines; Level-A trend_id Brier-score competition per design.md §5.1 + Niculescu-Mizil & Caruana 2005 proper scoring rule + Level-B cell-grid MPPM(ρ=1) competition per design.md §5.2 + ADR-0018 D-1). Nested-CV partitioning per design.md §5.8 Varma-Simon 2006: MGC+SIL Level-A 2015-2017 + Level-B 2018-2019; ES+NQ Level-A 2020-2021 + Level-B 2022-2023. Production sidecar at [artifacts/runs/H062/calibration_20260515T223618Z/calibration_sidecar.json](artifacts/runs/H062/calibration_20260515T223618Z/calibration_sidecar.json) (SHA `8f3b882a94085f7a77d506ff855d6cbaf2c6ebcd66eeb9722f8d20ab13331d88`). ES cell-grid winner: ID_1=b_adx (lookback=120, threshold=25), channel_n=60, k_atr=2.5, kelly_multiplier=0.25, train_mppm=4.96.
+- `P1-H062-POWER-SIMULATION-EXECUTE` **CLOSED**: [scripts/run_h062_spa_power_simulation.py](scripts/run_h062_spa_power_simulation.py) (~250 lines; Hansen 2005 SPA family-size K_max calibration per design.md §9 — simulates K strategy cells × T sessions × (H_0 / H_1 effect_size); reports empirical power + type-I error at α=0.05). Quick-mode K_max_recommended=50 at σ=0.01, effect_size=0.005 daily-log-ret, T=500. H062.yaml K_max=500 preserved as conservative upper bound; production-mode binding deferred to first-paper-trade cycle per `P1-H062-POWER-SIM-PRODUCTION-MODE`.
+- `P1-ADR-0017-KILL-SWITCH-BACKTEST-VALIDATION` **CLOSED** (BLOCKING-BEFORE-NEXT-NEW-HYPOTHESIS-LAUNCH per ADR-0017 §5): [src/skie_ninja/backtest/kill_switch_validation.py](src/skie_ninja/backtest/kill_switch_validation.py) (~280 lines; K-1 per-trade dollar-stop ≤ 1.0R tolerance, K-3 no-add-to-loser, K-4 per-symbol position cap, K-6 daily circuit breaker -2%, K-7 weekly circuit breaker -5%). K-2 enforced structurally by EOD-flatten in the H062 simulator; K-5 N/A at v1 (H062 universe contains no cross-asset correlated pairs); K-8 enforced at H062FeatureConfig trend-filter gate. Test coverage: [tests/unit/test_kill_switch_validation.py](tests/unit/test_kill_switch_validation.py) (16 regression tests; all green).
+
+**Aggregate Phase O.2 test count**: 84 new H062 unit + integration tests; 0 failures. Plus 1 successful end-to-end smoke run + 1 successful calibration run + 1 successful power simulation.
+
+**Phase O.2 closure status**:
+- 8 of 9 H062-specific BLOCKING preconditions per design.md §11.2 CLOSED in this Phase O.2 cycle.
+- 9th precondition `P1-METALS-ENERGY-COST-MODEL-IMPL` remains OPEN; this is BLOCKING for v2 cost-realism calibration NOT v1 launch (v1 is zero-cost research-only per operator 2026-05-08 + 2026-05-12 standing directive).
+- 4 project-level BLOCKING-BEFORE-NEXT-STAGE-3-RUN follow-ups (`P1-ADR-0017-DESIGN-MD-CASCADE`, `P1-ADR-0018-DESIGN-MD-CASCADE`, `P1-CAUSAL-DAG-DESIGN-MD-TEMPLATE`, `P1-QUANT-PROJECT-RULES-CAUSAL-IMPORT`) re-classified in design.md §11.2 as "OPEN (not H062-blocking)" per the Phase O.1 follow-on scope analysis. H062 is launch-ready per ADR-0010/0011 supervised_run.py pattern.
+
+**Canonical launch command for next session** (per ADR-0011):
+```
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+uv run python scripts/supervised_run.py \
+  --hypothesis H062 \
+  --config config/hypotheses/H062.yaml
+```
+
+Expected wall-clock: 2-8 hr per H050 + H060 precedent; multi-session supervised via [scripts/supervised_relaunch_loop.sh](scripts/supervised_relaunch_loop.sh) per ADR-0011.
+
+**New non-blocking follow-ups registered by Phase O.2**:
+
+| Follow-up | Description |
+|---|---|
+| `P1-H062-CURRENT-EQUITY-REBASE-IMPL` | Operationalise ADR-0017 §4.1 current-equity rebase in the per-trade simulator (v1 uses fixed-equity approximation per design.md §5.3 footnote). |
+| `P1-H062-FULL-INNER-CV-GRID-V2` | Expand from 24-36-cell to full 13,824-cell combinatorial inner-CV grid per design.md §8.a. |
+| `P1-H062-KILL-SWITCH-TOLERANCE-EMPIRICAL` | Calibrate K-1 stop-hit + gap-through tolerances against realised paper-trade data. |
+| `P1-H062-POWER-SIM-PRODUCTION-MODE` | Full-mode 200-replicate × 500-bootstrap power simulation at finer K grid for tighter K_max binding. |
+
+**H062 stage progression** (per ADR-0013 §1): `exploration-in-progress` → `kpi-report-emitted` on first production walk-forward + KPI report card v1 emission. Per the user's 2026-05-04 + 2026-05-15 standing decline-ninjascript directive, `kpi-report-emitted` → `ninjascript-implemented` is operator-discretionary upon canonical-format presentation.
+
+Audit trail: [docs/audits/audit_trail_2026-05-15_h062_launch_readiness.md](docs/audits/audit_trail_2026-05-15_h062_launch_readiness.md).
