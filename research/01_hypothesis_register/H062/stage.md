@@ -21,6 +21,7 @@ Stages (per ADR-0013 §1):
 | date | stage | transition_evidence | operator | notes |
 |---|---|---|---|---|
 | 2026-05-14 | exploration-in-progress | design.md frozen at status=designed; commit pending | skoir | initial pre-registration; 2-round audit-remediate-loop ACCEPT per [docs/audits/audit_trail_2026-05-14_h062_intraday_donchian_design.md](../../../docs/audits/audit_trail_2026-05-14_h062_intraday_donchian_design.md) |
+| 2026-05-15 | kpi-report-emitted | [H062_kpi_report_v1.md](H062_kpi_report_v1.md) emitted; sidecar [artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json](../../../artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json) with scientific_payload_sha256=`fbd85226d304b7dacc1e2b2ef0f701be860a6ed8808a214a47031cfdd054612c`; run_id `16cb68d997c148a2834aad21b73bfdb6` | skoir | first production walk-forward; 93 folds × 2,944 OOS sessions × 8,270 trades; non-significant null (basket MPPM CI=[-0.599, +0.172] covers zero; all 4 ADR-0017 primary survival metrics marginal); skew-positive payoff τ_3=+0.740 confirms design.md §13 prediction; quarter-Kelly unanimous 93/93 folds; realized OOS +43.25% vs passive +304.47%; MaxDD 90.97% vs passive 39.74%; per CLAUDE.md Phase O.2 ledger + audit trail [docs/audits/audit_trail_2026-05-15_h062_launch_readiness.md](../../../docs/audits/audit_trail_2026-05-15_h062_launch_readiness.md) |
 
 ## Append discipline
 

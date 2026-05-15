@@ -1,0 +1,2897 @@
+{
+  "adr_0018_0019": {
+    "bocd": {
+      "decay_detected": false,
+      "detection_index": null,
+      "max_posterior": NaN
+    },
+    "fold_mppm_oos_path": [
+      1.3882663727050677,
+      -4.661110497494188,
+      2.6018688123092373,
+      -3.831234153823294,
+      -5.130225946916154,
+      -2.5454977235306275,
+      NaN,
+      NaN,
+      NaN,
+      NaN,
+      -2.545497723530808,
+      1.6039772941257098,
+      0.22712765120748654,
+      -1.9548095749145376,
+      -2.5454977235306675,
+      -2.411419725238056,
+      2.736965342036775,
+      -2.269556522545258,
+      -3.2684317581148385,
+      -1.6144563541410115,
+      -0.7560201469682415,
+      -1.649070454385897,
+      NaN,
+      -2.545497723530347,
+      -2.545497723530972,
+      NaN,
+      11.566021048725569,
+      NaN,
+      -0.5939117899924985,
+      3.256922743156971,
+      NaN,
+      NaN,
+      NaN,
+      NaN,
+      0.5011955876618859,
+      NaN,
+      -2.4609441109178776,
+      NaN,
+      NaN,
+      NaN,
+      NaN,
+      -0.27586768176557336,
+      0.04628475930449658,
+      -1.0029285644381203,
+      -1.3307609942653058,
+      0.562825707871441,
+      -2.1955518078649194,
+      0.4160339930077136,
+      -0.9534118731367842,
+      -1.5321254997099294,
+      -0.5796686996356514,
+      1.4947637264192775,
+      -3.9564511404109717,
+      1.8161833444565478,
+      -1.4030507744561853,
+      -1.72688468514855,
+      2.5739460670920566,
+      -1.4528444169664334,
+      -0.030342902837741947,
+      0.5470182579217536,
+      0.8042103325560471,
+      0.5463314646837494,
+      1.738199112242723,
+      0.8902077255353524,
+      3.030008818450939,
+      1.5022460851387986,
+      2.141348985267817,
+      -0.0286867987095525,
+      -3.185951944929326,
+      -1.084910674489607,
+      -0.023859092827025283,
+      0.26109509041896894,
+      -1.5245004213550188,
+      -0.8294200819354774,
+      -0.765078072137231,
+      -0.368143498057315,
+      4.226512732335472,
+      1.6667021571599168,
+      -3.259999477436635,
+      -1.6292876479844578,
+      -1.2968373685164043,
+      -1.0924866030754787,
+      -0.3537581496413014,
+      -2.820161649279089,
+      1.1645166639732942,
+      1.4198208581056597,
+      -0.3204687757304132,
+      1.2874821491012547,
+      0.18642648481942942,
+      -0.10681902625131218,
+      -1.164461692982642,
+      -0.4890058246283844,
+      -1.3551006783743644
+    ],
+    "kelly_multiplier_mode": 0.25,
+    "l_skewness_tau3": {
+      "ci_high": 0.7512576447573867,
+      "ci_low": 0.7281931609631834,
+      "tau3": 0.7404848152176555
+    }
+  },
+  "annotations_dot_separated": "leakage-canary-pass \u00b7 mppm-rho1-marginal \u00b7 bocd-decay-flag-not-raised \u00b7 kelly-multiplier-0.25 \u00b7 kelly-multiplier-0.25 \u00b7 skew-positive \u00b7 causal-mechanism-hybrid \u00b7 cost-zero-v1-pre-cost-research-only \u00b7 repro-log-complete \u00b7 calmar-diff-marginal \u00b7 pf-diff-marginal \u00b7 r-multiple-mean-marginal",
+  "annotations_list": [
+    "leakage-canary-pass",
+    "mppm-rho1-marginal",
+    "bocd-decay-flag-not-raised",
+    "kelly-multiplier-0.25",
+    "kelly-multiplier-0.25",
+    "skew-positive",
+    "causal-mechanism-hybrid",
+    "cost-zero-v1-pre-cost-research-only",
+    "repro-log-complete",
+    "calmar-diff-marginal",
+    "pf-diff-marginal",
+    "r-multiple-mean-marginal"
+  ],
+  "config_resolved_sha256": "314f6ea93efc680169583dc4337b340a7a60c19c2c6005c1ef86e2c64fdd0788",
+  "cost_model": {
+    "id": "zero_cost_v1_pre_cost_research_only"
+  },
+  "dataset_checksums": {
+    "vendor_legacy_1min_roll_adjusted": "1247dc7ebd2252be837b545b1163702fd8d7bb20512dd3b206e69ec7a0cfe959"
+  },
+  "feature_grid_realized": {
+    "channel_n": [
+      20,
+      60,
+      120,
+      240
+    ],
+    "fixed_atr_n": 14,
+    "fixed_h_dwell": 5,
+    "fixed_trend_id": "a_ts_mom",
+    "fixed_trend_id_lookback_l": 60,
+    "fixed_trend_id_threshold": 1.0,
+    "k_atr": [
+      1.5,
+      2.0,
+      2.5
+    ],
+    "kelly_multiplier": [
+      0.25,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "smoke_mode": false
+  },
+  "forward_projection_arm": {
+    "mean": 13697.102651237088,
+    "median": 10220.459739954471,
+    "n_paths": 5000,
+    "n_sessions": 252,
+    "prob_double": 0.1836,
+    "prob_loss": 0.4896,
+    "prob_lt_half": 0.1582,
+    "q01": 2051.1457128168026,
+    "q05": 3103.7962926172254,
+    "q95": 36145.000126616906,
+    "q99": 60468.10942316621
+  },
+  "forward_projection_bench": {
+    "mean": 11521.31374760324,
+    "median": 11251.67585199515,
+    "n_paths": 5000,
+    "n_sessions": 252,
+    "prob_double": 0.0038,
+    "prob_loss": 0.2758,
+    "prob_lt_half": 0.0,
+    "q01": 7193.174346971318,
+    "q05": 8140.331991276839,
+    "q95": 15738.85118275088,
+    "q99": 18251.246980396776
+  },
+  "git_head": "unknown",
+  "hypothesis_id": "H062",
+  "n_folds_realized": 93,
+  "n_oos_sessions_aggregate": 2944,
+  "n_oos_trades_aggregate": 8270,
+  "per_fold": [
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 0,
+      "mppm_oos": 1.3882663727050677,
+      "mppm_train": 7.999115690255721,
+      "n_oos_sessions": 2,
+      "n_trades_oos": 2,
+      "sr_arm_annualised": 4.037967727485304,
+      "sr_bench_annualised": 3.2803188305451627,
+      "symbol": "ES",
+      "test_dates": [
+        "2020-10-28 00:00:00+00:00",
+        "2021-01-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-01-01 00:00:00+00:00",
+        "2020-10-21 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 1,
+      "mppm_oos": -4.661110497494188,
+      "mppm_train": 11.408452107668984,
+      "n_oos_sessions": 3,
+      "n_trades_oos": 6,
+      "sr_arm_annualised": -14.995556158416768,
+      "sr_bench_annualised": 0.7540949611952018,
+      "symbol": "ES",
+      "test_dates": [
+        "2021-01-20 00:00:00+00:00",
+        "2021-03-30 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-03-11 00:00:00+00:00",
+        "2021-01-13 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 2,
+      "mppm_oos": 2.6018688123092373,
+      "mppm_train": 6.968263704334054,
+      "n_oos_sessions": 7,
+      "n_trades_oos": 8,
+      "sr_arm_annualised": 3.0112131603044507,
+      "sr_bench_annualised": 2.951271100437301,
+      "symbol": "ES",
+      "test_dates": [
+        "2021-03-31 00:00:00+00:00",
+        "2021-06-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-05-21 00:00:00+00:00",
+        "2021-03-24 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 3,
+      "mppm_oos": -3.831234153823294,
+      "mppm_train": 16.02114682362855,
+      "n_oos_sessions": 4,
+      "n_trades_oos": 6,
+      "sr_arm_annualised": -41.2431812545981,
+      "sr_bench_annualised": 2.4544104060569865,
+      "symbol": "ES",
+      "test_dates": [
+        "2021-06-09 00:00:00+00:00",
+        "2021-08-17 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-07-30 00:00:00+00:00",
+        "2021-06-02 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 4,
+      "mppm_oos": -5.130225946916154,
+      "mppm_train": 2.2219855373735147,
+      "n_oos_sessions": 2,
+      "n_trades_oos": 4,
+      "sr_arm_annualised": -22.449944320639453,
+      "sr_bench_annualised": 0.7080637506058767,
+      "symbol": "ES",
+      "test_dates": [
+        "2021-08-18 00:00:00+00:00",
+        "2021-10-26 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-10-08 00:00:00+00:00",
+        "2021-08-11 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 5,
+      "mppm_oos": -2.5454977235306275,
+      "mppm_train": 1.0046565999580808,
+      "n_oos_sessions": 3,
+      "n_trades_oos": 3,
+      "sr_arm_annualised": -162824792863373.47,
+      "sr_bench_annualised": -1.4864836124342904,
+      "symbol": "ES",
+      "test_dates": [
+        "2021-10-27 00:00:00+00:00",
+        "2022-01-18 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-12-17 00:00:00+00:00",
+        "2021-10-20 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 6,
+      "mppm_oos": NaN,
+      "mppm_train": 0.7332485060898982,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 0.7598065139506521,
+      "symbol": "ES",
+      "test_dates": [
+        "2022-01-19 00:00:00+00:00",
+        "2022-03-29 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-03-11 00:00:00+00:00",
+        "2022-01-12 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 7,
+      "mppm_oos": NaN,
+      "mppm_train": -0.8144359637948724,
+      "n_oos_sessions": 1,
+      "n_trades_oos": 1,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": -2.3235241873440753,
+      "symbol": "ES",
+      "test_dates": [
+        "2022-03-30 00:00:00+00:00",
+        "2022-06-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-05-20 00:00:00+00:00",
+        "2022-03-23 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 8,
+      "mppm_oos": NaN,
+      "mppm_train": 0.5385355332637864,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 1.7961807390890079,
+      "symbol": "ES",
+      "test_dates": [
+        "2022-06-09 00:00:00+00:00",
+        "2022-08-17 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-07-29 00:00:00+00:00",
+        "2022-06-02 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 9,
+      "mppm_oos": NaN,
+      "mppm_train": 0.8678129878932881,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": -1.2635263746062473,
+      "symbol": "ES",
+      "test_dates": [
+        "2022-08-18 00:00:00+00:00",
+        "2022-10-26 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-10-07 00:00:00+00:00",
+        "2022-08-11 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 10,
+      "mppm_oos": -2.545497723530808,
+      "mppm_train": -0.6929860964412565,
+      "n_oos_sessions": 3,
+      "n_trades_oos": 3,
+      "sr_arm_annualised": -88529774821669.36,
+      "sr_bench_annualised": 0.43064318655118206,
+      "symbol": "ES",
+      "test_dates": [
+        "2022-10-27 00:00:00+00:00",
+        "2023-01-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-12-16 00:00:00+00:00",
+        "2022-10-20 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 11,
+      "mppm_oos": 1.6039772941257098,
+      "mppm_train": -2.3156471366178244,
+      "n_oos_sessions": 20,
+      "n_trades_oos": 20,
+      "sr_arm_annualised": 2.1087580180218812,
+      "sr_bench_annualised": 1.617243375104039,
+      "symbol": "ES",
+      "test_dates": [
+        "2023-01-20 00:00:00+00:00",
+        "2023-03-31 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-03-10 00:00:00+00:00",
+        "2023-01-13 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 12,
+      "mppm_oos": 0.22712765120748654,
+      "mppm_train": -1.7480086800977581,
+      "n_oos_sessions": 50,
+      "n_trades_oos": 114,
+      "sr_arm_annualised": 0.6632318617410462,
+      "sr_bench_annualised": 1.7499008381573693,
+      "symbol": "ES",
+      "test_dates": [
+        "2023-04-02 00:00:00+00:00",
+        "2023-06-09 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-05-20 00:00:00+00:00",
+        "2023-03-26 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 13,
+      "mppm_oos": -1.9548095749145376,
+      "mppm_train": 6.476138133487063,
+      "n_oos_sessions": 13,
+      "n_trades_oos": 16,
+      "sr_arm_annualised": -9.503959607317803,
+      "sr_bench_annualised": 0.1768378103095095,
+      "symbol": "ES",
+      "test_dates": [
+        "2023-06-11 00:00:00+00:00",
+        "2023-08-18 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-07-29 00:00:00+00:00",
+        "2023-06-04 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 14,
+      "mppm_oos": -2.5454977235306675,
+      "mppm_train": 5.784201531147248,
+      "n_oos_sessions": 4,
+      "n_trades_oos": 4,
+      "sr_arm_annualised": -133869576789923.88,
+      "sr_bench_annualised": -2.453214825864961,
+      "symbol": "ES",
+      "test_dates": [
+        "2023-08-20 00:00:00+00:00",
+        "2023-10-27 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-10-07 00:00:00+00:00",
+        "2023-08-13 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 15,
+      "mppm_oos": -2.411419725238056,
+      "mppm_train": 3.0076351129212764,
+      "n_oos_sessions": 11,
+      "n_trades_oos": 11,
+      "sr_arm_annualised": -86.27685737403633,
+      "sr_bench_annualised": 5.777690289018379,
+      "symbol": "ES",
+      "test_dates": [
+        "2023-10-29 00:00:00+00:00",
+        "2024-01-22 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-12-16 00:00:00+00:00",
+        "2023-10-22 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 16,
+      "mppm_oos": 2.736965342036775,
+      "mppm_train": 0.41591323380159545,
+      "n_oos_sessions": 10,
+      "n_trades_oos": 10,
+      "sr_arm_annualised": 2.979559330334302,
+      "sr_bench_annualised": 2.666626768693428,
+      "symbol": "ES",
+      "test_dates": [
+        "2024-01-23 00:00:00+00:00",
+        "2024-04-02 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-03-12 00:00:00+00:00",
+        "2024-01-16 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 17,
+      "mppm_oos": -2.269556522545258,
+      "mppm_train": 0.561833491508939,
+      "n_oos_sessions": 6,
+      "n_trades_oos": 7,
+      "sr_arm_annualised": -18.327767718810883,
+      "sr_bench_annualised": 0.5322432149669231,
+      "symbol": "ES",
+      "test_dates": [
+        "2024-04-03 00:00:00+00:00",
+        "2024-06-11 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-05-22 00:00:00+00:00",
+        "2024-03-26 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 18,
+      "mppm_oos": -3.2684317581148385,
+      "mppm_train": 0.3218853218159703,
+      "n_oos_sessions": 7,
+      "n_trades_oos": 10,
+      "sr_arm_annualised": -27.447364241138413,
+      "sr_bench_annualised": 0.9563236420337066,
+      "symbol": "ES",
+      "test_dates": [
+        "2024-06-12 00:00:00+00:00",
+        "2024-08-20 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-07-31 00:00:00+00:00",
+        "2024-06-05 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 19,
+      "mppm_oos": -1.6144563541410115,
+      "mppm_train": 0.30117112744780006,
+      "n_oos_sessions": 7,
+      "n_trades_oos": 7,
+      "sr_arm_annualised": -10.275047060406157,
+      "sr_bench_annualised": 1.0034822256310985,
+      "symbol": "ES",
+      "test_dates": [
+        "2024-08-21 00:00:00+00:00",
+        "2024-10-29 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-10-09 00:00:00+00:00",
+        "2024-08-14 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 20,
+      "mppm_oos": -0.7560201469682415,
+      "mppm_train": 1.5003700633367416,
+      "n_oos_sessions": 16,
+      "n_trades_oos": 22,
+      "sr_arm_annualised": -1.3665215378347044,
+      "sr_bench_annualised": 0.33049003697355966,
+      "symbol": "ES",
+      "test_dates": [
+        "2024-10-30 00:00:00+00:00",
+        "2025-01-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-01-03 00:00:00+00:00",
+        "2024-10-23 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 21,
+      "mppm_oos": -1.649070454385897,
+      "mppm_train": 1.6142022207337297,
+      "n_oos_sessions": 12,
+      "n_trades_oos": 14,
+      "sr_arm_annualised": -9.057320017113902,
+      "sr_bench_annualised": -2.0719419749843326,
+      "symbol": "ES",
+      "test_dates": [
+        "2025-01-20 00:00:00+00:00",
+        "2025-03-31 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-03-13 00:00:00+00:00",
+        "2025-01-13 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 22,
+      "mppm_oos": NaN,
+      "mppm_train": 1.4040981765452154,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 1.2082548977498455,
+      "symbol": "ES",
+      "test_dates": [
+        "2025-04-01 00:00:00+00:00",
+        "2025-06-10 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-05-23 00:00:00+00:00",
+        "2025-03-25 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 23,
+      "mppm_oos": -2.545497723530347,
+      "mppm_train": 1.807159260684977,
+      "n_oos_sessions": 2,
+      "n_trades_oos": 2,
+      "sr_arm_annualised": -223482027429759.47,
+      "sr_bench_annualised": 2.6142084145997817,
+      "symbol": "ES",
+      "test_dates": [
+        "2025-06-11 00:00:00+00:00",
+        "2025-08-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-08-01 00:00:00+00:00",
+        "2025-06-04 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 24,
+      "mppm_oos": -2.545497723530972,
+      "mppm_train": 1.6179133048495289,
+      "n_oos_sessions": 10,
+      "n_trades_oos": 10,
+      "sr_arm_annualised": -129111477024148.73,
+      "sr_bench_annualised": 1.5788610059746182,
+      "symbol": "ES",
+      "test_dates": [
+        "2025-08-20 00:00:00+00:00",
+        "2025-10-28 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-10-10 00:00:00+00:00",
+        "2025-08-13 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 0,
+      "mppm_oos": NaN,
+      "mppm_train": 4.3342149879463365,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 1.943617041048699,
+      "symbol": "NQ",
+      "test_dates": [
+        "2020-10-28 00:00:00+00:00",
+        "2021-01-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-01-01 00:00:00+00:00",
+        "2020-10-21 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 1,
+      "mppm_oos": 11.566021048725569,
+      "mppm_train": -1.861706812463777,
+      "n_oos_sessions": 2,
+      "n_trades_oos": 4,
+      "sr_arm_annualised": 9.301734724008211,
+      "sr_bench_annualised": -0.5617272763296134,
+      "symbol": "NQ",
+      "test_dates": [
+        "2021-01-20 00:00:00+00:00",
+        "2021-03-30 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-03-11 00:00:00+00:00",
+        "2021-01-13 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 2,
+      "mppm_oos": NaN,
+      "mppm_train": 9.472686707268887,
+      "n_oos_sessions": 1,
+      "n_trades_oos": 1,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 1.8870595943035346,
+      "symbol": "NQ",
+      "test_dates": [
+        "2021-03-31 00:00:00+00:00",
+        "2021-06-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-05-21 00:00:00+00:00",
+        "2021-03-24 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 3,
+      "mppm_oos": -0.5939117899924985,
+      "mppm_train": 7.469655968802275,
+      "n_oos_sessions": 10,
+      "n_trades_oos": 11,
+      "sr_arm_annualised": -1.0802098319651998,
+      "sr_bench_annualised": 3.2577876070867933,
+      "symbol": "NQ",
+      "test_dates": [
+        "2021-06-09 00:00:00+00:00",
+        "2021-08-17 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-07-30 00:00:00+00:00",
+        "2021-06-02 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 4,
+      "mppm_oos": 3.256922743156971,
+      "mppm_train": 3.140700954282153,
+      "n_oos_sessions": 7,
+      "n_trades_oos": 9,
+      "sr_arm_annualised": 7.2968216565395085,
+      "sr_bench_annualised": 0.833350361813557,
+      "symbol": "NQ",
+      "test_dates": [
+        "2021-08-18 00:00:00+00:00",
+        "2021-10-26 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-10-08 00:00:00+00:00",
+        "2021-08-11 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 5,
+      "mppm_oos": NaN,
+      "mppm_train": 3.4259191968732408,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": -1.578577337132625,
+      "symbol": "NQ",
+      "test_dates": [
+        "2021-10-27 00:00:00+00:00",
+        "2022-01-18 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-12-17 00:00:00+00:00",
+        "2021-10-20 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 6,
+      "mppm_oos": NaN,
+      "mppm_train": 3.2367177037033157,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 0.5141591720813046,
+      "symbol": "NQ",
+      "test_dates": [
+        "2022-01-19 00:00:00+00:00",
+        "2022-03-29 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-03-11 00:00:00+00:00",
+        "2022-01-12 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 7,
+      "mppm_oos": NaN,
+      "mppm_train": 3.088929198331286,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": -2.7471726239412835,
+      "symbol": "NQ",
+      "test_dates": [
+        "2022-03-30 00:00:00+00:00",
+        "2022-06-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-05-20 00:00:00+00:00",
+        "2022-03-23 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 8,
+      "mppm_oos": NaN,
+      "mppm_train": 4.554076448331249,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 2.027781630126791,
+      "symbol": "NQ",
+      "test_dates": [
+        "2022-06-09 00:00:00+00:00",
+        "2022-08-17 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-07-29 00:00:00+00:00",
+        "2022-06-02 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 13,
+      "mppm_oos": 0.5011955876618859,
+      "mppm_train": 1.7637051712988272,
+      "n_oos_sessions": 3,
+      "n_trades_oos": 3,
+      "sr_arm_annualised": 2.584141368610388,
+      "sr_bench_annualised": -0.011446555513077333,
+      "symbol": "NQ",
+      "test_dates": [
+        "2023-06-11 00:00:00+00:00",
+        "2023-08-20 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-07-29 00:00:00+00:00",
+        "2023-06-04 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 14,
+      "mppm_oos": NaN,
+      "mppm_train": 1.290264077434974,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": -1.1969012890632336,
+      "symbol": "NQ",
+      "test_dates": [
+        "2023-08-21 00:00:00+00:00",
+        "2023-10-29 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-10-07 00:00:00+00:00",
+        "2023-08-14 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 15,
+      "mppm_oos": -2.4609441109178776,
+      "mppm_train": 1.290264077434974,
+      "n_oos_sessions": 10,
+      "n_trades_oos": 11,
+      "sr_arm_annualised": -27.49743878730387,
+      "sr_bench_annualised": 5.016480866331139,
+      "symbol": "NQ",
+      "test_dates": [
+        "2023-10-30 00:00:00+00:00",
+        "2024-01-23 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-12-16 00:00:00+00:00",
+        "2023-10-23 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 16,
+      "mppm_oos": NaN,
+      "mppm_train": 1.331798207143425,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 0.5351351715735713,
+      "symbol": "NQ",
+      "test_dates": [
+        "2024-01-24 00:00:00+00:00",
+        "2024-04-04 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-03-12 00:00:00+00:00",
+        "2024-01-17 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 17,
+      "mppm_oos": NaN,
+      "mppm_train": 2.1072573932783136,
+      "n_oos_sessions": 1,
+      "n_trades_oos": 1,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 1.841293607909918,
+      "symbol": "NQ",
+      "test_dates": [
+        "2024-04-05 00:00:00+00:00",
+        "2024-06-13 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-05-22 00:00:00+00:00",
+        "2024-03-28 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 18,
+      "mppm_oos": NaN,
+      "mppm_train": 1.3317982071434535,
+      "n_oos_sessions": 1,
+      "n_trades_oos": 1,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": -0.2486388514527862,
+      "symbol": "NQ",
+      "test_dates": [
+        "2024-06-14 00:00:00+00:00",
+        "2024-08-22 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-08-01 00:00:00+00:00",
+        "2024-06-07 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 19,
+      "mppm_oos": NaN,
+      "mppm_train": 0.7778987884757331,
+      "n_oos_sessions": 0,
+      "n_trades_oos": 0,
+      "sr_arm_annualised": NaN,
+      "sr_bench_annualised": 0.04048308604202911,
+      "symbol": "NQ",
+      "test_dates": [
+        "2024-08-23 00:00:00+00:00",
+        "2024-11-01 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-10-10 00:00:00+00:00",
+        "2024-08-16 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 0,
+      "mppm_oos": -0.27586768176557336,
+      "mppm_train": 0.8673600179093507,
+      "n_oos_sessions": 59,
+      "n_trades_oos": 161,
+      "sr_arm_annualised": -0.04628861253121654,
+      "sr_bench_annualised": -0.8960823096868495,
+      "symbol": "MGC",
+      "test_dates": [
+        "2020-10-29 00:00:00+00:00",
+        "2021-01-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-01-01 00:00:00+00:00",
+        "2020-10-22 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 1,
+      "mppm_oos": 0.04628475930449658,
+      "mppm_train": 0.5427356748526071,
+      "n_oos_sessions": 53,
+      "n_trades_oos": 95,
+      "sr_arm_annualised": 0.32432480403878583,
+      "sr_bench_annualised": -2.1976579819562883,
+      "symbol": "MGC",
+      "test_dates": [
+        "2021-01-10 00:00:00+00:00",
+        "2021-03-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-03-12 00:00:00+00:00",
+        "2021-01-03 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 2,
+      "mppm_oos": -1.0029285644381203,
+      "mppm_train": 0.5518989751867045,
+      "n_oos_sessions": 52,
+      "n_trades_oos": 131,
+      "sr_arm_annualised": -1.5022436307742444,
+      "sr_bench_annualised": 3.4768014544246206,
+      "symbol": "MGC",
+      "test_dates": [
+        "2021-03-21 00:00:00+00:00",
+        "2021-05-30 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-05-22 00:00:00+00:00",
+        "2021-03-14 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 3,
+      "mppm_oos": -1.3307609942653058,
+      "mppm_train": 0.5079207247560115,
+      "n_oos_sessions": 53,
+      "n_trades_oos": 132,
+      "sr_arm_annualised": -1.8315013935873592,
+      "sr_bench_annualised": -3.6956932492390377,
+      "symbol": "MGC",
+      "test_dates": [
+        "2021-05-31 00:00:00+00:00",
+        "2021-08-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-07-31 00:00:00+00:00",
+        "2021-05-24 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 4,
+      "mppm_oos": 0.562825707871441,
+      "mppm_train": -0.08967310076823122,
+      "n_oos_sessions": 55,
+      "n_trades_oos": 104,
+      "sr_arm_annualised": 1.0787672983235088,
+      "sr_bench_annualised": 0.7814560545536186,
+      "symbol": "MGC",
+      "test_dates": [
+        "2021-08-09 00:00:00+00:00",
+        "2021-10-17 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-10-09 00:00:00+00:00",
+        "2021-08-02 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 5,
+      "mppm_oos": -2.1955518078649194,
+      "mppm_train": -0.3397205859942633,
+      "n_oos_sessions": 55,
+      "n_trades_oos": 117,
+      "sr_arm_annualised": -6.195383164280314,
+      "sr_bench_annualised": 1.004109824961602,
+      "symbol": "MGC",
+      "test_dates": [
+        "2021-10-18 00:00:00+00:00",
+        "2021-12-27 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-12-18 00:00:00+00:00",
+        "2021-10-11 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 6,
+      "mppm_oos": 0.4160339930077136,
+      "mppm_train": -0.7014772195895691,
+      "n_oos_sessions": 53,
+      "n_trades_oos": 97,
+      "sr_arm_annualised": 1.184169308643656,
+      "sr_bench_annualised": 2.6031063341682676,
+      "symbol": "MGC",
+      "test_dates": [
+        "2021-12-28 00:00:00+00:00",
+        "2022-03-07 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-03-01 00:00:00+00:00",
+        "2021-12-20 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 7,
+      "mppm_oos": -0.9534118731367842,
+      "mppm_train": -0.4410862181221975,
+      "n_oos_sessions": 56,
+      "n_trades_oos": 106,
+      "sr_arm_annualised": -2.2154290420858134,
+      "sr_bench_annualised": -2.449408604865757,
+      "symbol": "MGC",
+      "test_dates": [
+        "2022-03-08 00:00:00+00:00",
+        "2022-05-17 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-05-11 00:00:00+00:00",
+        "2022-03-01 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 8,
+      "mppm_oos": -1.5321254997099294,
+      "mppm_train": -0.6161729639216555,
+      "n_oos_sessions": 55,
+      "n_trades_oos": 106,
+      "sr_arm_annualised": -3.0513808408969574,
+      "sr_bench_annualised": -2.086626148092121,
+      "symbol": "MGC",
+      "test_dates": [
+        "2022-05-18 00:00:00+00:00",
+        "2022-07-26 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-07-20 00:00:00+00:00",
+        "2022-05-11 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 9,
+      "mppm_oos": -0.5796686996356514,
+      "mppm_train": -0.7222825938532704,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 220,
+      "sr_arm_annualised": -1.0788595825934357,
+      "sr_bench_annualised": 0.062337595867535414,
+      "symbol": "MGC",
+      "test_dates": [
+        "2022-07-27 00:00:00+00:00",
+        "2022-10-04 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-09-28 00:00:00+00:00",
+        "2022-07-20 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 10,
+      "mppm_oos": 1.4947637264192775,
+      "mppm_train": -0.2842238535990606,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 224,
+      "sr_arm_annualised": 2.2106134549489234,
+      "sr_bench_annualised": 1.3611154962286913,
+      "symbol": "MGC",
+      "test_dates": [
+        "2022-10-05 00:00:00+00:00",
+        "2022-12-13 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-12-07 00:00:00+00:00",
+        "2022-09-28 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 11,
+      "mppm_oos": -3.9564511404109717,
+      "mppm_train": 0.3126337382217811,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 289,
+      "sr_arm_annualised": -6.624381618189437,
+      "sr_bench_annualised": 0.07349228109521458,
+      "symbol": "MGC",
+      "test_dates": [
+        "2022-12-14 00:00:00+00:00",
+        "2023-02-23 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-02-16 00:00:00+00:00",
+        "2022-12-07 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 12,
+      "mppm_oos": 1.8161833444565478,
+      "mppm_train": -0.2572983783217705,
+      "n_oos_sessions": 53,
+      "n_trades_oos": 93,
+      "sr_arm_annualised": 3.6339584839688084,
+      "sr_bench_annualised": 2.547797970235593,
+      "symbol": "MGC",
+      "test_dates": [
+        "2023-02-24 00:00:00+00:00",
+        "2023-05-05 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-04-28 00:00:00+00:00",
+        "2023-02-17 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 13,
+      "mppm_oos": -1.4030507744561853,
+      "mppm_train": 0.05670480934981233,
+      "n_oos_sessions": 51,
+      "n_trades_oos": 109,
+      "sr_arm_annualised": -3.721316631237125,
+      "sr_bench_annualised": -1.7584122735520922,
+      "symbol": "MGC",
+      "test_dates": [
+        "2023-05-07 00:00:00+00:00",
+        "2023-07-14 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-07-07 00:00:00+00:00",
+        "2023-04-30 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 14,
+      "mppm_oos": -1.72688468514855,
+      "mppm_train": -0.13640323104452418,
+      "n_oos_sessions": 51,
+      "n_trades_oos": 117,
+      "sr_arm_annualised": -4.315674998249875,
+      "sr_bench_annualised": -1.603899473421496,
+      "symbol": "MGC",
+      "test_dates": [
+        "2023-07-16 00:00:00+00:00",
+        "2023-09-22 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-09-15 00:00:00+00:00",
+        "2023-07-09 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 15,
+      "mppm_oos": 2.5739460670920566,
+      "mppm_train": -0.5017661714826671,
+      "n_oos_sessions": 52,
+      "n_trades_oos": 98,
+      "sr_arm_annualised": 4.042572413387504,
+      "sr_bench_annualised": 2.296633235818126,
+      "symbol": "MGC",
+      "test_dates": [
+        "2023-09-24 00:00:00+00:00",
+        "2023-12-01 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-11-24 00:00:00+00:00",
+        "2023-09-17 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 16,
+      "mppm_oos": -1.4528444169664334,
+      "mppm_train": 0.009916451810460747,
+      "n_oos_sessions": 51,
+      "n_trades_oos": 120,
+      "sr_arm_annualised": -2.5950827742929543,
+      "sr_bench_annualised": -1.6734784811789643,
+      "symbol": "MGC",
+      "test_dates": [
+        "2023-12-03 00:00:00+00:00",
+        "2024-02-12 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-02-05 00:00:00+00:00",
+        "2023-11-26 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 17,
+      "mppm_oos": -0.030342902837741947,
+      "mppm_train": -0.3217615368699838,
+      "n_oos_sessions": 48,
+      "n_trades_oos": 91,
+      "sr_arm_annualised": 0.1401842735202774,
+      "sr_bench_annualised": 3.7040554496429356,
+      "symbol": "MGC",
+      "test_dates": [
+        "2024-02-13 00:00:00+00:00",
+        "2024-04-23 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-04-17 00:00:00+00:00",
+        "2024-02-06 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 18,
+      "mppm_oos": 0.5470182579217536,
+      "mppm_train": -0.15160763211983813,
+      "n_oos_sessions": 54,
+      "n_trades_oos": 119,
+      "sr_arm_annualised": 1.0880627380267354,
+      "sr_bench_annualised": -0.28192912271234577,
+      "symbol": "MGC",
+      "test_dates": [
+        "2024-04-24 00:00:00+00:00",
+        "2024-07-02 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-06-26 00:00:00+00:00",
+        "2024-04-17 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 19,
+      "mppm_oos": 0.8042103325560471,
+      "mppm_train": 0.7930479528637655,
+      "n_oos_sessions": 52,
+      "n_trades_oos": 120,
+      "sr_arm_annualised": 1.40352473943058,
+      "sr_bench_annualised": 2.093381495833728,
+      "symbol": "MGC",
+      "test_dates": [
+        "2024-07-03 00:00:00+00:00",
+        "2024-09-10 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-09-04 00:00:00+00:00",
+        "2024-06-26 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 20,
+      "mppm_oos": 0.5463314646837494,
+      "mppm_train": 0.38143790121363774,
+      "n_oos_sessions": 53,
+      "n_trades_oos": 107,
+      "sr_arm_annualised": 1.382356796645716,
+      "sr_bench_annualised": 1.2521731328995016,
+      "symbol": "MGC",
+      "test_dates": [
+        "2024-09-11 00:00:00+00:00",
+        "2024-11-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-11-13 00:00:00+00:00",
+        "2024-09-04 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 21,
+      "mppm_oos": 1.738199112242723,
+      "mppm_train": 0.25350580103911474,
+      "n_oos_sessions": 54,
+      "n_trades_oos": 105,
+      "sr_arm_annualised": 3.066801729027497,
+      "sr_bench_annualised": 1.27503674408169,
+      "symbol": "MGC",
+      "test_dates": [
+        "2024-11-20 00:00:00+00:00",
+        "2025-01-28 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-01-24 00:00:00+00:00",
+        "2024-11-13 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 22,
+      "mppm_oos": 0.8902077255353524,
+      "mppm_train": 1.0653726034894306,
+      "n_oos_sessions": 50,
+      "n_trades_oos": 115,
+      "sr_arm_annualised": 1.5095748105719728,
+      "sr_bench_annualised": 1.8596808059198884,
+      "symbol": "MGC",
+      "test_dates": [
+        "2025-01-29 00:00:00+00:00",
+        "2025-04-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-04-04 00:00:00+00:00",
+        "2025-01-22 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 23,
+      "mppm_oos": 3.030008818450939,
+      "mppm_train": 0.8908352481404365,
+      "n_oos_sessions": 57,
+      "n_trades_oos": 114,
+      "sr_arm_annualised": 4.034181640034736,
+      "sr_bench_annualised": 2.1761293198955243,
+      "symbol": "MGC",
+      "test_dates": [
+        "2025-04-09 00:00:00+00:00",
+        "2025-06-18 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-06-13 00:00:00+00:00",
+        "2025-04-02 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 24,
+      "mppm_oos": 1.5022460851387986,
+      "mppm_train": 1.3147835425363674,
+      "n_oos_sessions": 55,
+      "n_trades_oos": 115,
+      "sr_arm_annualised": 2.6234240199996166,
+      "sr_bench_annualised": -0.2722437606010109,
+      "symbol": "MGC",
+      "test_dates": [
+        "2025-06-19 00:00:00+00:00",
+        "2025-08-27 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-08-22 00:00:00+00:00",
+        "2025-06-12 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 25,
+      "mppm_oos": 2.141348985267817,
+      "mppm_train": 2.0921171091536164,
+      "n_oos_sessions": 50,
+      "n_trades_oos": 104,
+      "sr_arm_annualised": 2.9974427244426862,
+      "sr_bench_annualised": 3.692081579394288,
+      "symbol": "MGC",
+      "test_dates": [
+        "2025-08-28 00:00:00+00:00",
+        "2025-11-05 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-10-31 00:00:00+00:00",
+        "2025-08-21 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 0,
+      "mppm_oos": -0.0286867987095525,
+      "mppm_train": 2.356704893741614,
+      "n_oos_sessions": 57,
+      "n_trades_oos": 238,
+      "sr_arm_annualised": 0.5198438338558605,
+      "sr_bench_annualised": 0.4914769563978938,
+      "symbol": "SIL",
+      "test_dates": [
+        "2020-10-29 00:00:00+00:00",
+        "2021-01-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-01-01 00:00:00+00:00",
+        "2020-10-22 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 1,
+      "mppm_oos": -3.185951944929326,
+      "mppm_train": 2.7579864223086745,
+      "n_oos_sessions": 41,
+      "n_trades_oos": 82,
+      "sr_arm_annualised": -8.220188868287071,
+      "sr_bench_annualised": -0.8682873136499835,
+      "symbol": "SIL",
+      "test_dates": [
+        "2021-01-10 00:00:00+00:00",
+        "2021-03-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-03-12 00:00:00+00:00",
+        "2021-01-03 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 2,
+      "mppm_oos": -1.084910674489607,
+      "mppm_train": 2.071459567592005,
+      "n_oos_sessions": 48,
+      "n_trades_oos": 85,
+      "sr_arm_annualised": -1.5274426663233565,
+      "sr_bench_annualised": 1.2952427528941355,
+      "symbol": "SIL",
+      "test_dates": [
+        "2021-03-21 00:00:00+00:00",
+        "2021-05-30 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-05-22 00:00:00+00:00",
+        "2021-03-14 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 3,
+      "mppm_oos": -0.023859092827025283,
+      "mppm_train": 0.2952500147631607,
+      "n_oos_sessions": 52,
+      "n_trades_oos": 101,
+      "sr_arm_annualised": 0.23814858934090552,
+      "sr_bench_annualised": -3.773997853577542,
+      "symbol": "SIL",
+      "test_dates": [
+        "2021-05-31 00:00:00+00:00",
+        "2021-08-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-07-31 00:00:00+00:00",
+        "2021-05-24 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 4,
+      "mppm_oos": 0.26109509041896894,
+      "mppm_train": -0.0498262673969291,
+      "n_oos_sessions": 48,
+      "n_trades_oos": 81,
+      "sr_arm_annualised": 0.6931640619253483,
+      "sr_bench_annualised": -0.5312424645630179,
+      "symbol": "SIL",
+      "test_dates": [
+        "2021-08-09 00:00:00+00:00",
+        "2021-10-17 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-10-09 00:00:00+00:00",
+        "2021-08-02 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 5,
+      "mppm_oos": -1.5245004213550188,
+      "mppm_train": -0.18034517713604256,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 214,
+      "sr_arm_annualised": -1.647013816390089,
+      "sr_bench_annualised": -0.4616935989798113,
+      "symbol": "SIL",
+      "test_dates": [
+        "2021-10-18 00:00:00+00:00",
+        "2021-12-27 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2020-12-18 00:00:00+00:00",
+        "2021-10-11 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 6,
+      "mppm_oos": -0.8294200819354774,
+      "mppm_train": -0.44264004249682093,
+      "n_oos_sessions": 56,
+      "n_trades_oos": 158,
+      "sr_arm_annualised": -1.0375865896191512,
+      "sr_bench_annualised": 1.7397088288383844,
+      "symbol": "SIL",
+      "test_dates": [
+        "2021-12-28 00:00:00+00:00",
+        "2022-03-07 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-03-01 00:00:00+00:00",
+        "2021-12-20 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 7,
+      "mppm_oos": -0.765078072137231,
+      "mppm_train": 0.6413960139995774,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 221,
+      "sr_arm_annualised": -0.8440497570727314,
+      "sr_bench_annualised": -2.5191844245648496,
+      "symbol": "SIL",
+      "test_dates": [
+        "2022-03-08 00:00:00+00:00",
+        "2022-05-17 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-05-11 00:00:00+00:00",
+        "2022-03-01 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 8,
+      "mppm_oos": -0.368143498057315,
+      "mppm_train": 0.7348974526643772,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 269,
+      "sr_arm_annualised": 0.10563998631809161,
+      "sr_bench_annualised": -2.6486943535087457,
+      "symbol": "SIL",
+      "test_dates": [
+        "2022-05-18 00:00:00+00:00",
+        "2022-07-26 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-07-20 00:00:00+00:00",
+        "2022-05-11 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 9,
+      "mppm_oos": 4.226512732335472,
+      "mppm_train": 0.11697956143491495,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 447,
+      "sr_arm_annualised": 3.5116980887379614,
+      "sr_bench_annualised": 1.521315293018274,
+      "symbol": "SIL",
+      "test_dates": [
+        "2022-07-27 00:00:00+00:00",
+        "2022-10-04 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-09-28 00:00:00+00:00",
+        "2022-07-20 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 10,
+      "mppm_oos": 1.6667021571599168,
+      "mppm_train": 1.2590076797322056,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 474,
+      "sr_arm_annualised": 2.081911158155791,
+      "sr_bench_annualised": 1.8104750191353374,
+      "symbol": "SIL",
+      "test_dates": [
+        "2022-10-05 00:00:00+00:00",
+        "2022-12-13 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2021-12-07 00:00:00+00:00",
+        "2022-09-28 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 11,
+      "mppm_oos": -3.259999477436635,
+      "mppm_train": 1.5744788879837337,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 485,
+      "sr_arm_annualised": -2.1538218357878476,
+      "sr_bench_annualised": -2.208899427873308,
+      "symbol": "SIL",
+      "test_dates": [
+        "2022-12-14 00:00:00+00:00",
+        "2023-02-23 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-02-16 00:00:00+00:00",
+        "2022-12-07 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 20,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 12,
+      "mppm_oos": -1.6292876479844578,
+      "mppm_train": 0.6030710989482132,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 481,
+      "sr_arm_annualised": -0.8914982211217558,
+      "sr_bench_annualised": 2.8497078919166294,
+      "symbol": "SIL",
+      "test_dates": [
+        "2023-02-24 00:00:00+00:00",
+        "2023-05-05 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-04-28 00:00:00+00:00",
+        "2023-02-17 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 13,
+      "mppm_oos": -1.2968373685164043,
+      "mppm_train": 0.9344728280686146,
+      "n_oos_sessions": 54,
+      "n_trades_oos": 127,
+      "sr_arm_annualised": -1.2778153015890563,
+      "sr_bench_annualised": -0.5951630735326298,
+      "symbol": "SIL",
+      "test_dates": [
+        "2023-05-07 00:00:00+00:00",
+        "2023-07-14 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-07-07 00:00:00+00:00",
+        "2023-04-30 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 14,
+      "mppm_oos": -1.0924866030754787,
+      "mppm_train": -0.24239040306267512,
+      "n_oos_sessions": 54,
+      "n_trades_oos": 140,
+      "sr_arm_annualised": -0.8343388151509169,
+      "sr_bench_annualised": -1.565102827861563,
+      "symbol": "SIL",
+      "test_dates": [
+        "2023-07-16 00:00:00+00:00",
+        "2023-09-22 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-09-15 00:00:00+00:00",
+        "2023-07-09 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 15,
+      "mppm_oos": -0.3537581496413014,
+      "mppm_train": -0.6930965628936758,
+      "n_oos_sessions": 56,
+      "n_trades_oos": 138,
+      "sr_arm_annualised": -0.18679244579312704,
+      "sr_bench_annualised": 1.2871366864506557,
+      "symbol": "SIL",
+      "test_dates": [
+        "2023-09-24 00:00:00+00:00",
+        "2023-12-01 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2022-11-24 00:00:00+00:00",
+        "2023-09-17 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 16,
+      "mppm_oos": -2.820161649279089,
+      "mppm_train": -0.5296615357422549,
+      "n_oos_sessions": 53,
+      "n_trades_oos": 135,
+      "sr_arm_annualised": -3.761120931670572,
+      "sr_bench_annualised": -2.6339339508534514,
+      "symbol": "SIL",
+      "test_dates": [
+        "2023-12-03 00:00:00+00:00",
+        "2024-02-12 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-02-05 00:00:00+00:00",
+        "2023-11-26 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 17,
+      "mppm_oos": 1.1645166639732942,
+      "mppm_train": -1.0665678386421202,
+      "n_oos_sessions": 38,
+      "n_trades_oos": 69,
+      "sr_arm_annualised": 1.7938702506179165,
+      "sr_bench_annualised": 2.4750025226492745,
+      "symbol": "SIL",
+      "test_dates": [
+        "2024-02-13 00:00:00+00:00",
+        "2024-04-23 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-04-17 00:00:00+00:00",
+        "2024-02-06 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 18,
+      "mppm_oos": 1.4198208581056597,
+      "mppm_train": -0.559732475977641,
+      "n_oos_sessions": 39,
+      "n_trades_oos": 54,
+      "sr_arm_annualised": 2.198323715562208,
+      "sr_bench_annualised": 0.7031064886773372,
+      "symbol": "SIL",
+      "test_dates": [
+        "2024-04-24 00:00:00+00:00",
+        "2024-07-02 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-06-26 00:00:00+00:00",
+        "2024-04-17 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 19,
+      "mppm_oos": -0.3204687757304132,
+      "mppm_train": -0.004699779046962116,
+      "n_oos_sessions": 34,
+      "n_trades_oos": 46,
+      "sr_arm_annualised": -0.429210050604401,
+      "sr_bench_annualised": -0.921897215696177,
+      "symbol": "SIL",
+      "test_dates": [
+        "2024-07-03 00:00:00+00:00",
+        "2024-09-10 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-09-04 00:00:00+00:00",
+        "2024-06-26 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 20,
+      "mppm_oos": 1.2874821491012547,
+      "mppm_train": 0.24325210915458803,
+      "n_oos_sessions": 36,
+      "n_trades_oos": 52,
+      "sr_arm_annualised": 2.4642812357837416,
+      "sr_bench_annualised": 1.6767896386062813,
+      "symbol": "SIL",
+      "test_dates": [
+        "2024-09-11 00:00:00+00:00",
+        "2024-11-19 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2023-11-13 00:00:00+00:00",
+        "2024-09-04 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 21,
+      "mppm_oos": 0.18642648481942942,
+      "mppm_train": 0.6853709549548301,
+      "n_oos_sessions": 51,
+      "n_trades_oos": 96,
+      "sr_arm_annualised": 0.5856552640280411,
+      "sr_bench_annualised": -0.26408870481829755,
+      "symbol": "SIL",
+      "test_dates": [
+        "2024-11-20 00:00:00+00:00",
+        "2025-01-28 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-01-24 00:00:00+00:00",
+        "2024-11-13 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 22,
+      "mppm_oos": -0.10681902625131218,
+      "mppm_train": 0.9235618389516445,
+      "n_oos_sessions": 41,
+      "n_trades_oos": 78,
+      "sr_arm_annualised": 0.17689427647178393,
+      "sr_bench_annualised": -0.618456478670051,
+      "symbol": "SIL",
+      "test_dates": [
+        "2025-01-29 00:00:00+00:00",
+        "2025-04-08 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-04-04 00:00:00+00:00",
+        "2025-01-22 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 23,
+      "mppm_oos": -1.164461692982642,
+      "mppm_train": 0.09585639215911461,
+      "n_oos_sessions": 50,
+      "n_trades_oos": 115,
+      "sr_arm_annualised": -1.1319774586127949,
+      "sr_bench_annualised": 3.6760577467267925,
+      "symbol": "SIL",
+      "test_dates": [
+        "2025-04-09 00:00:00+00:00",
+        "2025-06-18 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-06-13 00:00:00+00:00",
+        "2025-04-02 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 24,
+      "mppm_oos": -0.4890058246283844,
+      "mppm_train": 0.463373971139004,
+      "n_oos_sessions": 60,
+      "n_trades_oos": 196,
+      "sr_arm_annualised": -0.01978546935882587,
+      "sr_bench_annualised": 0.7676185601156861,
+      "symbol": "SIL",
+      "test_dates": [
+        "2025-06-19 00:00:00+00:00",
+        "2025-08-27 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-08-22 00:00:00+00:00",
+        "2025-06-12 00:00:00+00:00"
+      ]
+    },
+    {
+      "best_cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0,
+        "kelly_multiplier": 0.25,
+        "trend_id": "a_ts_mom",
+        "trend_id_lookback_l": 60,
+        "trend_id_threshold": 1.0
+      },
+      "fold": 25,
+      "mppm_oos": -1.3551006783743644,
+      "mppm_train": 0.6859148833245078,
+      "n_oos_sessions": 26,
+      "n_trades_oos": 58,
+      "sr_arm_annualised": -1.9730508440054553,
+      "sr_bench_annualised": 3.076740315505345,
+      "symbol": "SIL",
+      "test_dates": [
+        "2025-08-28 00:00:00+00:00",
+        "2025-11-05 00:00:00+00:00"
+      ],
+      "train_dates": [
+        "2024-10-31 00:00:00+00:00",
+        "2025-08-21 00:00:00+00:00"
+      ]
+    }
+  ],
+  "per_symbol_n_trades": {
+    "ES": 280,
+    "MGC": 3309,
+    "NQ": 41,
+    "SIL": 4640
+  },
+  "primary_inference": {
+    "calmar_differential_ci": {
+      "calmar_arm": 0.03434381648789024,
+      "calmar_bench": 0.31973515907644395,
+      "ci_high": 0.42152914313493095,
+      "ci_low": -1.077677268462313,
+      "excludes_zero": false,
+      "point": -0.2853913425885537
+    },
+    "mppm_rho1_with_ci": {
+      "block_length": 1.0,
+      "ci_high": 0.17210614542652286,
+      "ci_low": -0.5986168931816361,
+      "excludes_zero": false,
+      "n_bootstrap": 1000,
+      "point": -0.22305866246596254
+    },
+    "profit_factor_differential_ci": {
+      "ci_high": 0.05091056218595438,
+      "ci_low": -0.26114483400438115,
+      "excludes_zero": false,
+      "pf_arm": 1.0081660305441698,
+      "pf_bench": 1.1152373351598515,
+      "point": -0.1070713046156817
+    },
+    "r_multiple_mean_ci": {
+      "ci_high": 0.10891946959732832,
+      "ci_low": -0.017440002935228075,
+      "excludes_zero": false,
+      "point": 0.04393482309308869,
+      "underpowered": false
+    },
+    "risk_of_ruin_monte_carlo": {
+      "median_terminal_equity": 0.0,
+      "n_paths": 5000,
+      "n_paths_ruined": 5000,
+      "probability_of_ruin": 1.0,
+      "q05_terminal_equity": 0.0,
+      "ruin_threshold_fraction": 0.5
+    }
+  },
+  "realized_oos": {
+    "ending_equity": 14324.872825312625,
+    "ending_pct_change": 43.248728253126245,
+    "max_drawdown_pct": 90.97137279793907,
+    "n_losing_sessions": 2031,
+    "n_winning_sessions": 912,
+    "n_zero_sessions": 1,
+    "passive_ending_equity": 40447.319883875374,
+    "passive_ending_pct_change": 304.4731988387538,
+    "passive_max_drawdown_pct": 39.740280859210934,
+    "starting_equity": 10000.0
+  },
+  "rng_seed": 20260514,
+  "run_id": "16cb68d997c148a2834aad21b73bfdb6",
+  "secondary_inference": {
+    "hansen_spa": {
+      "n_strategies": 1,
+      "p_value": 1.0,
+      "p_value_lower": 1.0,
+      "p_value_upper": 1.0,
+      "statistic": 0.0,
+      "variant": "consistent"
+    },
+    "sharpe_arm_annualised": 0.04182189203617364,
+    "sharpe_bench_annualised": 0.6000840572425089,
+    "sharpe_vs_passive_lw2008": {
+      "alpha": 0.05,
+      "ci_high": 0.011434403001976963,
+      "ci_low": -0.07775269939067767,
+      "excludes_zero": false,
+      "point": -0.03517318505959973
+    }
+  },
+  "universe": [
+    "ES",
+    "NQ",
+    "MGC",
+    "SIL"
+  ],
+  "windows": {
+    "is": [
+      "2020-01-01 00:00:00+00:00",
+      "2023-12-31 00:00:00+00:00"
+    ],
+    "oos": [
+      "2024-01-01 00:00:00+00:00",
+      "2025-12-30 00:00:00+00:00"
+    ],
+    "oos_per_symbol": {
+      "ES": "2025-12-03 00:00:00+00:00",
+      "MGC": "2025-12-30 00:00:00+00:00",
+      "NQ": "2024-12-19 00:00:00+00:00",
+      "SIL": "2025-12-30 00:00:00+00:00"
+    }
+  },
+  "written_at_utc": "2026-05-15T23:35:39.561492+00:00"
+}
