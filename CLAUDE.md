@@ -1148,3 +1148,67 @@ Expected wall-clock: 2-8 hr per H050 + H060 precedent; multi-session supervised 
 **H062 stage progression** (per ADR-0013 §1): `exploration-in-progress` → `kpi-report-emitted` on first production walk-forward + KPI report card v1 emission. Per the user's 2026-05-04 + 2026-05-15 standing decline-ninjascript directive, `kpi-report-emitted` → `ninjascript-implemented` is operator-discretionary upon canonical-format presentation.
 
 Audit trail: [docs/audits/audit_trail_2026-05-15_h062_launch_readiness.md](docs/audits/audit_trail_2026-05-15_h062_launch_readiness.md).
+
+### Phase O.5: H055 v2 aggressive-sizing sweep + KPI report card v1 emission — H055 at `kpi-report-emitted` (2026-05-15)
+
+Operator 2026-05-15 directive: "Implement and run H055 v2 — mechanized wick-rejection mean-reversion scalping strategy under the ADR-0017 + ADR-0018 + ADR-0024 high-risk-Kelly framework. Final deliverable: single KPI metrics table comparing v1-style baseline vs aggressive-sizing variants, with OOS results AND 2026-04-01→2026-05-15 (~6 weeks) realized OOS-only sub-window. Ensure audit-remediate loop discipline." Phase O.5 lands the v2 sweep + KPI report card v1 + audit trail + stage transition `exploration-in-progress` → `kpi-report-emitted`.
+
+**H055 design.md status preserved** (`status: designed` 2026-05-06 frozen per ADR-0013 §1-§7 immutability). The v2 sweep is operator-authorized research-only emission per ADR-0013 §1; the design.md is not amended. v1 sweep variant is the v1-baseline-fixed-equity-quarter-Kelly cell preserved as a comparison row in the KPI metrics table; the v2 sweep variants (C2/C3/C9/C5) implement ADR-0017 §4.1 current-equity rebase + ADR-0018 D-2 Kelly grid + D-3 BOCD step-up + ADR-0024 high-risk-Kelly canonical paradigm.
+
+**5-configuration sweep** on the H055 design.md §3 wick-rejection setup family (`emit_h055_setups` from [src/skie_ninja/features/h055/features.py](src/skie_ninja/features/h055/features.py); swing-pivot + wick-reversal-non-swing) across the 4-symbol cross-futures basket {ES, NQ, MGC, SIL}:
+
+| Config | Kelly multiplier | Risk budget | Equity rebase | Pyramid | BOCD step-up | Description |
+|---|---:|---:|:---:|:---:|:---:|---|
+| v1 | 0.25 | 1% | fixed $10K | — | — | v1 baseline (quarter-Kelly, fixed-equity) |
+| C2 | 1.0 | 1% | current | — | — | full-Kelly + current-equity rebase |
+| C3 | 2.0 | 1% | current | — | — | super-Kelly km=2.0 |
+| C9 | 1.5 start | 1% | current | — | yes | BOCD step-up (km_grid {0.5..2.5}; start=1.5; hazard 1/100) |
+| C5 | 2.0 | 1% | current | yes (max 4 units; 1N spacing) | — | super-Kelly + Turtle System 2 pyramid |
+
+**Substantive results** (FULL OOS 2024-01-01 → 2026-05-15; 4-symbol basket; $10K per symbol starting; cost-zero v1; reference per-symbol-per-config rows in [research/01_hypothesis_register/H055/H055_kpi_report_v1.md](research/01_hypothesis_register/H055/H055_kpi_report_v1.md) §2):
+
+| Config | Basket OOS ROI% | Basket Sub-window ROI% (2026-Apr-May) | Strongest cell |
+|---|---:|---:|---|
+| v1 | **-0.6%** (no ES/NQ trades; v1 sizing floors to 0 on equity-index futures at $10K) | +0.0% | MGC-1.2% / SIL-1.2% / others 0 |
+| C2 full-Kelly | **+18.4%** | +4.1% | MGC +72.4% (MPPM +0.206; Calmar +0.696) |
+| C3 super-Kelly km=2.0 | **+19.7%** | -4.4% | MGC +87.0% (MPPM +0.263; Calmar +0.706) |
+| C9 BOCD step-up | **+12.1%** | +2.5% | MGC +58.0% (MPPM +0.185; Calmar +0.861) |
+| C5 super + pyramid | **-6.6%** | +3.0% | MGC +77.2% but ES -53.5% / SIL -46.6% catastrophe |
+
+**Primary finding**: H055 v1 baseline (fixed-equity quarter-Kelly) **cannot trade** ES + NQ at $10K — the fractional-Kelly × $10K / $300-$1,000-per-1R-cost ratio floors size to 0 contracts. The v1 sizing per H055 design.md §5.4 is non-viable on equity-index futures at retail-tier capital. The ADR-0017 §4.1 current-equity rebase + ADR-0018 D-2 Kelly grid expansion unlock the trade-generation pipeline.
+
+**Survival-constrained sweet spot**: C9 BOCD step-up (basket +12.1% OOS / +2.5% sub-window) is the load-bearing variant — it adapts Kelly down on decay detection, moderating the C3 super-Kelly variance (NQ -21.1%; SIL -10.1%) while preserving most of the C3 upside (MGC +58%). C5 pyramiding is the worst overall (basket -6.6%) — Turtle System 2 §4 pyramiding amplifies losses asymmetrically on losing instruments. The strongest cell across all configs is **MGC C3** (MPPM +0.263; Calmar +0.706; OOS +87%), but C3's per-symbol variance (-21% to +87%) is high; C9's smoother distribution is preferred for forward consideration.
+
+**Methodological caveats** (documented in KPI v1 §Methodological-caveats + §Methodological-correctness-annotations):
+- **v1 entry-fill simplification**: t+1-open fill instead of limit-at-wick-extreme per H055 design.md §4 → admits more trades → OPTIMISTIC bias. Tracked under new BLOCKING follow-up `P1-H055-LIMIT-FILL-WICK-EXTREME`.
+- **Single-cell hyperparameter grid**: v1 uses fixed cell (trend_id="a"; L=60; tau_m=1.0; alpha_tp=2.0; beta_sl=1.5); H055 design.md §5.6 specifies full Optuna TPE search.
+- **rho_star = 0.0 (PLACEHOLDER)**: H055 design.md §5.2 specifies calibration-holdout quantile selection; v1 disables the gate.
+- **Cost = 0 (operator standing directive 2026-05-08)**: cost-floor sensitivity per design.md §7 deferred to paper-trade.
+- **News-calendar OFF**: clean baseline; production must re-enable.
+
+**Audit-remediate-loop Round 1** (per SKILL.md 3-round cap; 1 round used; verdict `accept-with-residuals`): inline self-audit (Task/Agent tool not surfaced in this runtime workaround pattern). 1 critical + 5 major + 4 minor findings; 1 critical (F-1-9 MPPM input semantic — log-returns passed to `mppm_rho_1` instead of arithmetic) remediated inline in script pre-emission with arithmetic-vs-log-split helper (per_session_arith_returns + per_session_log_returns for separate MPPM vs Calmar consumption). 2 major findings documented as v1 caveats (F-1-2 entry-fill simplification; F-1-5 K-8 fill-time check vacuous). 4 minor findings remediated or verified no-op. Audit trail: [docs/audits/audit_trail_2026-05-15_h055_v2.md](docs/audits/audit_trail_2026-05-15_h055_v2.md). Provenance: sweep_sidecar SHA `83cd09e88476b93d0be18d4a12c4cd90dbaf7d21168aec0bf9d9741c33e43ef5`; substrate `b93e54487b9315133f32adb650c01b0c1094b7c5c958e88a9a5b3d1ca40327ce`; git_head `07d58a42`.
+
+**Artifacts landing in Phase O.5**:
+- [scripts/run_h055_v2_sweep.py](scripts/run_h055_v2_sweep.py) — 5-config sweep simulator + sub-window aggregator + KPI table emitter (~1100 lines).
+- [research/01_hypothesis_register/H055/H055_kpi_report_v1.md](research/01_hypothesis_register/H055/H055_kpi_report_v1.md) — KPI report card v1 per ADR-0014 §3.2 (Tables 1-5, 8-9 populated; Tables 6+7 deferred-v2).
+- [research/01_hypothesis_register/H055/stage.md](research/01_hypothesis_register/H055/stage.md) — stage transition `exploration-in-progress` → `kpi-report-emitted` appended.
+- [research/01_hypothesis_register/H055/failure_log.md](research/01_hypothesis_register/H055/failure_log.md) — 4 build-defect entries from R1 audit.
+- [docs/audits/audit_trail_2026-05-15_h055_v2.md](docs/audits/audit_trail_2026-05-15_h055_v2.md) — full R1 audit trail.
+- [artifacts/runs/H055/v2_sweep_20260516T025924Z/](artifacts/runs/H055/v2_sweep_20260516T025924Z/) — sweep sidecar JSON + SHA + KPI metrics table markdown.
+
+**New follow-ups registered by Phase O.5**:
+
+| Follow-up | Status | Description |
+|---|---|---|
+| `P1-H055-LIMIT-FILL-WICK-EXTREME` | NEW; BLOCKING-BEFORE-PRODUCTION-WALK-FORWARD | Re-implement entry-fill as limit-at-wick-extreme per H055 design.md §4 (NOT t+1 open). Use existing per_trade_simulator primitive; orchestrate at sweep call site. |
+| `P1-H055-FORWARD-PROJECTION-COMPUTE` | NEW; BLOCKING-BEFORE-PAPER-TRADE-EVALUATED | Compute 252-session bootstrap forward projection + risk-of-ruin Monte Carlo per ADR-0017 §1 + §4.2 on per-trade R-multiple distribution per (cfg, symbol) cell. v1 deferred for Tables 6+7. |
+| `P1-H055-MPPM-RHO-1-CI-PRIMITIVE` | NEW | Stationary-bootstrap CI on per-session MPPM(ρ=1) via `mppm_with_ci` primitive; v1 reports point estimate only. |
+| `P1-H055-V2-N-YEARS-CALIBRATION` | NEW; non-blocking | SR_ann annualisation denominator: per-symbol n_years from actual session count (currently underestimates for 24/5 instruments). |
+| `P1-H055-OPTUNA-INNER-CV-IMPL` | CARRIED OVER from design.md §11.2 | Production-grade walk-forward with Optuna TPE inner CV per design.md §5.6 search domain. |
+| `P1-H055-CALIBRATION-HOLDOUT-RUN-PRODUCE-RHO-STAR-BINDING` | CARRIED OVER from design.md §5.2 | rho_star calibration on 2015-2019 holdout. |
+| `P1-H055-COST-EMPIRICAL-CALIBRATION` | CARRIED OVER from design.md §7 | v1 zero-cost research-only; cost-floor sensitivity required before paper-trade. |
+| `P1-AGENT-TOOL-NOT-SURFACED` | OPEN; project-wide | Task/Agent tool not surfaced in some runtime variants; inline self-audit is documented workaround. |
+
+**H055 stage progression** (per ADR-0013 §1): `exploration-in-progress` → `kpi-report-emitted` recorded 2026-05-15 ([stage.md](research/01_hypothesis_register/H055/stage.md) row 2). Per operator 2026-05-04 standing decline-ninjascript directive + ADR-0013 §5.3 operator-discretionary clause, the subsequent `kpi-report-emitted` → `ninjascript-implemented` transition is operator-discretionary. **Operator recommendation per KPI v1 §6**: defer NinjaScript progression pending P1-H055-LIMIT-FILL-WICK-EXTREME + P1-H055-OPTUNA-INNER-CV-IMPL + P1-H055-COST-EMPIRICAL-CALIBRATION + P1-H055-FORWARD-PROJECTION-COMPUTE.
+
+Audit trail: [docs/audits/audit_trail_2026-05-15_h055_v2.md](docs/audits/audit_trail_2026-05-15_h055_v2.md).

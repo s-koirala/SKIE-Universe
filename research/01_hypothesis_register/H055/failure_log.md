@@ -17,8 +17,10 @@ Categories:
 
 | entry_id | timestamp_ct | category | run_id_or_commit | finding_id_or_diagnosis_link | resolution_commit_or_followup | superseded_by | notes |
 |---|---|---|---|---|---|---|---|
-
-(no entries yet — H055 is freshly pre-registered as of 2026-05-06)
+| 1 | 2026-05-15T21:50 | build-defect | scripts/run_h055_v2_sweep.py R1 | [docs/audits/audit_trail_2026-05-15_h055_v2.md](../../../docs/audits/audit_trail_2026-05-15_h055_v2.md) F-1-9 | remediated in same commit pre-emission | — | MPPM input semantic: log-returns passed to mppm_rho_1 which expects arithmetic; fixed in C9StateMachine.on_session_close + session-boundary handler + final close + per-session aggregation (split psr_arith from psr_log) |
+| 2 | 2026-05-15T21:50 | build-defect | scripts/run_h055_v2_sweep.py R1 | F-1-2 | follow-up `P1-H055-LIMIT-FILL-WICK-EXTREME` (BLOCKING-BEFORE-PRODUCTION-WALK-FORWARD) | — | Entry-fill simplification: v1 enters at t+1 open instead of limit-at-wick-extreme per H055 design.md §4; documented as caveat in KPI v1 §Methodological caveats |
+| 3 | 2026-05-15T21:50 | build-defect | scripts/run_h055_v2_sweep.py R1 | F-1-10 | remediated in same commit pre-emission | — | Provenance JSON path hard-coded to 20260516 date; replaced with glob-most-recent |
+| 4 | 2026-05-15T21:50 | build-defect | scripts/run_h055_v2_sweep.py initial smoke | UnicodeEncodeError on stdout | remediated by sys.stdout.reconfigure(encoding="utf-8") + ASCII fallback for arrow glyphs | — | Windows cp1252 stdout encoding failed on `→`; fixed inline before production run |
 
 ## Cross-references
 
