@@ -335,11 +335,13 @@ These follow-ups MUST land before H062 production walk-forward dispatch:
 
 ### 11.3 Concurrent inheritance preconditions (from ADR-0017 Phase L Thread A)
 
-The following Phase L primitives are landed but the BLOCKING-BEFORE-NEXT-NEW-HYPOTHESIS-LAUNCH follow-ups remain open:
-- `P1-FAILURE-MODE-STRESS-TEST-PRIMITIVE` — OPEN per Phase L Thread A.
-- `P1-ADR-0017-KILL-SWITCH-BACKTEST-VALIDATION` — OPEN per Phase L Thread A.
+The following Phase L primitives are landed; the BLOCKING-BEFORE-NEXT-NEW-HYPOTHESIS-LAUNCH follow-up status (reconciled 2026-05-15 with §11.2 row 319 + the Phase O.1 follow-on drift correction):
+- `P1-FAILURE-MODE-STRESS-TEST-PRIMITIVE` — **CLOSED** (verified landed at [scripts/stress_test_failure_modes.py](../../../scripts/stress_test_failure_modes.py); see §11.2 row 319).
+- `P1-ADR-0017-KILL-SWITCH-BACKTEST-VALIDATION` — OPEN per Phase L Thread A (the remaining residual after the 2026-05-14 ledger-drift correction).
 
-H062 production walk-forward dispatch is BLOCKED until both Phase L Thread A residuals land per the ADR-0017 §5 mandatory-inheritance-from-H055-forward convention.
+**Note on inheritance status under [ADR-0024](../../../docs/decisions/ADR-0024-paradigm-resolution-h062-aggressive-growth-canonical.md)** (2026-05-15): ADR-0024 D-3 demoted ADR-0017 §5 K-1..K-8 + §6 FM-1..FM-5 + §4.2 risk-of-ruin from mandatory inheritance to opt-in tooling + KPI annotations. The "production walk-forward dispatch is BLOCKED until Phase L Thread A residuals land per ADR-0017 §5 mandatory-inheritance-from-H055-forward convention" framing below is **superseded** at the project level by ADR-0024 D-3; the remaining `P1-ADR-0017-KILL-SWITCH-BACKTEST-VALIDATION` is now non-BLOCKING for H062 per ADR-0024 D-2 cascade (full §11 reframing tracked under `P1-ADR-0024-DESIGN-MD-CASCADE`, BLOCKING-BEFORE-NEXT-STAGE-3-RUN).
+
+Pre-ADR-0024 framing (retained for audit-trail completeness): "H062 production walk-forward dispatch is BLOCKED until both Phase L Thread A residuals land per the ADR-0017 §5 mandatory-inheritance-from-H055-forward convention."
 
 ## 12. Sample bias / robustness
 

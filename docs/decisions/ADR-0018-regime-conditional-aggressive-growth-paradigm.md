@@ -1,8 +1,10 @@
 ---
 id: ADR-0018
 title: Regime-conditional aggressive-growth paradigm — MPPM-fitness, Kelly grid-search, BOCD decay detection, switching-bandit meta-strategy
-status: proposed
+status: accepted
 date: 2026-05-12
+accepted_at: 2026-05-15
+accepted_via: ADR-0024 D-1 (formalization-only promotion; body preserved verbatim per ADR-0013 §4.1 non-loss mandate)
 ---
 
 ## Context
