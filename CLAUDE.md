@@ -1364,3 +1364,58 @@ The L-skewness τ_3=+0.74 payoff structure is statistically anchored. The mean-e
 - Cross-arm km-era replication: does H060 / H055 v2 / H052a also concentrate edge in early-2020? Tests whether ALL project hypotheses share the same regime-window dependency
 
 These belong in a fresh session, not in the current autonomous loop. **Exit Phase O.7 with 4 iterations + ledger consolidation at commit `45d6522` + iter 4 at `444eaf2`**.
+
+### Phase O.7.5: cross-arm walk-forward inferential picture — iter 5 (2026-05-15)
+
+Per autonomous-loop continuation, iter 5 tested whether iter 4's "C9 +208.8% concentrated in early-2020" finding replicates across H060 (daily TSMOM) and H062 per-symbol arms via walk-forward CV per-fold mppm_oos analysis. Sidecar: [artifacts/runs/cross_arm_concentration/v1_20260516T042144Z/sidecar.json](artifacts/runs/cross_arm_concentration/v1_20260516T042144Z/sidecar.json) (sha256 `338ab700387cca17...`).
+
+**Unexpected discovery**: zero walk-forward folds have test_end ≤ 2020-06-30 across ALL arms (first 252 sessions are training-only; first test folds start ~2020-10-28 for H062, Q1 2021 for H060). The walk-forward inferential picture is mechanically separate from iter 4's fixed-cell hindsight backtest.
+
+**Walk-forward per-fold mppm_oos distribution** (from existing sidecars):
+
+| Arm | n_folds | Cum mppm | Median mppm | % positive | Verdict |
+|---|---:|---:|---:|---:|---|
+| **H060** | 21 | **+2.23** | +0.019 | **62%** | marginal positive |
+| H062-ES | 20 | **-31.72** | -2.340 | **25%** | **strongly negative** |
+| H062-NQ | 5 | +12.27 | +0.501 | (small-n) | small-sample positive |
+| H062-MGC | 26 | +1.67 | +0.231 | 54% | marginal positive |
+| H062-SIL | 26 | **-11.49** | -0.429 | **27%** | **strongly negative** |
+
+**Basket-aggregate**: H062 family walk-forward cum_mppm = -31.72 + 12.27 + 1.67 - 11.49 = **-29.27** (strongly negative).
+
+**Methodological disconnect surfaced**:
+
+| Test | What it measures | H062-SIL result |
+|---|---|---|
+| iter 4 fixed-cell C9 sim | Compounding from session 0 at FIXED cell (N=120, k=2.0, h_dwell=5, ts_mom L=60 τ=1.0) | **+715.4%** |
+| H062 v1 walk-forward CV | Per-fold inner-CV cell selection on 252-session train window | **cum_mppm = -11.49 (NEGATIVE)** |
+
+The disconnect: iter 4 chose ONE cell (the v1 representative) and applied it from 2020-01-02 onwards including the 5-month "in-sample training window" of the walk-forward. Walk-forward CV per-fold cell selection produces a DIFFERENT cell trajectory and starts emitting OOS results ~2020-10-28 after the warm-up window.
+
+**Critical operator implications**:
+
+1. **The "C9 +208.8% basket" headline is a fixed-cell hindsight backtest** — NOT a walk-forward inferential result. It represents what an operator would have earned by fixing the v1 representative cell on 2020-01-02 and running it through 2026-05-15 with BOCD step-up state machine.
+2. **The walk-forward inferential signal is NEGATIVE-to-marginal across H062 arms** (-29.27 basket cum_mppm). Strongly argues AGAINST live deployment of any H062-family variant.
+3. **H060 (cross-futures TSMOM daily)** is the **only project arm with positive walk-forward cum_mppm + > 60% positive folds**. The most robust inferential result in the project.
+4. **The early-2020 km=1.5 era contribution** from iter 4 is partly within the walk-forward CV's first training window — not strictly OOS. The "C9 sat out 2026 sub-window" finding from iter 2 reinforces this: post-walk-forward-first-test-fold, C9 is essentially flat-edge at km=0.5.
+
+**Triangulation summary across 5 iterations**:
+
+| Test dimension | Finding |
+|---|---|
+| Cell-grid (108 cells) | NULL (1/108 = 0.9% positive-edge; iter 1) |
+| Kelly-grid (3 floors) | km=0.5 default correct (iter 3) |
+| Sub-window 6-week (2026-04 → 05) | 0% C9 vs -6.1% C3 vs +11.8% passive (iter 2) |
+| km-era P/L decomposition | +208.8% concentrated in 7.2% of session-days (iter 4) |
+| **Walk-forward per-fold mppm_oos** | **NEGATIVE across H062 family (iter 5)** |
+
+All 5 dimensions independently support the same conclusion: **the H062-family signal class lacks robust mean-edge at the walk-forward inferential level**. The "headline" aggressive-sizing results are hindsight artifacts from fixed-cell-on-full-OOS-from-session-0 backtests that do not survive walk-forward CV.
+
+**Autonomous-loop EXIT (iter 5 = final iteration)**: 5 iterations executed; each produced an independent confirming finding for the H062-family-empirical-ceiling verdict. Further iteration in the same dimension yields diminishing-marginal-information. **The actual next-step inferential work is multi-hour scope-major**: per-session-returns integration (MPV2), CPCV migration, or pre-registration of a new signal class. These belong in fresh sessions, NOT in the current autonomous loop.
+
+**Phase O.7 complete cycle summary**: 6 commits across 5 iterations + ledger consolidation: `5e75cf6` → `edfcdf7` → `19cd548` → `45d6522` → `444eaf2` → `1fc787e` → `44d06e9`. Loop exited cleanly per audit-remediate-loop convention.
+
+**Operator-actionable summary**:
+- **DO continue running H060 forward** — only arm with positive walk-forward cum_mppm
+- **DO NOT extrapolate H062 family aggressive-sizing headlines** to forward-period; they don't survive walk-forward
+- **Reframe project narrative**: the project has produced robust empirical findings about LIMITS of the signal class, not about edge-existence. The L-skew positive payoff structure is real; the mean-edge is not.
