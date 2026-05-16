@@ -1,0 +1,70 @@
+{
+  "basket": {
+    "end_equity_subwin_sum_of_symbols": 40515.98751588435,
+    "starting_equity_total": 40000.0,
+    "subwin_max_dd_pct_equal_weight": 0.15708362703621498,
+    "subwin_roi_pct_equal_weight_log_avg": 1.2596822429338017,
+    "subwin_roi_pct_sum_of_symbols": 1.2899687897108825
+  },
+  "config": {
+    "kelly_multiplier": 0.25,
+    "lookback": 252,
+    "vol_com": 60,
+    "vol_target": 0.1
+  },
+  "experiment": "h060_v1_2026_q1q2_subwindow",
+  "per_symbol": [
+    {
+      "n_sessions_subwin": 38,
+      "passive_subwin_max_dd_pct": 0.1855018591086781,
+      "passive_subwin_roi_pct": 2.174751532154362,
+      "subwin_end_equity": 10217.475153215437,
+      "subwin_losses": 13,
+      "subwin_max_dd_pct": 0.1855018591086781,
+      "subwin_roi_pct": 2.174751532154362,
+      "subwin_wins": 25,
+      "subwin_zeros": 0,
+      "symbol": "ES"
+    },
+    {
+      "n_sessions_subwin": 38,
+      "passive_subwin_max_dd_pct": 0.17408281031435519,
+      "passive_subwin_roi_pct": 2.735094100960911,
+      "subwin_end_equity": 10273.50941009609,
+      "subwin_losses": 12,
+      "subwin_max_dd_pct": 0.17408281031435519,
+      "subwin_roi_pct": 2.735094100960911,
+      "subwin_wins": 26,
+      "subwin_zeros": 0,
+      "symbol": "NQ"
+    },
+    {
+      "n_sessions_subwin": 37,
+      "passive_subwin_max_dd_pct": 0.5689427748848045,
+      "passive_subwin_roi_pct": -0.12200054589615039,
+      "subwin_end_equity": 9987.799945410385,
+      "subwin_losses": 21,
+      "subwin_max_dd_pct": 0.5689427748848045,
+      "subwin_roi_pct": -0.12200054589615039,
+      "subwin_wins": 16,
+      "subwin_zeros": 0,
+      "symbol": "MGC"
+    },
+    {
+      "n_sessions_subwin": 37,
+      "passive_subwin_max_dd_pct": 0.38865287118541353,
+      "passive_subwin_roi_pct": 0.37203007162436297,
+      "subwin_end_equity": 10037.203007162436,
+      "subwin_losses": 15,
+      "subwin_max_dd_pct": 0.38865287118541353,
+      "subwin_roi_pct": 0.37203007162436297,
+      "subwin_wins": 22,
+      "subwin_zeros": 0,
+      "symbol": "SIL"
+    }
+  ],
+  "subwin_end": "2026-05-15 00:00:00+00:00",
+  "subwin_start": "2026-04-01 00:00:00+00:00",
+  "warm_up_start": "2020-01-01 00:00:00+00:00",
+  "written_at_utc": "2026-05-16T21:40:34.464355+00:00"
+}
