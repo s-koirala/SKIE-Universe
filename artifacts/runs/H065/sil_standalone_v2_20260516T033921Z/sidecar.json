@@ -1,0 +1,3609 @@
+{
+  "best_cell": {
+    "cell": {
+      "atr_n": 14,
+      "channel_n": 120,
+      "h_dwell": 10,
+      "k_atr": 1.5
+    },
+    "full_oos": {
+      "losses": 1125,
+      "max_dd_pct": 23.498804437030767,
+      "mppm": {
+        "block_length": 1.0,
+        "ci_high": 0.4304115424524375,
+        "ci_low": -0.0011546888287879916,
+        "excludes_zero_positive": false,
+        "point": 0.20885101716434454
+      },
+      "n_trades": 1348,
+      "r_mean": 0.30692111112118764,
+      "roi_pct": 118.5456090945459,
+      "wins": 204,
+      "zeros": 19
+    },
+    "kelly_multiplier": 0.25,
+    "subwin_2026_aprmay": {
+      "losses": 0,
+      "max_dd_pct": -0.0,
+      "n_trades": 0,
+      "r_mean": 0.0,
+      "roi_pct": 0.0,
+      "wins": 0
+    }
+  },
+  "experiment": "h065_sil_standalone_v2",
+  "n_cell_kelly_combos_with_n30_trades": 108,
+  "n_cells_tested": 18,
+  "n_kelly_per_cell": 6,
+  "n_positive_edge_cells": 1,
+  "pct_positive_edge": 0.9259259259259259,
+  "results": [
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 1683,
+        "max_dd_pct": 23.552168205372467,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.16616257065752563,
+          "ci_low": -0.17597839448858266,
+          "excludes_zero_positive": false,
+          "point": -0.012638874848855513
+        },
+        "n_trades": 2050,
+        "r_mean": 0.01261951259647363,
+        "roi_pct": 1.4699204569528224,
+        "wins": 324,
+        "zeros": 43
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 8643,
+        "max_dd_pct": 75.04184942965689,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.21300583739502535,
+          "ci_low": -0.20225089558615747,
+          "excludes_zero_positive": false,
+          "point": 0.0024299176298401923
+        },
+        "n_trades": 10823,
+        "r_mean": 0.06056290639042323,
+        "roi_pct": 169.29620742452346,
+        "wins": 2052,
+        "zeros": 128
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 2419,
+        "max_dd_pct": 91.58478939380052,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.027991998362764375,
+          "ci_low": -0.9281285059785428,
+          "excludes_zero_positive": false,
+          "point": -0.4953166728574498
+        },
+        "n_trades": 3149,
+        "r_mean": -0.016919454405348512,
+        "roi_pct": -85.78536663386586,
+        "wins": 645,
+        "zeros": 85
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 2133,
+        "max_dd_pct": 94.2772921648513,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.09608672910238869,
+          "ci_low": -1.4410629009630271,
+          "excludes_zero_positive": false,
+          "point": -0.7611359858903467
+        },
+        "n_trades": 2806,
+        "r_mean": 0.01073185641577293,
+        "roi_pct": -90.65298068935105,
+        "wins": 597,
+        "zeros": 76
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 9,
+        "max_dd_pct": 10.791113488836636,
+        "n_trades": 11,
+        "r_mean": -0.09146531909413244,
+        "roi_pct": -2.410711199623672,
+        "wins": 2
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 1299,
+        "max_dd_pct": 96.29556229061289,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.24493863132703267,
+          "ci_low": -2.2020756501920156,
+          "excludes_zero_positive": false,
+          "point": -1.2772327624350528
+        },
+        "n_trades": 1731,
+        "r_mean": 0.021840050578201164,
+        "roi_pct": -95.46118954132693,
+        "wins": 377,
+        "zeros": 55
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 31,
+        "max_dd_pct": 27.487451090259903,
+        "n_trades": 37,
+        "r_mean": -0.24679165917462836,
+        "roi_pct": -18.08917889481464,
+        "wins": 6
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 1817,
+        "max_dd_pct": 98.09915624848841,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.3418327153915084,
+          "ci_low": -2.499728623756321,
+          "excludes_zero_positive": false,
+          "point": -1.3956522888056684
+        },
+        "n_trades": 2424,
+        "r_mean": 0.02029036567414999,
+        "roi_pct": -94.94922261941056,
+        "wins": 538,
+        "zeros": 69
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 64,
+        "max_dd_pct": 39.817838878996106,
+        "n_trades": 75,
+        "r_mean": -0.17059372406898887,
+        "roi_pct": -28.46468067289283,
+        "wins": 11
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 2412,
+        "max_dd_pct": 27.279659099997755,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.17697300006238045,
+          "ci_low": -0.10991104694762621,
+          "excludes_zero_positive": false,
+          "point": 0.03362520697570932
+        },
+        "n_trades": 2939,
+        "r_mean": 0.06181093147879097,
+        "roi_pct": 34.08230428539443,
+        "wins": 474,
+        "zeros": 53
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 8412,
+        "max_dd_pct": 64.74088426606144,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.28591609091185666,
+          "ci_low": -0.12175231613147502,
+          "excludes_zero_positive": false,
+          "point": 0.08148887046899278
+        },
+        "n_trades": 10579,
+        "r_mean": 0.07416822038187848,
+        "roi_pct": 613.8589756576768,
+        "wins": 2047,
+        "zeros": 120
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 8842,
+        "max_dd_pct": 89.19451826689199,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.2697430724008922,
+          "ci_low": -0.4457826263511113,
+          "excludes_zero_positive": false,
+          "point": -0.09328398696096171
+        },
+        "n_trades": 11125,
+        "r_mean": 0.06757939215791214,
+        "roi_pct": 597.2391648930071,
+        "wins": 2158,
+        "zeros": 125
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 2018,
+        "max_dd_pct": 95.03955062842947,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.07085395471465859,
+          "ci_low": -1.4230207398971944,
+          "excludes_zero_positive": false,
+          "point": -0.7536452282259439
+        },
+        "n_trades": 2661,
+        "r_mean": 0.01741372232769853,
+        "roi_pct": -90.41307884153517,
+        "wins": 567,
+        "zeros": 76
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 9,
+        "max_dd_pct": 10.791113488836636,
+        "n_trades": 11,
+        "r_mean": -0.09146531909413244,
+        "roi_pct": -2.410711199623672,
+        "wins": 2
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 1879,
+        "max_dd_pct": 97.16757624078787,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.09600764676999982,
+          "ci_low": -1.9028410282503803,
+          "excludes_zero_positive": false,
+          "point": -1.0740137169308146
+        },
+        "n_trades": 2497,
+        "r_mean": 0.027563626634211143,
+        "roi_pct": -92.94688440355199,
+        "wins": 546,
+        "zeros": 72
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 28,
+        "max_dd_pct": 32.01564112656904,
+        "n_trades": 32,
+        "r_mean": -0.3805737134706078,
+        "roi_pct": -23.204262691635613,
+        "wins": 4
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 1722,
+        "max_dd_pct": 97.82961722675928,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.15651130064422406,
+          "ci_low": -2.3957975043126565,
+          "excludes_zero_positive": false,
+          "point": -1.4075357533050987
+        },
+        "n_trades": 2304,
+        "r_mean": 0.03482187672415108,
+        "roi_pct": -94.29374791191505,
+        "wins": 514,
+        "zeros": 68
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 70,
+        "max_dd_pct": 26.508211918735654,
+        "n_trades": 87,
+        "r_mean": 0.3401288892575283,
+        "roi_pct": 84.80717917675793,
+        "wins": 17
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 754,
+        "max_dd_pct": 19.0995266413233,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.17736680450383868,
+          "ci_low": -0.21336814167844115,
+          "excludes_zero_positive": false,
+          "point": -0.028240585381280398
+        },
+        "n_trades": 950,
+        "r_mean": -0.03126714542031531,
+        "roi_pct": -3.88527022648284,
+        "wins": 162,
+        "zeros": 34
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 6815,
+        "max_dd_pct": 74.7079419331752,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.2223698216875857,
+          "ci_low": -0.17034243996807616,
+          "excludes_zero_positive": false,
+          "point": 0.02752051233509014
+        },
+        "n_trades": 8966,
+        "r_mean": 0.04025952965493463,
+        "roi_pct": 155.6559609019463,
+        "wins": 2013,
+        "zeros": 138
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 6829,
+        "max_dd_pct": 95.36013485082209,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.06885410468700855,
+          "ci_low": -0.5688782720804113,
+          "excludes_zero_positive": false,
+          "point": -0.24212308589299092
+        },
+        "n_trades": 9010,
+        "r_mean": 0.023400455201886827,
+        "roi_pct": -63.50255470209181,
+        "wins": 2028,
+        "zeros": 153
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 6045,
+        "max_dd_pct": 96.39609668208703,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.003692013350512641,
+          "ci_low": -1.0312642172533049,
+          "excludes_zero_positive": false,
+          "point": -0.5148543672427376
+        },
+        "n_trades": 7983,
+        "r_mean": 0.03164955722691298,
+        "roi_pct": -79.80254764017998,
+        "wins": 1795,
+        "zeros": 143
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 1,
+        "max_dd_pct": 1.3474341652137445,
+        "n_trades": 1,
+        "r_mean": -0.9999999999999658,
+        "roi_pct": -1.3474341652137456,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 6765,
+        "max_dd_pct": 98.01484854776726,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.032562793404562966,
+          "ci_low": -1.0389380225593674,
+          "excludes_zero_positive": false,
+          "point": -0.5315154632566679
+        },
+        "n_trades": 8942,
+        "r_mean": 0.025266070531834533,
+        "roi_pct": -83.71694554954414,
+        "wins": 2026,
+        "zeros": 151
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 7,
+        "max_dd_pct": 10.227625660126774,
+        "n_trades": 10,
+        "r_mean": -0.061547168647830754,
+        "roi_pct": -1.7942885695241273,
+        "wins": 3
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5932,
+        "max_dd_pct": 98.93301998165617,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.26906898275076424,
+          "ci_low": -1.5532467598492123,
+          "excludes_zero_positive": false,
+          "point": -0.8727865824801908
+        },
+        "n_trades": 7863,
+        "r_mean": 0.035250722896889866,
+        "roi_pct": -92.15544545972574,
+        "wins": 1788,
+        "zeros": 143
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 15,
+        "max_dd_pct": 20.202844180689734,
+        "n_trades": 20,
+        "r_mean": -0.372942725362123,
+        "roi_pct": -17.939633902607167,
+        "wins": 5
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 619,
+        "max_dd_pct": 26.25603212411433,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.1446252792125665,
+          "ci_low": -0.2396474547629385,
+          "excludes_zero_positive": false,
+          "point": -0.05223844505387228
+        },
+        "n_trades": 782,
+        "r_mean": -0.06529590773147817,
+        "roi_pct": -8.453387052395666,
+        "wins": 135,
+        "zeros": 28
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 6496,
+        "max_dd_pct": 73.64307869801654,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.23199631845713453,
+          "ci_low": -0.1479713696884801,
+          "excludes_zero_positive": false,
+          "point": 0.03778072847328972
+        },
+        "n_trades": 8553,
+        "r_mean": 0.04586827467909118,
+        "roi_pct": 179.861056311672,
+        "wins": 1921,
+        "zeros": 136
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 6962,
+        "max_dd_pct": 89.88142282879134,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.17412587956643727,
+          "ci_low": -0.4399762318807883,
+          "excludes_zero_positive": false,
+          "point": -0.13832912520634738
+        },
+        "n_trades": 9224,
+        "r_mean": 0.043242506269350035,
+        "roi_pct": 38.261596907424966,
+        "wins": 2109,
+        "zeros": 153
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 6336,
+        "max_dd_pct": 96.29823244356092,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.03627959340254937,
+          "ci_low": -0.9187668587249737,
+          "excludes_zero_positive": false,
+          "point": -0.45488216250329183
+        },
+        "n_trades": 8373,
+        "r_mean": 0.03397987414270175,
+        "roi_pct": -77.7379812454976,
+        "wins": 1891,
+        "zeros": 146
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 1,
+        "max_dd_pct": 1.3850878783354348,
+        "n_trades": 1,
+        "r_mean": -1.000000000000031,
+        "roi_pct": -1.3850878783354337,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5706,
+        "max_dd_pct": 97.2521210919275,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.07835170378802467,
+          "ci_low": -1.2824395908142334,
+          "excludes_zero_positive": false,
+          "point": -0.6975316605172768
+        },
+        "n_trades": 7562,
+        "r_mean": 0.043643139832119156,
+        "roi_pct": -84.69864787902162,
+        "wins": 1712,
+        "zeros": 144
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 7,
+        "max_dd_pct": 10.227625660126774,
+        "n_trades": 10,
+        "r_mean": -0.061547168647830754,
+        "roi_pct": -1.7942885695241273,
+        "wins": 3
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 1904,
+        "max_dd_pct": 97.13954839106783,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.17206886105541472,
+          "ci_low": -1.8501831190203133,
+          "excludes_zero_positive": false,
+          "point": -1.0037224430108969
+        },
+        "n_trades": 2646,
+        "r_mean": 0.011227260214139657,
+        "roi_pct": -92.56979720379093,
+        "wins": 656,
+        "zeros": 86
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 15,
+        "max_dd_pct": 21.874544834455143,
+        "n_trades": 20,
+        "r_mean": -0.37294272536212325,
+        "roi_pct": -18.024212482992407,
+        "wins": 5
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 133,
+        "max_dd_pct": 13.311264323604775,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.12561208723299647,
+          "ci_low": -0.3759254216639579,
+          "excludes_zero_positive": false,
+          "point": -0.14456506766800717
+        },
+        "n_trades": 174,
+        "r_mean": -0.18123562394765516,
+        "roi_pct": -7.664451417638829,
+        "wins": 33,
+        "zeros": 8
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 1853,
+        "max_dd_pct": 35.519869653481166,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.12866837824073993,
+          "ci_low": -0.25546698721473354,
+          "excludes_zero_positive": false,
+          "point": -0.07590242684603117
+        },
+        "n_trades": 2499,
+        "r_mean": 0.0010258783395079533,
+        "roi_pct": -24.195233456481635,
+        "wins": 571,
+        "zeros": 75
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 6090,
+        "max_dd_pct": 90.48478573823509,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.14452282417364865,
+          "ci_low": -0.44789036918911257,
+          "excludes_zero_positive": false,
+          "point": -0.15699055030146553
+        },
+        "n_trades": 8345,
+        "r_mean": 0.021518753419210928,
+        "roi_pct": -23.54405702937219,
+        "wins": 2099,
+        "zeros": 156
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 4945,
+        "max_dd_pct": 94.39677594287322,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.04650610166665415,
+          "ci_low": -0.9223596630330384,
+          "excludes_zero_positive": false,
+          "point": -0.4620904567031326
+        },
+        "n_trades": 6781,
+        "r_mean": 0.013391689392580071,
+        "roi_pct": -83.22864290712985,
+        "wins": 1695,
+        "zeros": 141
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 1811,
+        "max_dd_pct": 94.09644842618334,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.057136438824578265,
+          "ci_low": -1.3376938369024913,
+          "excludes_zero_positive": false,
+          "point": -0.678823384552802
+        },
+        "n_trades": 2601,
+        "r_mean": -0.005499538282620907,
+        "roi_pct": -88.55663243691043,
+        "wins": 702,
+        "zeros": 88
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 1,
+        "max_dd_pct": 1.915143296177739,
+        "n_trades": 1,
+        "r_mean": -1.0000000000000187,
+        "roi_pct": -1.9151432961777348,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 4196,
+        "max_dd_pct": 96.61304472066159,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.1775751504186176,
+          "ci_low": -1.584472270404915,
+          "excludes_zero_positive": false,
+          "point": -0.8807751583562076
+        },
+        "n_trades": 5798,
+        "r_mean": 0.03559907874020026,
+        "roi_pct": -90.74321153867928,
+        "wins": 1464,
+        "zeros": 138
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 6,
+        "max_dd_pct": 10.887422109858132,
+        "n_trades": 9,
+        "r_mean": -0.09915303879806814,
+        "roi_pct": -2.5160671815039892,
+        "wins": 3
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 123,
+        "max_dd_pct": 15.582630116482715,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.05194723925534742,
+          "ci_low": -0.41184625982880696,
+          "excludes_zero_positive": false,
+          "point": -0.1941262293132768
+        },
+        "n_trades": 162,
+        "r_mean": -0.24702289334091782,
+        "roi_pct": -9.537032754384178,
+        "wins": 31,
+        "zeros": 8
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 2720,
+        "max_dd_pct": 49.332205995168636,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.17247714840532874,
+          "ci_low": -0.21187863997291775,
+          "excludes_zero_positive": false,
+          "point": -0.020090972564459443
+        },
+        "n_trades": 3613,
+        "r_mean": 0.016362368106408225,
+        "roi_pct": 9.312316026710521,
+        "wins": 802,
+        "zeros": 91
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 5999,
+        "max_dd_pct": 87.77900897894601,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.18162716170916846,
+          "ci_low": -0.38131577870080346,
+          "excludes_zero_positive": false,
+          "point": -0.09435048144930376
+        },
+        "n_trades": 8262,
+        "r_mean": 0.036021045333819716,
+        "roi_pct": 58.015726860531444,
+        "wins": 2107,
+        "zeros": 156
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 5727,
+        "max_dd_pct": 93.39985910345146,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.18192531698350223,
+          "ci_low": -0.6650028928175888,
+          "excludes_zero_positive": false,
+          "point": -0.2373190006007481
+        },
+        "n_trades": 7889,
+        "r_mean": 0.04137311289867904,
+        "roi_pct": 72.01070546784518,
+        "wins": 2010,
+        "zeros": 152
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 4510,
+        "max_dd_pct": 94.53775165224837,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.10786320694639791,
+          "ci_low": -1.2337535326347826,
+          "excludes_zero_positive": false,
+          "point": -0.6619346981079138
+        },
+        "n_trades": 6211,
+        "r_mean": 0.03989269014272051,
+        "roi_pct": -88.18076254365681,
+        "wins": 1562,
+        "zeros": 139
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 1,
+        "max_dd_pct": 1.915143296177739,
+        "n_trades": 1,
+        "r_mean": -1.0000000000000187,
+        "roi_pct": -1.9151432961777348,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 60,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 1697,
+        "max_dd_pct": 93.05933882342971,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.052721608843608936,
+          "ci_low": -1.5897886976271172,
+          "excludes_zero_positive": false,
+          "point": -0.8416168459177703
+        },
+        "n_trades": 2468,
+        "r_mean": 0.01919128941893419,
+        "roi_pct": -90.5744322700519,
+        "wins": 682,
+        "zeros": 89
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 6,
+        "max_dd_pct": 10.887422109858132,
+        "n_trades": 9,
+        "r_mean": -0.09915303879806814,
+        "roi_pct": -2.5160671815039892,
+        "wins": 3
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 1315,
+        "max_dd_pct": 21.14341912422912,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.41250073073457033,
+          "ci_low": 0.003238675179662745,
+          "excludes_zero_positive": true,
+          "point": 0.19345353478560082
+        },
+        "n_trades": 1576,
+        "r_mean": 0.2681747778037617,
+        "roi_pct": 122.74381186946246,
+        "wins": 244,
+        "zeros": 17
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6575,
+        "max_dd_pct": 49.148325234372834,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3454794502791811,
+          "ci_low": -0.040604230271338866,
+          "excludes_zero_positive": false,
+          "point": 0.14774272693724974
+        },
+        "n_trades": 8082,
+        "r_mean": 0.11867891871457735,
+        "roi_pct": 1178.5244494853491,
+        "wins": 1441,
+        "zeros": 66
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6869,
+        "max_dd_pct": 81.63629284480807,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.38490668744849216,
+          "ci_low": -0.26831732831594524,
+          "excludes_zero_positive": false,
+          "point": 0.05747795847502288
+        },
+        "n_trades": 8440,
+        "r_mean": 0.10299957929843732,
+        "roi_pct": 1640.4016086597653,
+        "wins": 1503,
+        "zeros": 68
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6889,
+        "max_dd_pct": 91.17160368352124,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.32558209856009024,
+          "ci_low": -0.4921165702360882,
+          "excludes_zero_positive": false,
+          "point": -0.08776635097776975
+        },
+        "n_trades": 8464,
+        "r_mean": 0.10226468656872754,
+        "roi_pct": 1443.5825731082093,
+        "wins": 1506,
+        "zeros": 69
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 5,
+        "max_dd_pct": 6.799920852784126,
+        "n_trades": 5,
+        "r_mean": -0.9999999999999858,
+        "roi_pct": -6.799920852784124,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6888,
+        "max_dd_pct": 86.76815744031342,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.37201561708535547,
+          "ci_low": -0.4242468008984785,
+          "excludes_zero_positive": false,
+          "point": -0.03269013043436485
+        },
+        "n_trades": 8468,
+        "r_mean": 0.10315635362392084,
+        "roi_pct": 1701.7536908561297,
+        "wins": 1511,
+        "zeros": 69
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 22,
+        "max_dd_pct": 24.066937765216174,
+        "n_trades": 24,
+        "r_mean": -0.40015356002169344,
+        "roi_pct": -13.649361398423421,
+        "wins": 2
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6888,
+        "max_dd_pct": 84.9490909101517,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.36427711125309875,
+          "ci_low": -0.48334369372534736,
+          "excludes_zero_positive": false,
+          "point": -0.06389469106899684
+        },
+        "n_trades": 8468,
+        "r_mean": 0.10315635362392084,
+        "roi_pct": 1646.00131036873,
+        "wins": 1511,
+        "zeros": 69
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 42,
+        "max_dd_pct": 39.128978962575985,
+        "n_trades": 48,
+        "r_mean": -0.294770661272204,
+        "roi_pct": -26.57126264044678,
+        "wins": 6
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 1125,
+        "max_dd_pct": 23.498804437030767,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.4304115424524375,
+          "ci_low": -0.0011546888287879916,
+          "excludes_zero_positive": false,
+          "point": 0.20885101716434454
+        },
+        "n_trades": 1348,
+        "r_mean": 0.30692111112118764,
+        "roi_pct": 118.5456090945459,
+        "wins": 204,
+        "zeros": 19
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6271,
+        "max_dd_pct": 48.93377128254797,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.34766790826332017,
+          "ci_low": -0.045589096961546074,
+          "excludes_zero_positive": false,
+          "point": 0.15170532463189904
+        },
+        "n_trades": 7722,
+        "r_mean": 0.12801599352548027,
+        "roi_pct": 1170.658976271791,
+        "wins": 1392,
+        "zeros": 59
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6498,
+        "max_dd_pct": 81.14813823279131,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.34742688156841844,
+          "ci_low": -0.27202465272162446,
+          "excludes_zero_positive": false,
+          "point": 0.04171632411850778
+        },
+        "n_trades": 8003,
+        "r_mean": 0.11404054414433346,
+        "roi_pct": 1397.0946218162592,
+        "wins": 1443,
+        "zeros": 62
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6555,
+        "max_dd_pct": 76.72919852720308,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.36885430072886727,
+          "ci_low": -0.27587848400359094,
+          "excludes_zero_positive": false,
+          "point": 0.0484910410297376
+        },
+        "n_trades": 8072,
+        "r_mean": 0.11385104036185396,
+        "roi_pct": 1581.0403178571062,
+        "wins": 1454,
+        "zeros": 63
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 5,
+        "max_dd_pct": 6.799920852784126,
+        "n_trades": 5,
+        "r_mean": -0.9999999999999858,
+        "roi_pct": -6.799920852784124,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6554,
+        "max_dd_pct": 72.67856296114716,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.37389848006715526,
+          "ci_low": -0.212580485248967,
+          "excludes_zero_positive": false,
+          "point": 0.08169808442860481
+        },
+        "n_trades": 8072,
+        "r_mean": 0.11418592463795688,
+        "roi_pct": 1749.919186379574,
+        "wins": 1455,
+        "zeros": 63
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 22,
+        "max_dd_pct": 25.551239814176398,
+        "n_trades": 24,
+        "r_mean": -0.4001535600216974,
+        "roi_pct": -14.19815137400221,
+        "wins": 2
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 6554,
+        "max_dd_pct": 80.09984648531426,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.36044998625278385,
+          "ci_low": -0.35769200651110244,
+          "excludes_zero_positive": false,
+          "point": -0.009337981095144998
+        },
+        "n_trades": 8071,
+        "r_mean": 0.11354824909818478,
+        "roi_pct": 1514.4607685941057,
+        "wins": 1454,
+        "zeros": 63
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 42,
+        "max_dd_pct": 39.63759246639692,
+        "n_trades": 48,
+        "r_mean": -0.30593180640142736,
+        "roi_pct": -27.11130371433145,
+        "wins": 6
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 337,
+        "max_dd_pct": 12.786436123177047,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.2786772145522872,
+          "ci_low": -0.27002597562774,
+          "excludes_zero_positive": false,
+          "point": -0.015012106600960964
+        },
+        "n_trades": 416,
+        "r_mean": -0.01718032352133985,
+        "roi_pct": -0.19150775211533855,
+        "wins": 68,
+        "zeros": 11
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 4506,
+        "max_dd_pct": 49.464642712028386,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.29637191228976323,
+          "ci_low": -0.12023276907103095,
+          "excludes_zero_positive": false,
+          "point": 0.0906912138681587
+        },
+        "n_trades": 5697,
+        "r_mean": 0.08832106606628526,
+        "roi_pct": 287.8381704583294,
+        "wins": 1128,
+        "zeros": 63
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5757,
+        "max_dd_pct": 64.29128581119853,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.33059835542503896,
+          "ci_low": -0.22867081188973773,
+          "excludes_zero_positive": false,
+          "point": 0.04265592551586977
+        },
+        "n_trades": 7423,
+        "r_mean": 0.08515523942340719,
+        "roi_pct": 736.4014048337976,
+        "wins": 1586,
+        "zeros": 80
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5851,
+        "max_dd_pct": 73.47215678984634,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3597814896680816,
+          "ci_low": -0.24242140778895904,
+          "excludes_zero_positive": false,
+          "point": 0.058441442007728106
+        },
+        "n_trades": 7546,
+        "r_mean": 0.0811224447984859,
+        "roi_pct": 1405.6016748565476,
+        "wins": 1613,
+        "zeros": 82
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 1,
+        "max_dd_pct": 1.3474341652137445,
+        "n_trades": 1,
+        "r_mean": -0.9999999999999658,
+        "roi_pct": -1.3474341652137456,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5857,
+        "max_dd_pct": 61.21955117497122,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.37882362306595246,
+          "ci_low": -0.22837880845184136,
+          "excludes_zero_positive": false,
+          "point": 0.067247016862154
+        },
+        "n_trades": 7559,
+        "r_mean": 0.08120864795856708,
+        "roi_pct": 1434.405455299912,
+        "wins": 1619,
+        "zeros": 83
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 5,
+        "max_dd_pct": 8.630565047661785,
+        "n_trades": 5,
+        "r_mean": -0.9999999999999927,
+        "roi_pct": -8.630565047661786,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5857,
+        "max_dd_pct": 63.214371252750325,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.37210361494448846,
+          "ci_low": -0.2639160789933388,
+          "excludes_zero_positive": false,
+          "point": 0.04770598467192616
+        },
+        "n_trades": 7559,
+        "r_mean": 0.08120864795856708,
+        "roi_pct": 1493.5813930254324,
+        "wins": 1619,
+        "zeros": 83
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 10,
+        "max_dd_pct": 19.506970910203172,
+        "n_trades": 11,
+        "r_mean": -0.8769333884973217,
+        "roi_pct": -19.50697091020317,
+        "wins": 1
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 286,
+        "max_dd_pct": 15.244375985086405,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.24442725241585608,
+          "ci_low": -0.31455068080233217,
+          "excludes_zero_positive": false,
+          "point": -0.05278109935754571
+        },
+        "n_trades": 354,
+        "r_mean": -0.0642461085825636,
+        "roi_pct": -4.485767586591227,
+        "wins": 58,
+        "zeros": 10
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 4461,
+        "max_dd_pct": 48.59219544610924,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3233902910218497,
+          "ci_low": -0.06947570873278507,
+          "excludes_zero_positive": false,
+          "point": 0.129548064802178
+        },
+        "n_trades": 5649,
+        "r_mean": 0.09285801863423959,
+        "roi_pct": 446.21356667004125,
+        "wins": 1133,
+        "zeros": 55
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5592,
+        "max_dd_pct": 63.42613619781816,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3257894569479364,
+          "ci_low": -0.1966732454414298,
+          "excludes_zero_positive": false,
+          "point": 0.0729878331323919
+        },
+        "n_trades": 7215,
+        "r_mean": 0.08823706291802948,
+        "roi_pct": 901.9297770903208,
+        "wins": 1547,
+        "zeros": 76
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5658,
+        "max_dd_pct": 78.79930860665363,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3219068908170716,
+          "ci_low": -0.3210546941247451,
+          "excludes_zero_positive": false,
+          "point": 0.02448558695241353
+        },
+        "n_trades": 7303,
+        "r_mean": 0.08651092353749044,
+        "roi_pct": 1260.5888691519676,
+        "wins": 1567,
+        "zeros": 78
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 5681,
+        "max_dd_pct": 78.14379242555388,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3535967005703802,
+          "ci_low": -0.35413954840159784,
+          "excludes_zero_positive": false,
+          "point": -0.007683758654889815
+        },
+        "n_trades": 7336,
+        "r_mean": 0.08506953731526694,
+        "roi_pct": 983.443452693417,
+        "wins": 1576,
+        "zeros": 79
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 5,
+        "max_dd_pct": 8.617376806998037,
+        "n_trades": 5,
+        "r_mean": -0.9999999999999805,
+        "roi_pct": -8.617376806998035,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3525,
+        "max_dd_pct": 97.0985123714513,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.24350606164503524,
+          "ci_low": -1.7807621875033666,
+          "excludes_zero_positive": false,
+          "point": -1.0234599500116521
+        },
+        "n_trades": 4519,
+        "r_mean": 0.07618285417307655,
+        "roi_pct": -92.1546490764272,
+        "wins": 924,
+        "zeros": 70
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 9,
+        "max_dd_pct": 17.313954901084998,
+        "n_trades": 10,
+        "r_mean": -0.8646267273470549,
+        "roi_pct": -17.313954901084994,
+        "wins": 1
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 84,
+        "max_dd_pct": 9.458599500615765,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.20356910967388445,
+          "ci_low": -0.4449343176331695,
+          "excludes_zero_positive": false,
+          "point": -0.16066589741040385
+        },
+        "n_trades": 104,
+        "r_mean": -0.20757122715511944,
+        "roi_pct": -5.6127121671347036,
+        "wins": 16,
+        "zeros": 4
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 2400,
+        "max_dd_pct": 38.36596460354495,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.24687496681535617,
+          "ci_low": -0.13319693475851985,
+          "excludes_zero_positive": false,
+          "point": 0.057930978961501595
+        },
+        "n_trades": 3086,
+        "r_mean": 0.06082427151976429,
+        "roi_pct": 84.29710651394299,
+        "wins": 627,
+        "zeros": 59
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 4802,
+        "max_dd_pct": 78.1381740616907,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.2900412314589044,
+          "ci_low": -0.290030417699854,
+          "excludes_zero_positive": false,
+          "point": 0.006383204839847131
+        },
+        "n_trades": 6436,
+        "r_mean": 0.07066610509789915,
+        "roi_pct": 330.6066944013946,
+        "wins": 1547,
+        "zeros": 87
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 4694,
+        "max_dd_pct": 91.46631115020773,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.15322612500159086,
+          "ci_low": -0.6090915646427537,
+          "excludes_zero_positive": false,
+          "point": -0.22381426122578088
+        },
+        "n_trades": 6270,
+        "r_mean": 0.054114861273468734,
+        "roi_pct": 10.418689504743162,
+        "wins": 1489,
+        "zeros": 87
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 5166,
+        "max_dd_pct": 71.10253185747023,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.35501495642075104,
+          "ci_low": -0.2668634221007734,
+          "excludes_zero_positive": false,
+          "point": 0.04257436858463395
+        },
+        "n_trades": 6936,
+        "r_mean": 0.05882717274042704,
+        "roi_pct": 1188.1997688337533,
+        "wins": 1680,
+        "zeros": 90
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 1,
+        "max_dd_pct": 1.915143296177739,
+        "n_trades": 1,
+        "r_mean": -1.0000000000000187,
+        "roi_pct": -1.9151432961777348,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 5167,
+        "max_dd_pct": 76.45381669384824,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3484262301608328,
+          "ci_low": -0.36950076688676836,
+          "excludes_zero_positive": false,
+          "point": -0.02548983487108546
+        },
+        "n_trades": 6939,
+        "r_mean": 0.058836950209642996,
+        "roi_pct": 961.656902416473,
+        "wins": 1682,
+        "zeros": 90
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 5,
+        "max_dd_pct": 10.788206309577198,
+        "n_trades": 5,
+        "r_mean": -0.999999999999994,
+        "roi_pct": -10.788206309577198,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 87,
+        "max_dd_pct": 8.22610125941853,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3044693568234741,
+          "ci_low": -0.3856493762618923,
+          "excludes_zero_positive": false,
+          "point": -0.09577155404218272
+        },
+        "n_trades": 111,
+        "r_mean": -0.10650665566010419,
+        "roi_pct": -3.5071179001029296,
+        "wins": 20,
+        "zeros": 4
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 2379,
+        "max_dd_pct": 40.657639234798935,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.2647609469126298,
+          "ci_low": -0.1261549400444343,
+          "excludes_zero_positive": false,
+          "point": 0.056267269767882905
+        },
+        "n_trades": 3060,
+        "r_mean": 0.06608417720379381,
+        "roi_pct": 81.45764759561362,
+        "wins": 627,
+        "zeros": 54
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 4831,
+        "max_dd_pct": 76.88053874834078,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.29975531609606526,
+          "ci_low": -0.248006130179951,
+          "excludes_zero_positive": false,
+          "point": 0.03445507364355994
+        },
+        "n_trades": 6488,
+        "r_mean": 0.07327434351332802,
+        "roi_pct": 514.7519215352105,
+        "wins": 1573,
+        "zeros": 84
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 5026,
+        "max_dd_pct": 75.93915478459793,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.32323493657492397,
+          "ci_low": -0.2633183998296772,
+          "excludes_zero_positive": false,
+          "point": 0.027329247265332136
+        },
+        "n_trades": 6761,
+        "r_mean": 0.06503403390269172,
+        "roi_pct": 934.7042570583149,
+        "wins": 1648,
+        "zeros": 87
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 5044,
+        "max_dd_pct": 62.495919510733444,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3412495124609753,
+          "ci_low": -0.24986394937030174,
+          "excludes_zero_positive": false,
+          "point": 0.051648752739360336
+        },
+        "n_trades": 6783,
+        "r_mean": 0.06591104208911988,
+        "roi_pct": 1164.4105511454882,
+        "wins": 1652,
+        "zeros": 87
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 1,
+        "max_dd_pct": 1.8986579953481488,
+        "n_trades": 1,
+        "r_mean": -0.9999999999999943,
+        "roi_pct": -1.898657995348152,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 120,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 5048,
+        "max_dd_pct": 65.84846959423291,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3353345392384785,
+          "ci_low": -0.3481658542646709,
+          "excludes_zero_positive": false,
+          "point": 0.0003387627454879689
+        },
+        "n_trades": 6789,
+        "r_mean": 0.06544688847659613,
+        "roi_pct": 941.2659779713825,
+        "wins": 1654,
+        "zeros": 87
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 5,
+        "max_dd_pct": 10.771721008747608,
+        "n_trades": 5,
+        "r_mean": -0.999999999999989,
+        "roi_pct": -10.771721008747603,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 353,
+        "max_dd_pct": 27.244301808069288,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.0150482619755339,
+          "ci_low": -0.448851652988831,
+          "excludes_zero_positive": false,
+          "point": -0.22981708113173985
+        },
+        "n_trades": 413,
+        "r_mean": -0.3137324254478193,
+        "roi_pct": -24.95505192503683,
+        "wins": 51,
+        "zeros": 9
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 3757,
+        "max_dd_pct": 43.6418275818623,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.332467559131398,
+          "ci_low": -0.05197260650183404,
+          "excludes_zero_positive": false,
+          "point": 0.1459066367599254
+        },
+        "n_trades": 4605,
+        "r_mean": 0.13627036897160857,
+        "roi_pct": 515.5228117020355,
+        "wins": 819,
+        "zeros": 29
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 4539,
+        "max_dd_pct": 68.70065228339226,
+        "mppm": {
+          "block_length": 1.2457496343109533,
+          "ci_high": 0.4559513879652625,
+          "ci_low": -0.13756342017733375,
+          "excludes_zero_positive": false,
+          "point": 0.15116435939352593
+        },
+        "n_trades": 5615,
+        "r_mean": 0.12920915188414128,
+        "roi_pct": 1861.3717945558833,
+        "wins": 1041,
+        "zeros": 35
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 4563,
+        "max_dd_pct": 67.78200907758337,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.4265680274817526,
+          "ci_low": -0.12423035722163003,
+          "excludes_zero_positive": false,
+          "point": 0.14690077728408546
+        },
+        "n_trades": 5645,
+        "r_mean": 0.12903516356580869,
+        "roi_pct": 1808.0466331554335,
+        "wins": 1047,
+        "zeros": 35
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 2,
+        "max_dd_pct": 2.8105926064758022,
+        "n_trades": 2,
+        "r_mean": -1.0000000000000067,
+        "roi_pct": -2.8105926064758036,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 4564,
+        "max_dd_pct": 66.44864244627664,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.44059593414492415,
+          "ci_low": -0.1793353237065755,
+          "excludes_zero_positive": false,
+          "point": 0.12286860554402271
+        },
+        "n_trades": 5646,
+        "r_mean": 0.12883519276106803,
+        "roi_pct": 1779.3067186312605,
+        "wins": 1047,
+        "zeros": 35
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 11,
+        "max_dd_pct": 18.50882785296847,
+        "n_trades": 11,
+        "r_mean": -1.0208333926914315,
+        "roi_pct": -18.50882785296847,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 4564,
+        "max_dd_pct": 75.24399007192987,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.42447173608557875,
+          "ci_low": -0.23100622402900262,
+          "excludes_zero_positive": false,
+          "point": 0.09461321627938445
+        },
+        "n_trades": 5646,
+        "r_mean": 0.12883519276106803,
+        "roi_pct": 1613.4833164788595,
+        "wins": 1047,
+        "zeros": 35
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 30,
+        "max_dd_pct": 38.817189420504704,
+        "n_trades": 34,
+        "r_mean": -0.30552165371070045,
+        "roi_pct": -21.496833682773087,
+        "wins": 4
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 261,
+        "max_dd_pct": 28.93634275716497,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.11149129979477447,
+          "ci_low": -0.5183727769008741,
+          "excludes_zero_positive": false,
+          "point": -0.33653871019095194
+        },
+        "n_trades": 305,
+        "r_mean": -0.5052648733862464,
+        "roi_pct": -28.93634275716497,
+        "wins": 37,
+        "zeros": 7
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 3603,
+        "max_dd_pct": 50.97302296332145,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.34340673664061083,
+          "ci_low": -0.04593064216329582,
+          "excludes_zero_positive": false,
+          "point": 0.1485889473842117
+        },
+        "n_trades": 4426,
+        "r_mean": 0.13909545627653738,
+        "roi_pct": 531.3539232374212,
+        "wins": 798,
+        "zeros": 25
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 4370,
+        "max_dd_pct": 69.08487275198362,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.4314797881330036,
+          "ci_low": -0.12392151851498959,
+          "excludes_zero_positive": false,
+          "point": 0.1482283838741568
+        },
+        "n_trades": 5416,
+        "r_mean": 0.13155092222621667,
+        "roi_pct": 1502.1883938096923,
+        "wins": 1014,
+        "zeros": 32
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 4386,
+        "max_dd_pct": 56.52218445533461,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.4373276082331217,
+          "ci_low": -0.0979252122117498,
+          "excludes_zero_positive": false,
+          "point": 0.171334097657354
+        },
+        "n_trades": 5434,
+        "r_mean": 0.12933227509005557,
+        "roi_pct": 1663.9343887879604,
+        "wins": 1016,
+        "zeros": 32
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 2,
+        "max_dd_pct": 2.8105926064758022,
+        "n_trades": 2,
+        "r_mean": -1.0000000000000067,
+        "roi_pct": -2.8105926064758036,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 4387,
+        "max_dd_pct": 56.2100168528326,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.44406569575049604,
+          "ci_low": -0.15167132131700065,
+          "excludes_zero_positive": false,
+          "point": 0.14778290968168176
+        },
+        "n_trades": 5435,
+        "r_mean": 0.12912448626299208,
+        "roi_pct": 1580.92160456361,
+        "wins": 1016,
+        "zeros": 32
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 10,
+        "max_dd_pct": 16.978715443825788,
+        "n_trades": 10,
+        "r_mean": -1.0229167319605825,
+        "roi_pct": -16.978715443825788,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 1.5
+      },
+      "full_oos": {
+        "losses": 4388,
+        "max_dd_pct": 64.53924000828607,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.44003936166120117,
+          "ci_low": -0.19268646825310937,
+          "excludes_zero_positive": false,
+          "point": 0.1267736193272743
+        },
+        "n_trades": 5436,
+        "r_mean": 0.12891677388509235,
+        "roi_pct": 1447.2902861465025,
+        "wins": 1016,
+        "zeros": 32
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 31,
+        "max_dd_pct": 32.78144984022214,
+        "n_trades": 37,
+        "r_mean": 0.13198053316940975,
+        "roi_pct": 8.139571485683629,
+        "wins": 6
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 145,
+        "max_dd_pct": 12.688478356380894,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.06518634550217373,
+          "ci_low": -0.4234661608623092,
+          "excludes_zero_positive": false,
+          "point": -0.2072047220530716
+        },
+        "n_trades": 179,
+        "r_mean": -0.29855572169549494,
+        "roi_pct": -11.08773753554848,
+        "wins": 29,
+        "zeros": 5
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 2159,
+        "max_dd_pct": 42.849861128027364,
+        "mppm": {
+          "block_length": 1.3563265753031415,
+          "ci_high": 0.24127767368427955,
+          "ci_low": -0.15061060197541493,
+          "excludes_zero_positive": false,
+          "point": 0.030731574775622633
+        },
+        "n_trades": 2685,
+        "r_mean": 0.072087754087294,
+        "roi_pct": 53.4357488392629,
+        "wins": 491,
+        "zeros": 35
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3816,
+        "max_dd_pct": 68.88965190426822,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3353394283192782,
+          "ci_low": -0.21668513697097944,
+          "excludes_zero_positive": false,
+          "point": 0.07454957556186066
+        },
+        "n_trades": 4964,
+        "r_mean": 0.09305339014282328,
+        "roi_pct": 639.4131227256202,
+        "wins": 1104,
+        "zeros": 44
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3891,
+        "max_dd_pct": 60.910201803075694,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.40005345472699316,
+          "ci_low": -0.19841058418563848,
+          "excludes_zero_positive": false,
+          "point": 0.10190045595410101
+        },
+        "n_trades": 5067,
+        "r_mean": 0.08944753005978906,
+        "roi_pct": 1130.6723031766737,
+        "wins": 1131,
+        "zeros": 45
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3902,
+        "max_dd_pct": 57.03523588980482,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.41987840569368906,
+          "ci_low": -0.22458091935111338,
+          "excludes_zero_positive": false,
+          "point": 0.11177673983441078
+        },
+        "n_trades": 5080,
+        "r_mean": 0.0902074322079757,
+        "roi_pct": 1437.5977964345389,
+        "wins": 1133,
+        "zeros": 45
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 2,
+        "max_dd_pct": 3.7474568086343973,
+        "n_trades": 2,
+        "r_mean": -1.0000000000000053,
+        "roi_pct": -3.7474568086343973,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3902,
+        "max_dd_pct": 63.11514670062187,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.4248847977211987,
+          "ci_low": -0.30489350481979804,
+          "excludes_zero_positive": false,
+          "point": 0.07307890318978692
+        },
+        "n_trades": 5081,
+        "r_mean": 0.09025769032281282,
+        "roi_pct": 1447.2686282331738,
+        "wins": 1134,
+        "zeros": 45
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 7,
+        "max_dd_pct": 14.320762512460588,
+        "n_trades": 8,
+        "r_mean": -0.8307834091838224,
+        "roi_pct": -14.320762512460583,
+        "wins": 1
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 124,
+        "max_dd_pct": 14.007265212640691,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.05112847491499544,
+          "ci_low": -0.4779925266377466,
+          "excludes_zero_positive": false,
+          "point": -0.2808740287239569
+        },
+        "n_trades": 150,
+        "r_mean": -0.43735687080380614,
+        "roi_pct": -13.240985205380584,
+        "wins": 22,
+        "zeros": 4
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 2376,
+        "max_dd_pct": 36.52384918360254,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.32714103675440914,
+          "ci_low": -0.04188322439477332,
+          "excludes_zero_positive": false,
+          "point": 0.14281273998065108
+        },
+        "n_trades": 3001,
+        "r_mean": 0.12060665562181715,
+        "roi_pct": 260.62284538832927,
+        "wins": 593,
+        "zeros": 32
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3714,
+        "max_dd_pct": 68.6349661752233,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.35587672180943913,
+          "ci_low": -0.21360480794024325,
+          "excludes_zero_positive": false,
+          "point": 0.08008368059397557
+        },
+        "n_trades": 4851,
+        "r_mean": 0.09959064489989362,
+        "roi_pct": 676.6872815915615,
+        "wins": 1094,
+        "zeros": 43
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3779,
+        "max_dd_pct": 61.265866650206036,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3917379996735622,
+          "ci_low": -0.19275529895020466,
+          "excludes_zero_positive": false,
+          "point": 0.09751868857440894
+        },
+        "n_trades": 4941,
+        "r_mean": 0.09622521011814694,
+        "roi_pct": 945.845623891074,
+        "wins": 1118,
+        "zeros": 44
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3787,
+        "max_dd_pct": 54.93068532515573,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.4110853047552176,
+          "ci_low": -0.16885431707764006,
+          "excludes_zero_positive": false,
+          "point": 0.12082325649162738
+        },
+        "n_trades": 4951,
+        "r_mean": 0.09743894458434454,
+        "roi_pct": 1312.7984456303966,
+        "wins": 1120,
+        "zeros": 44
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 2,
+        "max_dd_pct": 3.7474568086343973,
+        "n_trades": 2,
+        "r_mean": -1.0000000000000053,
+        "roi_pct": -3.7474568086343973,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.0
+      },
+      "full_oos": {
+        "losses": 3788,
+        "max_dd_pct": 54.970551841712755,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.418663760575711,
+          "ci_low": -0.17381577058796124,
+          "excludes_zero_positive": false,
+          "point": 0.12169096606242007
+        },
+        "n_trades": 4952,
+        "r_mean": 0.09721732928858841,
+        "roi_pct": 1420.7602899289257,
+        "wins": 1120,
+        "zeros": 44
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 6,
+        "max_dd_pct": 12.134701262486233,
+        "n_trades": 7,
+        "r_mean": -0.8066096104957976,
+        "roi_pct": -12.134701262486235,
+        "wins": 1
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 49,
+        "max_dd_pct": 7.0914456172392715,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.041542594680069884,
+          "ci_low": -0.599201085937267,
+          "excludes_zero_positive": false,
+          "point": -0.3033254880422036
+        },
+        "n_trades": 59,
+        "r_mean": -0.48285164536271974,
+        "roi_pct": -5.897678069446865,
+        "wins": 9,
+        "zeros": 1
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 864,
+        "max_dd_pct": 20.465672866381173,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3723590797827675,
+          "ci_low": -0.14439878672815562,
+          "excludes_zero_positive": false,
+          "point": 0.1088038746722438
+        },
+        "n_trades": 1115,
+        "r_mean": 0.11061778638302978,
+        "roi_pct": 59.49897453888555,
+        "wins": 225,
+        "zeros": 26
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 2759,
+        "max_dd_pct": 76.42236143587108,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.18868891636252638,
+          "ci_low": -0.3212467925351121,
+          "excludes_zero_positive": false,
+          "point": -0.0721145021657248
+        },
+        "n_trades": 3650,
+        "r_mean": 0.037776229139634764,
+        "roi_pct": 8.128414550809037,
+        "wins": 851,
+        "zeros": 40
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 3175,
+        "max_dd_pct": 90.87444411572545,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.26457343040659115,
+          "ci_low": -0.507196103795315,
+          "excludes_zero_positive": false,
+          "point": -0.1287628169199496
+        },
+        "n_trades": 4256,
+        "r_mean": 0.05266552233962029,
+        "roi_pct": 87.34384842439704,
+        "wins": 1035,
+        "zeros": 46
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 3202,
+        "max_dd_pct": 94.44179484171606,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.245261761547808,
+          "ci_low": -0.737264307855693,
+          "excludes_zero_positive": false,
+          "point": -0.26678871038209057
+        },
+        "n_trades": 4314,
+        "r_mean": 0.05795143287412078,
+        "roi_pct": 41.055149952464774,
+        "wins": 1066,
+        "zeros": 46
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 5,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 3342,
+        "max_dd_pct": 95.47571776612837,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.22382425240765358,
+          "ci_low": -0.7564126575063479,
+          "excludes_zero_positive": false,
+          "point": -0.27067989933690606
+        },
+        "n_trades": 4502,
+        "r_mean": 0.05168259668918271,
+        "roi_pct": 83.2416428851374,
+        "wins": 1114,
+        "zeros": 46
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 2,
+        "max_dd_pct": 4.684321010792864,
+        "n_trades": 2,
+        "r_mean": -0.9999999999999756,
+        "roi_pct": -4.6843210107928694,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 42,
+        "max_dd_pct": 7.867483939281375,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": -0.027883022613442058,
+          "ci_low": -0.6024139453514484,
+          "excludes_zero_positive": false,
+          "point": -0.32898377019293557
+        },
+        "n_trades": 52,
+        "r_mean": -0.534979332034051,
+        "roi_pct": -5.911821981718191,
+        "wins": 9,
+        "zeros": 1
+      },
+      "kelly_multiplier": 0.25,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 1092,
+        "max_dd_pct": 28.11259792857203,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.32396919187449913,
+          "ci_low": -0.1230528823313053,
+          "excludes_zero_positive": false,
+          "point": 0.09100998328292463
+        },
+        "n_trades": 1412,
+        "r_mean": 0.09879428475445522,
+        "roi_pct": 63.596603037347045,
+        "wins": 293,
+        "zeros": 27
+      },
+      "kelly_multiplier": 0.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 3142,
+        "max_dd_pct": 69.39386920793528,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.32292974800049934,
+          "ci_low": -0.20833877161189734,
+          "excludes_zero_positive": false,
+          "point": 0.05411189145528304
+        },
+        "n_trades": 4247,
+        "r_mean": 0.06455787478170007,
+        "roi_pct": 328.0177711939561,
+        "wins": 1064,
+        "zeros": 41
+      },
+      "kelly_multiplier": 1.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 3357,
+        "max_dd_pct": 86.79694196082015,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.32341583093421783,
+          "ci_low": -0.33078302924572184,
+          "excludes_zero_positive": false,
+          "point": 0.02037646221908102
+        },
+        "n_trades": 4565,
+        "r_mean": 0.06522630657960973,
+        "roi_pct": 599.872516018996,
+        "wins": 1162,
+        "zeros": 46
+      },
+      "kelly_multiplier": 1.5,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 3358,
+        "max_dd_pct": 92.76356971651533,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.34202621182252757,
+          "ci_low": -0.47597769636996573,
+          "excludes_zero_positive": false,
+          "point": -0.07663094096004272
+        },
+        "n_trades": 4565,
+        "r_mean": 0.06486979714729055,
+        "roi_pct": 456.72383738411264,
+        "wins": 1161,
+        "zeros": 46
+      },
+      "kelly_multiplier": 2.0,
+      "subwin_2026_aprmay": {
+        "losses": 0,
+        "max_dd_pct": -0.0,
+        "n_trades": 0,
+        "r_mean": 0.0,
+        "roi_pct": 0.0,
+        "wins": 0
+      }
+    },
+    {
+      "cell": {
+        "atr_n": 14,
+        "channel_n": 240,
+        "h_dwell": 10,
+        "k_atr": 2.5
+      },
+      "full_oos": {
+        "losses": 3406,
+        "max_dd_pct": 88.4642287479656,
+        "mppm": {
+          "block_length": 1.0,
+          "ci_high": 0.3953967825604671,
+          "ci_low": -0.3937290226627407,
+          "excludes_zero_positive": false,
+          "point": -0.015007818858606742
+        },
+        "n_trades": 4627,
+        "r_mean": 0.06038386029670375,
+        "roi_pct": 838.7486310735367,
+        "wins": 1175,
+        "zeros": 46
+      },
+      "kelly_multiplier": 2.5,
+      "subwin_2026_aprmay": {
+        "losses": 2,
+        "max_dd_pct": 4.684321010792864,
+        "n_trades": 2,
+        "r_mean": -0.9999999999999756,
+        "roi_pct": -4.6843210107928694,
+        "wins": 0
+      }
+    }
+  ],
+  "verdict": "NULL",
+  "written_at_utc": "2026-05-16T03:48:40.119529+00:00"
+}
