@@ -1212,3 +1212,64 @@ Operator 2026-05-15 directive: "Implement and run H055 v2 — mechanized wick-re
 **H055 stage progression** (per ADR-0013 §1): `exploration-in-progress` → `kpi-report-emitted` recorded 2026-05-15 ([stage.md](research/01_hypothesis_register/H055/stage.md) row 2). Per operator 2026-05-04 standing decline-ninjascript directive + ADR-0013 §5.3 operator-discretionary clause, the subsequent `kpi-report-emitted` → `ninjascript-implemented` transition is operator-discretionary. **Operator recommendation per KPI v1 §6**: defer NinjaScript progression pending P1-H055-LIMIT-FILL-WICK-EXTREME + P1-H055-OPTUNA-INNER-CV-IMPL + P1-H055-COST-EMPIRICAL-CALIBRATION + P1-H055-FORWARD-PROJECTION-COMPUTE.
 
 Audit trail: [docs/audits/audit_trail_2026-05-15_h055_v2.md](docs/audits/audit_trail_2026-05-15_h055_v2.md).
+
+### Phase O.6: H065 pre-registration + TP-overlay sweep + KPI report card v1 — H065 at `kpi-report-emitted` (2026-05-15)
+
+H065 — **Intraday Donchian-channel breakout with ATR-scaled profit-target overlay** — pre-registered Tier-2b at `designed` 2026-05-15 (frozen at the same session); first TP-overlay sweep emitted; KPI report card v1 published. H065 = H062 v1 + ATR-scaled profit target at `M × k_atr × ATR_n,t` for M ∈ {1.0, 1.5, 2.0, 2.5} R-multiples (Tharp 1998 *practitioner* R-multiple convention; ISBN 978-0070647626). Pyramiding deferred to H066. All other H062 v1 mechanics inherited verbatim (Donchian + ATR + first-fire dwell + ID_1 trend gate + EOD-flatten + Kelly grid + MPPM(ρ=1) inner-CV fitness).
+
+**Substantive KPI summary** (sidecar SHA `ea12473729264d25d009834c537cb6f657d51c15a1a4f9bca9cb24496798d60d`; substrate `b93e54487b9315133f32adb650c01b0c1094b7c5c958e88a9a5b3d1ca40327ce`; 16-cell representative grid = 6 configs × 4 symbols + basket; ~3.5 min wall-clock):
+
+| Config | Basket ROI | Basket MaxDD | Basket MPPM(ρ=1) | Basket τ_3 | Notable |
+|---|---:|---:|---:|---:|---|
+| **M=∞ H062 v1 fixed-rebase** | **+10.33%** | 79.4% | +0.013 [−0.247,+0.225] | **+0.807** | SIL standalone: +446% / MPPM CI [+0.087, +0.459] EXCLUDES ZERO POS |
+| **M=∞ H065 current-rebase** | **+22.21%** | 53.6% | +0.026 [−0.122,+0.183] | +0.794 | SIL standalone: +734% |
+| M=1.0 | −10.05% | 31.3% | −0.014 [−0.072,+0.047] | **−0.034 (SKEW-FLIP)** | Win rate 50% by construction |
+| M=1.5 | −17.89% | 37.0% | −0.028 [−0.098,+0.048] | +0.158 | |
+| M=2.0 | −10.30% | 42.1% | −0.015 [−0.097,+0.071] | +0.304 | |
+| M=2.5 | −40.33% | 48.3% | −0.083 [−0.183,+0.015] | +0.406 | |
+
+**H_1 verdict** (per design.md §1 joint criterion: MPPM CI strict-positive AND τ_3 ≥ 0): **null on all 4 TP cells**. The TP overlay does NOT improve over H062 v1 no-TP baseline at the basket level. **M=1.0 inverts skew direction** on every symbol AND on the basket (τ_3 drops from +0.81 to −0.03) — the canonical death-by-thousand-cuts pattern. M=1.5 onwards preserves skew-positive at the cost of mean return. Strongest project-wide standalone cell across H050-H055-H060-H062-H065 emerges as **SIL M=∞ fixed-rebase** (MPPM CI [+0.087, +0.459] excludes zero positively; +446% realized OOS; MaxDD 25%; 4,165 trades; τ_3=+0.776).
+
+**Sub-window 2026-04-01 → 2026-05-15** (mandatory per design.md §13): basket-level sub-ROI %: M=∞ fixed +0.79; M=∞ current −0.23; M=1.0 +1.55; M=1.5 +0.19; M=2.0 +0.75; M=2.5 0.00. Basket-level sub-MaxDD %: M=∞ fixed 0.67; M=∞ current 6.18; M=1.0 2.71; M=1.5 1.75; M=2.0 1.76; M=2.5 0.00. All configs modestly positive or flat on the 6-week window; M=1.0 strongest but single-window noise (~30 sessions per symbol).
+
+**Empirical structural findings**:
+- **NQ produces 0 trades on all 6 configs** — structurally infeasible at $10K starting equity (NQ 1R median $730/contract vs $100 dollar-risk floor at quarter-Kelly × 1%). v2 path: MNQ ($2/point = 10x smaller 1R) OR ≥$80K starting capital. Tracked under `P1-H065-MNQ-SUBSTITUTION` (BLOCKING-BEFORE-V2).
+- **MGC fixed-rebase bankroll-blowup** at min equity = −$656 (no current-equity floor; H062 v1 sizing path). Current-equity rebase eliminates this failure mode by shrinking sizing as bankroll drops. MaxDD capped at 100% in simulator with `bankroll_blowup` flag (per R1 audit F1-Q-5 fix).
+- **H062 v1 `kelly_multiplier` unused in per-trade simulator** (line 245 of [scripts/run_h062_walk_forward.py](scripts/run_h062_walk_forward.py)) — kelly_multiplier is a hyperparameter at inner-CV selection only, not at sizing OR P/L scaling. H065 v1 inherits this convention for direct H062 comparability; documented under pre-existing `P1-H062-CURRENT-EQUITY-REBASE-IMPL`.
+
+**Audit-remediate-loop Round 1** (per SKILL.md 3-round cap; 1 round used; verdict `accept-with-residuals`): inline self-audit with quant + lit + repro checks. 2 critical + 6 major findings; all 8 remediated inline before final emission. Critical bugs caught + fixed mid-stream: MPPM CI attribute mismatch (`ci_lower`/`ci_upper` vs `ci_low`/`ci_high`); ES + NQ produced 0 trades under initial kelly × risk × equity sizing (fixed by aligning to H062 v1's $-risk formula). Major bugs caught: subwindow boolean-mask IndexError on empty per-symbol session series; basket subwindow reshape order incorrect; MaxDD > 100% on bankroll-blowup. Audit trail: [docs/audits/audit_trail_2026-05-15_h065_v1.md](docs/audits/audit_trail_2026-05-15_h065_v1.md).
+
+**Artifacts landing in Phase O.6**:
+- [research/01_hypothesis_register/H065/design.md](research/01_hypothesis_register/H065/design.md) — pre-registered design (17-section template mirroring H062); `status: designed`; §15 NinjaScript implementation; §11.2 BLOCKING preconditions enumerated.
+- [research/01_hypothesis_register/H065/lit_review_H065_2026-05-15.md](research/01_hypothesis_register/H065/lit_review_H065_2026-05-15.md) — Phase 0 lit-check; verdict `infrastructure-supported + TP-overlay is operational extension`; Tharp 1998 1st-ed ISBN preserved.
+- [research/01_hypothesis_register/H065/data_requirements.md](research/01_hypothesis_register/H065/data_requirements.md) — (implicit via design.md §16 substrate binding).
+- [research/01_hypothesis_register/H065/stage.md](research/01_hypothesis_register/H065/stage.md) — stage transition `exploration-in-progress` → `kpi-report-emitted` appended 2026-05-15.
+- [research/01_hypothesis_register/H065/failure_log.md](research/01_hypothesis_register/H065/failure_log.md) — empty at v1 emission.
+- [research/01_hypothesis_register/H065/H065_kpi_report_v0.md](research/01_hypothesis_register/H065/H065_kpi_report_v0.md) — pre-emission v0 skeleton.
+- [research/01_hypothesis_register/H065/H065_kpi_report_v1.md](research/01_hypothesis_register/H065/H065_kpi_report_v1.md) — canonical KPI report card v1 per ADR-0014 §3.2 13-table format; binding sidecar `ea12473...`.
+- [scripts/run_h065_tp_overlay_sweep.py](scripts/run_h065_tp_overlay_sweep.py) — TP-overlay simulator (~700 lines); 6-config × 4-symbol sweep + basket aggregator + KPI table emitter.
+- [tests/unit/test_h065_tp_overlay.py](tests/unit/test_h065_tp_overlay.py) — 7 unit tests covering config builder, position dataclass, TP fill PIT, exit precedence, subwindow date binding, basket aggregator robustness.
+- [docs/audits/audit_trail_2026-05-15_h065_v1.md](docs/audits/audit_trail_2026-05-15_h065_v1.md) — full R1 audit trail.
+- [artifacts/runs/H065/tp_overlay_sweep_20260516T030515Z/](artifacts/runs/H065/tp_overlay_sweep_20260516T030515Z/) — canonical sweep sidecar + SHA + KPI table text.
+- [artifacts/runs/H065/tp_overlay_sweep_20260516T030142Z/](artifacts/runs/H065/tp_overlay_sweep_20260516T030142Z/) — pre-MaxDD-cap-fix run preserved per ADR-0013 §4.1 non-loss.
+
+**New follow-ups registered by Phase O.6**:
+
+| Follow-up | Status | Description |
+|---|---|---|
+| `P1-H065-NINJASCRIPT-IMPL` | OPEN; mandatory per ADR-0013 §5; operator-discretionary per 2026-05-04 directive | C# implementation at `ninjascript/strategies/H065_DonchianBreakoutWithTPOverlay.cs`. |
+| `P1-H065-SIL-STANDALONE-V2` | OPEN; high-leverage | Pre-register a SIL-only successor hypothesis with full Kelly-grid sweep + cost-realistic calibration on the standalone-strongest cell (MPPM CI [+0.087, +0.459] excludes zero pos; +446% realized OOS). |
+| `P1-H065-MNQ-SUBSTITUTION` | OPEN; BLOCKING-BEFORE-V2 | Substitute MNQ (Micro NQ) for NQ in the basket to address $10K starting-capital sample-size constraint. |
+| `P1-H065-FULL-INNER-CV-GRID-V2` | OPEN | Full 55,296-cell inner-CV sweep at v2; v1 used 16-cell representative grid. |
+| `P1-H065-COST-EMPIRICAL-CALIBRATION` | OPEN; BLOCKING-BEFORE-PAPER-TRADE | Empirical cost-realistic calibration; v1 is zero-cost. |
+| `P1-H065-REPROLOG-WIRE` | OPEN | Wire RunContext + ReproLog into sweep script per H062 walk-forward pattern. |
+| `P1-H065-FORWARD-PROJECTION` | OPEN | $10K starting-capital 1-yr bootstrap forward projection per ADR-0013 §3.1; v1 focused on realized OOS + sub-window. |
+| `P1-H065-FAMILY-SPA-COMPUTE` | OPEN | Hansen SPA + Romano-Wolf FWER across 4 M-cell family. |
+| `P1-H065-R-MULT-CI-V2` | OPEN | Per-cell R-multiple-mean bootstrap CI at v2. |
+| `P1-H065-CALMAR-DIFFERENTIAL-V2` | OPEN | Calmar-differential CI vs passive-EW reference at v2. |
+| `P1-H065-FULL-KELLY-GRID-V2` | OPEN | Full Kelly-multiplier {0.25, 0.5, 1.0, 1.5, 2.0, 2.5} sweep at v2; v1 fixed at 0.25. |
+| `H066` | QUEUED | H065 + Turtle System 2 pyramiding overlay (deferred from H065 v1 per scope-isolation discipline). |
+
+**H065 stage progression** (per ADR-0013 §1): `exploration-in-progress` → `kpi-report-emitted` recorded 2026-05-15 ([stage.md](research/01_hypothesis_register/H065/stage.md) row 2). Per operator 2026-05-04 standing decline-ninjascript directive + ADR-0013 §5.3 operator-discretionary clause, the subsequent `kpi-report-emitted` → `ninjascript-implemented` transition is operator-discretionary. **Operator recommendation per KPI v1 §"Operator review section"**: (1) pre-register SIL-standalone successor hypothesis (`P1-H065-SIL-STANDALONE-V2`); (2) decline mandatory NinjaScript transition per H052a precedent; (3) MNQ substitution for v2 NQ leg.
+
+Audit trail: [docs/audits/audit_trail_2026-05-15_h065_v1.md](docs/audits/audit_trail_2026-05-15_h065_v1.md).
