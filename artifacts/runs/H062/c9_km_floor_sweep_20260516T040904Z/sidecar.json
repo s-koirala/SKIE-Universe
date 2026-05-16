@@ -1,0 +1,242 @@
+{
+  "experiment": "c9_km_floor_sweep",
+  "feature_cell": {
+    "atr_n": 14,
+    "channel_n": 120,
+    "h_dwell": 5,
+    "k_atr": 2.0,
+    "trend_id": "a_ts_mom",
+    "trend_id_lookback_l": 60,
+    "trend_id_threshold": 1.0
+  },
+  "km_floor_variants": {
+    "default_floor_0.5": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5
+    ],
+    "floor_1.0": [
+      1.0,
+      1.5,
+      2.0,
+      2.5
+    ],
+    "floor_1.5": [
+      1.5,
+      2.0,
+      2.5
+    ]
+  },
+  "results": [
+    {
+      "full_losses": 32,
+      "full_max_dd_pct": 12.94092652936343,
+      "full_n_trades": 42,
+      "full_r_mean": 0.5755868237128152,
+      "full_roi_pct": 21.82417434531292,
+      "full_wins": 10,
+      "km_terminal": 0.5,
+      "n_km_halves": 2,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "ES",
+      "variant": "default_floor_0.5"
+    },
+    {
+      "full_losses": 15,
+      "full_max_dd_pct": 11.768469079076105,
+      "full_n_trades": 19,
+      "full_r_mean": 1.0349386641432283,
+      "full_roi_pct": 24.600265195002425,
+      "full_wins": 4,
+      "km_terminal": 0.5,
+      "n_km_halves": 2,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "NQ",
+      "variant": "default_floor_0.5"
+    },
+    {
+      "full_losses": 3695,
+      "full_max_dd_pct": 76.7775085387402,
+      "full_n_trades": 4736,
+      "full_r_mean": 0.023510752374634913,
+      "full_roi_pct": 73.42254699097059,
+      "full_wins": 1028,
+      "km_terminal": 0.5,
+      "n_km_halves": 2,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 20,
+      "subwin_roi_pct": -0.7707499631692705,
+      "symbol": "MGC",
+      "variant": "default_floor_0.5"
+    },
+    {
+      "full_losses": 4299,
+      "full_max_dd_pct": 55.24357726104399,
+      "full_n_trades": 5425,
+      "full_r_mean": 0.08881340984582385,
+      "full_roi_pct": 715.3576914043789,
+      "full_wins": 1090,
+      "km_terminal": 0.5,
+      "n_km_halves": 2,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 33,
+      "subwin_roi_pct": -5.587878258228862,
+      "symbol": "SIL",
+      "variant": "default_floor_0.5"
+    },
+    {
+      "full_losses": 659,
+      "full_max_dd_pct": 51.64371654183526,
+      "full_n_trades": 780,
+      "full_r_mean": 0.10184359435191576,
+      "full_roi_pct": 47.864652330816696,
+      "full_wins": 115,
+      "km_terminal": 1.0,
+      "n_km_halves": 1,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 1,
+      "subwin_roi_pct": -0.9002640458259381,
+      "symbol": "ES",
+      "variant": "floor_1.0"
+    },
+    {
+      "full_losses": 16,
+      "full_max_dd_pct": 12.601974366599919,
+      "full_n_trades": 20,
+      "full_r_mean": 0.9331917309360627,
+      "full_roi_pct": 23.42319188818218,
+      "full_wins": 4,
+      "km_terminal": 1.0,
+      "n_km_halves": 1,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "NQ",
+      "variant": "floor_1.0"
+    },
+    {
+      "full_losses": 2983,
+      "full_max_dd_pct": 94.47813802644905,
+      "full_n_trades": 3791,
+      "full_r_mean": -0.030710079689937393,
+      "full_roi_pct": -81.03274399273718,
+      "full_wins": 797,
+      "km_terminal": 1.0,
+      "n_km_halves": 1,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "MGC",
+      "variant": "floor_1.0"
+    },
+    {
+      "full_losses": 4439,
+      "full_max_dd_pct": 64.91778078725248,
+      "full_n_trades": 5618,
+      "full_r_mean": 0.09086883200619966,
+      "full_roi_pct": 735.9207207777954,
+      "full_wins": 1143,
+      "km_terminal": 1.0,
+      "n_km_halves": 1,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 36,
+      "subwin_roi_pct": -0.05338922057036566,
+      "symbol": "SIL",
+      "variant": "floor_1.0"
+    },
+    {
+      "full_losses": 3249,
+      "full_max_dd_pct": 93.23748300360008,
+      "full_n_trades": 4059,
+      "full_r_mean": 0.05999280160778431,
+      "full_roi_pct": 20.475876825332694,
+      "full_wins": 795,
+      "km_terminal": 1.5,
+      "n_km_halves": 0,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 5,
+      "subwin_roi_pct": -7.548137141700495,
+      "symbol": "ES",
+      "variant": "floor_1.5"
+    },
+    {
+      "full_losses": 39,
+      "full_max_dd_pct": 26.765661112387228,
+      "full_n_trades": 47,
+      "full_r_mean": 0.14996285012048194,
+      "full_roi_pct": 3.421282069279541,
+      "full_wins": 8,
+      "km_terminal": 1.5,
+      "n_km_halves": 0,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "NQ",
+      "variant": "floor_1.5"
+    },
+    {
+      "full_losses": 2745,
+      "full_max_dd_pct": 97.16923373157324,
+      "full_n_trades": 3485,
+      "full_r_mean": -0.019655129327711674,
+      "full_roi_pct": -91.12599904871853,
+      "full_wins": 730,
+      "km_terminal": 1.5,
+      "n_km_halves": 0,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "MGC",
+      "variant": "floor_1.5"
+    },
+    {
+      "full_losses": 4483,
+      "full_max_dd_pct": 68.50386750809363,
+      "full_n_trades": 5675,
+      "full_r_mean": 0.08977315473150817,
+      "full_roi_pct": 1159.445715874646,
+      "full_wins": 1156,
+      "km_terminal": 1.5,
+      "n_km_halves": 0,
+      "n_km_step_ups": 0,
+      "subwin_n_sessions": 36,
+      "subwin_roi_pct": 3.510649212000949,
+      "symbol": "SIL",
+      "variant": "floor_1.5"
+    }
+  ],
+  "subwin_start": "2026-04-01 00:00:00+00:00",
+  "variant_basket_summary": {
+    "default_floor_0.5": {
+      "avg_max_dd_pct": 39.18262035205593,
+      "full_basket_roi_pct": 208.8011694839162,
+      "n_symbols": 4,
+      "subwin_basket_roi_pct": -1.589657055349547,
+      "total_full_trades": 10222,
+      "total_subwin_sessions": 53
+    },
+    "floor_1.0": {
+      "avg_max_dd_pct": 55.91040243053418,
+      "full_basket_roi_pct": 181.5439552510142,
+      "n_symbols": 4,
+      "subwin_basket_roi_pct": -0.23841331659907317,
+      "total_full_trades": 10209,
+      "total_subwin_sessions": 37
+    },
+    "floor_1.5": {
+      "avg_max_dd_pct": 71.41906133891354,
+      "full_basket_roi_pct": 273.05421893013494,
+      "n_symbols": 4,
+      "subwin_basket_roi_pct": -1.0093719824248892,
+      "total_full_trades": 13266,
+      "total_subwin_sessions": 41
+    }
+  },
+  "written_at_utc": "2026-05-16T04:11:15.131433+00:00"
+}
