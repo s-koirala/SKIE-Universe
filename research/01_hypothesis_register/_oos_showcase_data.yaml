@@ -1,0 +1,258 @@
+# SKIE-Universe Best-OOS Showcase — Structured Data
+#
+# Machine-readable headline data per emitted KPI report card. Read by
+# scripts/showcase_best_oos.py to regenerate BEST_OOS.md at repo root.
+#
+# Per ADR-0024 D-8: every emitted KPI report card MUST have a row here at
+# emission time. Per ADR-0013 §4.1 non-loss: when a card is superseded, its
+# row is preserved with `superseded_by: <version>` annotation, never deleted.
+#
+# Source of truth for the numbers is the per-hypothesis KPI report card
+# markdown body (which is itself frozen at emission per ADR-0013 §4.1).
+# Values here are a machine-readable cache; in case of divergence between
+# this YAML and the underlying report card, the report card wins and the
+# YAML is corrected. Tracked under P1-BEST-OOS-SHOWCASE-SCHEMA-FROZEN-DATACLASS.
+#
+# Schema:
+#   cards: list of card entries, each with:
+#     hypothesis_id: H<NNN>
+#     version: integer
+#     date: ISO date
+#     report_card_path: relative to repo root
+#     run_id: run UUID string (or null if pre-emission)
+#     paradigm: one of {adr-0017-survival, adr-0024-aggressive-growth, hybrid}
+#     hypothesis_of_record_arm: short label per design.md §1
+#     strongest_cell: short label of the cell with highest realized OOS end equity %
+#       (note: "highest" = least negative for net-loss hypotheses; e.g. H050's strongest
+#       is NQ unconditional at -25.60% NOT ES unconditional at -43.69%; per the
+#       _rank_key descending-by-pct semantic in scripts/showcase_best_oos.py)
+#     realized:
+#       strongest_cell_pct: % return of strongest cell (signed; e.g. +89.43)
+#       strongest_cell_max_dd_pct: max-DD of strongest cell (positive number)
+#       hypothesis_of_record_arm_pct: % return of hypothesis-of-record arm on the SAME
+#         symbol as strongest_cell (single-scalar; per-symbol-asymmetric arms are
+#         disambiguated by reporting the symbol matching strongest_cell). When the
+#         hypothesis-of-record spans two symbols (e.g. H050 HMM-gated ES+NQ), this
+#         field reports the value on the symbol that won strongest_cell.
+#       oos_sessions: OOS session count on the same symbol as strongest_cell (context, not ranking)
+#     forward_projection:
+#       p_loss_pct: forward 252-session P(loss) on strongest cell (null if not reported)
+#     fitness:
+#       mppm_rho1_point: MPPM(ρ=1) point estimate (null if not computed)
+#       mppm_rho1_ci_low: CI lower bound (null if not computed)
+#       mppm_rho1_ci_high: CI upper bound (null if not computed)
+#       sharpe_ann_strongest_cell: annualized Sharpe on strongest cell (null if not reported)
+#     primary_annotations: list of canonical KPI annotations from §9 of the report card
+#     cost_model: short label (e.g. "futures_orb_v1", "zero_cost_v1")
+#     superseded_by: null or "<hypothesis_id>_kpi_report_v<N>.md" string
+#
+# Note on `paradigm` tag: reflects the ADR framework in force at KPI emission time
+#   (not the current canonical paradigm). Per ADR-0024 §Consequences retroactive
+#   labeling table, KPI cards emitted before 2026-05-15 are tagged adr-0017-survival
+#   regardless of whether a future v{N+1} cascade re-emits them under adr-0024-
+#   aggressive-growth framing.
+
+cards:
+  - hypothesis_id: H050
+    version: 1
+    date: 2026-05-04
+    report_card_path: research/01_hypothesis_register/H050/H050_kpi_report_v1.md
+    run_id: 31d23ecd8e3842dd8ebd5687ce9c91d5
+    paradigm: adr-0017-survival
+    hypothesis_of_record_arm: HMM-gated (ES + NQ directional)
+    strongest_cell: NQ unconditional   # least-negative cell; both arms negative on OOS
+    realized:
+      strongest_cell_pct: -25.60   # NQ uncond per KPI §1 line 40
+      strongest_cell_max_dd_pct: 35.05   # NQ uncond max-DD per KPI §2 line 50
+      hypothesis_of_record_arm_pct: -84.20   # NQ hmm_gated (same-symbol as strongest_cell)
+      oos_sessions: 1726   # NQ symbol n_bars=673,274 ≈ 1,726 sessions per KPI §1
+    forward_projection:
+      p_loss_pct: 64.9   # NQ uncond P(loss) per KPI §6 line 87
+    fitness:
+      mppm_rho1_point: null
+      mppm_rho1_ci_low: null
+      mppm_rho1_ci_high: null
+      sharpe_ann_strongest_cell: null
+    primary_annotations:
+      - leakage-canary-pass
+      - bss-n/a
+      - reliability-n/a
+      - repro-log-complete
+      - dsr-n/a
+      - post-run-audit-pass
+      - sharpe-vs-unconditional-negative
+      - max-dd-adverse
+    cost_model: hmm_gated_multibar_intraday
+    superseded_by: null
+
+  - hypothesis_id: H052a
+    version: 1
+    date: 2026-05-05
+    report_card_path: research/01_hypothesis_register/H052a/H052a_kpi_report_v1.md
+    run_id: 184eccd67bf24d71990265d39c28daf0
+    paradigm: adr-0017-survival
+    hypothesis_of_record_arm: HMM-gated first-hour ORB (ES + NQ)
+    strongest_cell: NQ unconditional ORB
+    realized:
+      strongest_cell_pct: 10.61
+      strongest_cell_max_dd_pct: 7.95   # NQ uncond max-DD per H052a KPI §2
+      hypothesis_of_record_arm_pct: 3.39   # NQ hmm_gated (same-symbol as strongest_cell)
+      oos_sessions: 369
+    forward_projection:
+      p_loss_pct: 18.56
+    fitness:
+      mppm_rho1_point: null
+      mppm_rho1_ci_low: null
+      mppm_rho1_ci_high: null
+      sharpe_ann_strongest_cell: 0.855
+    primary_annotations:
+      - leakage-canary-pass
+      - repro-log-complete
+      - sharpe-vs-unconditional-marginal
+      - operator-declined-ninjascript
+    cost_model: futures_orb_v1
+    superseded_by: null
+
+  - hypothesis_id: H053
+    version: 1
+    date: 2026-05-03
+    report_card_path: research/01_hypothesis_register/H053/H053_kpi_report_v1.md
+    run_id: null
+    paradigm: adr-0017-survival
+    hypothesis_of_record_arm: Multi-TF mediation + categorical archetype
+    strongest_cell: (retroactive re-tag of v2 lineage)
+    realized:
+      strongest_cell_pct: null
+      strongest_cell_max_dd_pct: null
+      hypothesis_of_record_arm_pct: null
+      oos_sessions: null
+    forward_projection:
+      p_loss_pct: null
+    fitness:
+      mppm_rho1_point: null
+      mppm_rho1_ci_low: null
+      mppm_rho1_ci_high: null
+      sharpe_ann_strongest_cell: null
+    primary_annotations:
+      - retroactive-re-tag
+    cost_model: null
+    superseded_by: H053_kpi_report_v2.md
+
+  - hypothesis_id: H053
+    version: 2
+    date: 2026-05-03
+    report_card_path: research/01_hypothesis_register/H053/H053_kpi_report_v2.md
+    run_id: fe051383e6c146bea93051b816c7e0a1
+    paradigm: adr-0017-survival
+    hypothesis_of_record_arm: Multi-TF mediation + categorical archetype (4 arms × 2 symbols)
+    strongest_cell: NQ ElasticNet (CPCV-OOS-median Sharpe)
+    realized:
+      strongest_cell_pct: null
+      strongest_cell_max_dd_pct: null
+      hypothesis_of_record_arm_pct: null
+      oos_sessions: null
+    forward_projection:
+      p_loss_pct: null
+    fitness:
+      mppm_rho1_point: null
+      mppm_rho1_ci_low: null
+      mppm_rho1_ci_high: null
+      sharpe_ann_strongest_cell: 1.71
+    primary_annotations:
+      - leakage-canary-pass
+      - path-b-leakage-clean
+    cost_model: null
+    superseded_by: H053_kpi_report_v3.md
+
+  - hypothesis_id: H053
+    version: 3
+    date: 2026-05-03
+    report_card_path: research/01_hypothesis_register/H053/H053_kpi_report_v3.md
+    run_id: fe051383e6c146bea93051b816c7e0a1
+    paradigm: adr-0017-survival
+    hypothesis_of_record_arm: Multi-TF mediation + categorical archetype (4 arms × 2 symbols)
+    strongest_cell: NQ LightGBM
+    realized:
+      strongest_cell_pct: 10.8
+      strongest_cell_max_dd_pct: 3.7
+      hypothesis_of_record_arm_pct: 10.8
+      oos_sessions: 372
+    forward_projection:
+      p_loss_pct: 15.7
+    fitness:
+      mppm_rho1_point: null
+      mppm_rho1_ci_low: null
+      mppm_rho1_ci_high: null
+      sharpe_ann_strongest_cell: 1.894
+    primary_annotations:
+      - leakage-canary-pass
+      - path-b-leakage-clean
+      - realized-oos-forward-projection-block
+      - bss-negative
+      - reliability-out-of-band
+      - dsr-negative
+    cost_model: null
+    superseded_by: null
+
+  - hypothesis_id: H054
+    version: 1
+    date: 2026-05-05
+    report_card_path: research/01_hypothesis_register/H054/H054_kpi_report_v1.md
+    run_id: dd916fc67b504c528fda7abbde6700f1
+    paradigm: adr-0017-survival
+    hypothesis_of_record_arm: Anti-gate first-hour ORB on ES (anti_gated PRIMARY)
+    strongest_cell: ES anti_gated
+    realized:
+      strongest_cell_pct: 3.50
+      strongest_cell_max_dd_pct: 3.19
+      hypothesis_of_record_arm_pct: 3.50
+      oos_sessions: 237
+    forward_projection:
+      p_loss_pct: 29.24
+    fitness:
+      mppm_rho1_point: null
+      mppm_rho1_ci_low: null
+      mppm_rho1_ci_high: null
+      sharpe_ann_strongest_cell: null
+    primary_annotations:
+      - leakage-canary-pass
+      - repro-log-complete
+      - sharpe-vs-unconditional-marginal
+      - point-positive-ci-covers-zero
+      - low-power-trigger-rate-2.95pct
+    cost_model: futures_orb_v1
+    superseded_by: null
+
+  - hypothesis_id: H060
+    version: 1
+    date: 2026-05-12
+    report_card_path: research/01_hypothesis_register/H060/H060_kpi_report_v1.md
+    run_id: 71b00710a17148868b6a5ab610c07ef6
+    paradigm: adr-0024-aggressive-growth
+    hypothesis_of_record_arm: TSMOM basket {ES, NQ, MGC, SIL}
+    strongest_cell: TSMOM basket {ES, NQ, MGC, SIL}
+    realized:
+      strongest_cell_pct: 89.43
+      strongest_cell_max_dd_pct: 28.57
+      hypothesis_of_record_arm_pct: 89.43
+      oos_sessions: 1260
+    forward_projection:
+      p_loss_pct: 26.6
+    fitness:
+      mppm_rho1_point: 0.1062
+      mppm_rho1_ci_low: -0.0937
+      mppm_rho1_ci_high: 0.2934
+      sharpe_ann_strongest_cell: 0.617
+    primary_annotations:
+      - leakage-canary-pass
+      - mppm-rho1-marginal
+      - bocd-decay-flag-not-raised
+      - kelly-multiplier-2.5
+      - super-kelly-operator-discretionary
+      - skew-flat
+      - claim-type-hybrid
+      - cost-zero-v1-pre-cost-research-only
+      - data-quality-degraded-days-annotated
+      - repro-log-complete
+    cost_model: zero_cost_v1
+    superseded_by: null

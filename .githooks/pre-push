@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Pre-push hook enabled by a one-time operator step:
+#     git config core.hooksPath .githooks
+# (Documented in README.md §"Environment setup"; the install is NOT automated
+# by scripts/bootstrap_env.py — that script intentionally has no side-effects
+# on git config.) Regenerates BEST_OOS.md per ADR-0024 D-8 so the showcase
+# artifact stays current with the per-hypothesis KPI report cards.
+#
+# Non-blocking: if the regeneration fails (missing data file, parse error,
+# python unavailable) the script prints a warning and lets the push proceed.
+# Push gating is reserved for substantive correctness checks elsewhere.
+
+set -u
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT="$REPO_ROOT/scripts/showcase_best_oos.py"
+
+if [ ! -f "$SCRIPT" ]; then
+  echo "[pre-push] scripts/showcase_best_oos.py not found; skipping BEST_OOS.md regenerate" >&2
+  exit 0
+fi
+
+if command -v uv >/dev/null 2>&1; then
+  RUNNER="uv run python"
+else
+  RUNNER="python"
+fi
+
+if ! $RUNNER "$SCRIPT"; then
+  echo "[pre-push] WARNING: BEST_OOS.md regenerate failed (stderr above); pushing anyway" >&2
+  exit 0
+fi
+
+# If BEST_OOS.md changed, prompt the operator. We do NOT auto-commit because
+# silent commits-from-hooks violate CLAUDE.md §"Executing actions with care".
+if ! git diff --quiet -- "$REPO_ROOT/BEST_OOS.md" 2>/dev/null; then
+  echo "[pre-push] NOTE: BEST_OOS.md was regenerated and is now dirty." >&2
+  echo "[pre-push]   Review with: git diff BEST_OOS.md" >&2
+  echo "[pre-push]   Stage + amend with: git add BEST_OOS.md && git commit --amend --no-edit" >&2
+  echo "[pre-push]   Pushing without amending is OK; the next push will sync the artifact." >&2
+fi
+
+exit 0
