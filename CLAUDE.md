@@ -1318,3 +1318,49 @@ C9 BOCD-step-up is the operationally-correct production variant: km_floor=0.5 wi
 **Total Phase O.7 wall-clock**: ~25 min (iter 1 SIL sweep ~10 min + iter 2 C9 sub-window ~2 min + iter 3 km_floor sweep ~5 min + commit/push overhead).
 
 **Phase O.7 commits**: `5e75cf6` → `edfcdf7` → `19cd548` on `origin/main`. All Round-1 audit findings documented or remediated; verdict `accept-with-residuals` per the audit-remediate-loop skill convention.
+
+### Phase O.7.4: C9 km-era decomposition — iter 4 (2026-05-15)
+
+Per autonomous-loop continuation of Phase O.7 (commit `444eaf2`), iter 4 closes the `P1-C9-CIRCUIT-BREAKER-VS-EDGE-DECOMPOSITION` follow-up by decomposing the C9 +208.8% basket OOS result by Kelly-era. Sidecar: [artifacts/runs/H062/c9_km_era_decomposition_20260516T041548Z/sidecar.json](artifacts/runs/H062/c9_km_era_decomposition_20260516T041548Z/sidecar.json) (sha256 `9d07d5563644fba0...`).
+
+**Cross-symbol km-era summary** (full 2020-2026 OOS):
+
+| km era | Session-days | Avg per-symbol ROI | Median Sharpe ann | Window |
+|---|---:|---:|---:|---|
+| **1.5** | 261 (× 4 sym) | **+96.9%** | **+2.35** | Jan-May 2020 only |
+| 1.0 | 117 (× 2 sym) | +30.7% | +2.43 | May-Jul 2020 |
+| **0.5** | **3,233** (× 3 sym) | +15.9% | **+0.26** | Jul 2020 → May 2026 (~6 years) |
+
+**Per-symbol detail**:
+
+| Symbol | km=1.5 era | km=0.5 era |
+|---|---|---|
+| ES | +15.8% (25 sess, Sharpe 1.76) | +5.2% (1 sess) |
+| NQ | +24.6% (13 sess, Sharpe **3.97**) | (none) |
+| MGC | **+162.1%** (110 sess, Sharpe 2.57) | **-32.5%** (1559 sess) |
+| SIL | +185.1% (113 sess, Sharpe 2.14) | +75.1% (1673 sess) |
+
+**Load-bearing finding**: the C9 +208.8% basket result is **concentrated in the first 5 months of OOS (Jan-May 2020) at km=1.5 with Sharpe 1.76-3.97**. The subsequent ~6 years at km=0.5 produced compounding-but-low-edge results (Sharpe 0.22-0.26 = noise-level edge per session). C9 did NOT earn its +208.8% via the BOCD circuit-breaker; it earned it via the **pre-decay-detection lucky window** — early-2020 COVID-era volatility regime where Donchian breakouts had real edge. BOCD correctly halved Kelly AFTER the gain was already realized, preventing give-back during the subsequent low-edge regime.
+
+**Operator implications**:
+1. **C9 +208.8% is path-dependent on capturing early-2020** (COVID volatility); this regime has NOT recurred and may never.
+2. **BOCD's de-risking IS correct** — caught regime decay in real-time, prevented giving back early gains.
+3. **Forward-expectation at km=0.5 + retail equity ≈ flat-edge** (Sharpe ~0.26 across 5+ years post-halve).
+4. **Do NOT extrapolate +208.8% to forward-period**; relevant forward-rate is the km=0.5 era at ~3% annualized — significantly below passive long.
+
+**Cross-cutting empirical synthesis (Phase O.7 + iter 4)**:
+
+Triangulation across 4 iterations conclusively shows the H062-family signal class has reached its empirical ceiling:
+- Iter 1 (SIL standalone NULL): 1/108 cells positive-edge at α=0.05 multiple-testing nominal → no robust cell-grid edge
+- Iter 2 (C9 2026 sub-window): 0% sub-window basket → circuit-breaker activated, no recent edge
+- Iter 3 (km_floor Pareto): km_floor=0.5 confirmed; MGC is the canonical canary disqualifying higher floors
+- **Iter 4 (km-era decomposition)**: the +208.8% headline is concentrated in 261 of 3,611 session-days (= 7.2% of the window)
+
+The L-skewness τ_3=+0.74 payoff structure is statistically anchored. The mean-edge is statistically marginal AND realized via a single 5-month early-2020 regime burst that compounded into the multi-year flat-edge era. This is the Marshall-Cahan-Cahan 2008 + Hsu-Kuan 2005 + Park-Irwin 2007 partial-decay prior playing out empirically in **multiple dimensions** (cell-grid + Kelly-grid + time-series + sub-window).
+
+**Autonomous-loop EXIT verdict (after iter 4)**: marginal value of further iteration < marginal cost. The next valid high-leverage steps are scope-major (multi-hour wall-clock):
+- `P1-MPV2-PER-SESSION-RETURNS-INTEGRATION`: re-run all 9 underlying orchestrators with per-session arrays; build cross-arm meta-portfolio
+- `P1-H062-CPCV-RERUN`: migrate to CPCV path-reconstruction per ADR-0012 + ADR-0013 §7
+- Cross-arm km-era replication: does H060 / H055 v2 / H052a also concentrate edge in early-2020? Tests whether ALL project hypotheses share the same regime-window dependency
+
+These belong in a fresh session, not in the current autonomous loop. **Exit Phase O.7 with 4 iterations + ledger consolidation at commit `45d6522` + iter 4 at `444eaf2`**.
