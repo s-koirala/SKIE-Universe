@@ -1,0 +1,100 @@
+{
+  "basket": {
+    "end_equity_subwin": 40000.0,
+    "starting_equity_total": 40000.0,
+    "subwin_roi_pct": 0.0
+  },
+  "c9_config": {
+    "bocd_hazard_rate": 0.01,
+    "bocd_threshold": 0.5,
+    "bocd_window": 60,
+    "km_grid": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5
+    ],
+    "km_start": 1.5,
+    "risk_budget_pct": 0.01,
+    "step_check_interval_sessions": 60
+  },
+  "comparison_anchor_c3_2026_q1q2": -6.1,
+  "experiment": "c9_bocd_step_up_2026_q1q2_subwindow",
+  "feature_cell": {
+    "atr_n": 14,
+    "channel_n": 120,
+    "h_dwell": 5,
+    "k_atr": 2.0,
+    "trend_id": "a_ts_mom",
+    "trend_id_lookback_l": 60,
+    "trend_id_threshold": 1.0
+  },
+  "per_symbol": [
+    {
+      "full_window_max_dd_pct": 39.9374593118836,
+      "full_window_n_trades": 191,
+      "full_window_roi_pct": 101.40604001439249,
+      "km_terminal": 0.5,
+      "n_km_halves_total": 2,
+      "n_km_step_ups_total": 0,
+      "n_km_steps_in_subwin": 0,
+      "n_sessions_subwin": 0,
+      "subwin_end_equity": 10000.0,
+      "subwin_max_dd_pct": 0.0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "ES"
+    },
+    {
+      "full_window_max_dd_pct": 11.749640813068982,
+      "full_window_n_trades": 14,
+      "full_window_roi_pct": -11.749640813068984,
+      "km_terminal": 1.0,
+      "n_km_halves_total": 3,
+      "n_km_step_ups_total": 2,
+      "n_km_steps_in_subwin": 0,
+      "n_sessions_subwin": 0,
+      "subwin_end_equity": 10000.0,
+      "subwin_max_dd_pct": 0.0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "NQ"
+    },
+    {
+      "full_window_max_dd_pct": 64.14215489345636,
+      "full_window_n_trades": 985,
+      "full_window_roi_pct": -6.497700148876628,
+      "km_terminal": 0.5,
+      "n_km_halves_total": 2,
+      "n_km_step_ups_total": 0,
+      "n_km_steps_in_subwin": 1,
+      "n_sessions_subwin": 0,
+      "subwin_end_equity": 10000.0,
+      "subwin_max_dd_pct": 0.0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "MGC"
+    },
+    {
+      "full_window_max_dd_pct": 54.111356893918284,
+      "full_window_n_trades": 776,
+      "full_window_roi_pct": 49.00438300659313,
+      "km_terminal": 0.5,
+      "n_km_halves_total": 2,
+      "n_km_step_ups_total": 0,
+      "n_km_steps_in_subwin": 1,
+      "n_sessions_subwin": 0,
+      "subwin_end_equity": 10000.0,
+      "subwin_max_dd_pct": 0.0,
+      "subwin_roi_pct": 0.0,
+      "symbol": "SIL"
+    }
+  ],
+  "subwin_end_per_symbol": {
+    "ES": "2026-05-15 00:00:00+00:00",
+    "MGC": "2026-05-15 00:00:00+00:00",
+    "NQ": "2026-05-15 00:00:00+00:00",
+    "SIL": "2026-05-15 00:00:00+00:00"
+  },
+  "subwin_start": "2026-04-01 00:00:00+00:00",
+  "warm_up_start": "2024-01-01 00:00:00+00:00",
+  "written_at_utc": "2026-05-16T04:03:53.500889+00:00"
+}
