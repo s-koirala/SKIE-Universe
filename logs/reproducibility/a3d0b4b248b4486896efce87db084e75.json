@@ -1,0 +1,36 @@
+{
+  "config_resolved_sha256": null,
+  "dataset_checksums": {
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_1min_databento.csv": "6b8f37d1a14c99b64f4a3de7ed94b4bd289cc9eb681484a5e0433bb9d37b52a7",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2020_1min_databento.csv": "acd772e8701a25d7bf045d1a39f6ec6ad7cbdc949d9c7b60952d5e2c68aa9b60",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2021_1min_databento.csv": "b4749e434a10b7e2aeb6c4f211368eca980c76ab4a4b1c0dccd14282df63b467",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2022_1min_databento.csv": "bc149f09a4da617d5677fb82da5e26f282c0503abbacfc55c20fe7ab03f28072",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2025_1min_databento.csv": "58c12094be735c81c0de852b7dd52a47ab9f8d3ac626aa8223cafbd5cee4f0bc",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2026_1min_databento.csv": "a749c7c5f62e9625335a02ffad8c2e64b8e4c5d6d93f99a7ee1b3ed02dc43af4",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/MCL_1min_databento.csv": "7cf54a1979f9e3397118f22ad593c781aefdc81ff56c21dbd12603b9760b36db",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/MGC_1min_databento.csv": "b0a913a8b87410e2b0a299763832fbaf420446cf016c270b5363737bad36672f",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/MGC_2026_1min_databento.csv": "4fbc71d8e8021d71b2b8cc690742b7d16ef0946ddf72f8ea84bf650a3f76dd7f",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_1min_databento.csv": "ad42b8641d7bf13211dda82bb400b5814461b95ac40227d0a25b7f0781e57d12",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_2020_1min_databento.csv": "9da42fa2da4274ba8c7bcab39e3c7ac3342830be021b704ca3e9a8e26c2f8bc4",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_2021_1min_databento.csv": "a13570aa9fc0935fa7b078a535c1defff4a71c8916ff39c2c9a888775ce21a81",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_2022_1min_databento.csv": "5037d912fc0b6b8b31c067ad1867b4222bafdacaf19d48794860ebe500e5aeda",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_2026_1min_databento.csv": "95606f18c91dffa2b7198fcb9b0b7d03636d2d8c9fd579d1bf20ab4de2c7f0eb",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/SIL_1min_databento.csv": "719f66f3ea4f41982790c35f65cb2fb1c2da9dccd411e9575f896aed17eff61f",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/SIL_2026_1min_databento.csv": "1688effe81f814b4b3832c77d7eb3de4ae41aad0d89d3b228c41de1bf9ed906f"
+  },
+  "env_id": "be80f7deb0f0c666d78e06d0e7917780f64f567b730e064d0515fc4142ec9d55",
+  "git_head": "2eb803eb31f278cc2b175ca330f964b72f465212",
+  "host": {
+    "cpu": "AMD64",
+    "os": "Windows 10",
+    "python": "3.11.15"
+  },
+  "hypothesis_id": "ingest_vendor_legacy_1min",
+  "model_hash": null,
+  "phase": "ingest",
+  "pip_freeze_path": "logs/reproducibility/env/73c17521a645e4d08d7f8f5156cde94394aaba6656dda1346ccbb9ea1a9115f6.txt",
+  "pip_freeze_sha256": "73c17521a645e4d08d7f8f5156cde94394aaba6656dda1346ccbb9ea1a9115f6",
+  "rng_seed": 42,
+  "run_id": "a3d0b4b248b4486896efce87db084e75",
+  "timestamp_utc": "2026-05-16T00:15:35.815878+00:00"
+}

@@ -994,6 +994,67 @@ Smoke run end-to-end produced 142 folds × 10,442 OOS trades on {ES, NQ, MGC, SI
 - 9th precondition `P1-METALS-ENERGY-COST-MODEL-IMPL` remains OPEN; this is BLOCKING for v2 cost-realism calibration NOT v1 launch (v1 is zero-cost research-only per operator 2026-05-08 + 2026-05-12 standing directive).
 - 4 project-level BLOCKING-BEFORE-NEXT-STAGE-3-RUN follow-ups (`P1-ADR-0017-DESIGN-MD-CASCADE`, `P1-ADR-0018-DESIGN-MD-CASCADE`, `P1-CAUSAL-DAG-DESIGN-MD-TEMPLATE`, `P1-QUANT-PROJECT-RULES-CAUSAL-IMPORT`) re-classified in design.md §11.2 as "OPEN (not H062-blocking)" per the Phase O.1 follow-on scope analysis. H062 is launch-ready per ADR-0010/0011 supervised_run.py pattern.
 
+### Phase O.3: aggressive-sizing sweep + Databento 2026-H1 OOS extension + edge-vs-risk interpretive analysis (2026-05-15)
+
+Per operator 2026-05-15 directive (i) "let us increase the risk. either by kelly criterion when losing, winning, pyramiding, and also increase the dollar value per trade" and (ii) "how would C3 have performed the last month and a half (april/may 2026)?", Phase O.3 lands:
+
+**(A) Aggressive-sizing sweep** ([scripts/run_h062_aggressive_sizing_sweep.py](scripts/run_h062_aggressive_sizing_sweep.py); ~450 lines): 6-config sweep on the same representative cell (N=120, k_atr=2.0, h_dwell=5, a_ts_mom L=60 τ=1.0) across the 2020-2025 full IS+OOS substrate. Configs: v1 baseline (km=0.25, 1%, fixed $10K), C1 (rebase only), C2 (full-Kelly + rebase), C3 (super-Kelly 2.0× + rebase), C4 (full-Kelly + Faith 2007 §4 Turtle System 2 pyramid; max 4 units, 1N spacing, per-unit at full risk budget), C5 (super-Kelly + 2% risk + pyramid). Sidecar at [artifacts/runs/H062/aggressive_sizing_sweep_20260515T235648Z/sweep_sidecar.json](artifacts/runs/H062/aggressive_sizing_sweep_20260515T235648Z/sweep_sidecar.json) (sha256 `4e5a3317...`).
+
+Headline basket-aggregate ($40K starting; PRE-COST; 4 symbols × $10K):
+
+| Config | End basket | ROI% | Avg MaxDD% | Total trades |
+|---|---:|---:|---:|---:|
+| v1 (baseline) | $38,500 | -3.7% | 12.2% | 2,147 |
+| C1 (rebase) | $37,664 | -5.8% | 13.2% | 2,096 |
+| C2 (full-Kelly) | $83,392 | +108.5% | 54.8% | 9,678 |
+| **C3 (super-Kelly)** | **$1,116,234** | **+2,690.6%** | **87.9%** | 17,129 |
+| C4 (FK + pyramid) | $22,460 | -43.9% | 58.8% | 3,992 |
+| C5 (SK + 2% + pyramid) | $181,574 | +353.9% | 89.9% | 12,247 |
+
+Three structural findings: (1) the v1 quarter-Kelly + fixed-equity rebase vastly UNDER-sized positions (ES/NQ floored to 0 contracts at $10K retail equity); when properly sized via current-equity rebase, the L-skewness τ_3=+0.74 payoff distribution compounds dramatically. NQ at C3: $10K → $972K over 6 years (+9,619%); SIL at C3: $10K → $123K (+1,130%). (2) MGC degrades monotonically as Kelly scales (v1 -25%, C2 -83%, C3 -94%): the per-trade R-distribution has a fat LEFT tail that compounds faster than the right tail under aggressive sizing. (3) Pyramiding REVERSES outcomes asymmetrically depending on trade frequency: ES/NQ (sparse) → pyramid kills the result; MGC (dense) → pyramid reverses MGC's loss (-94% → +479%); SIL (dense) → roughly unchanged.
+
+**(B) Fresh Databento 2026-H1 extraction** ([scripts/databento_extract_2026_h1.py](scripts/databento_extract_2026_h1.py); ~150 lines; secure-pattern env-var-only key, `<suppressed-for-security>` fingerprint): operator-authorized 2026-05-15 with second-chat-transcript-exposure API key (rotate post-use per `P1-DATABENTO-KEY-ROTATE-POST-CHAT-EXPOSURE`; this is the second exposure event). Pulled ES + NQ + MGC + SIL × 2026-01-01 → 2026-05-15 at ohlcv-1m for **$4.6144 USD** (within the $30 tight budget per the H050 Cell-I precedent ceiling). 1,263,949 total rows across 4 symbols.
+
+Substrate re-ingest:
+- Stage 1 vendor_legacy_1min: 42 partitions written (was 38; +4 year=2026 partitions). New provenance at [data/processed/_provenance/vendor_legacy_1min_20260516.json](data/processed/_provenance/vendor_legacy_1min_20260516.json).
+- Stage 2 vendor_legacy_1min_roll_adjusted: 42 adjusted partitions; provenance at [data/processed/_provenance/vendor_legacy_1min_roll_adjusted_20260516.json](data/processed/_provenance/vendor_legacy_1min_roll_adjusted_20260516.json).
+- Source-file allowlist amended in [src/skie_ninja/data/ingest/vendor_legacy_1min.py](src/skie_ninja/data/ingest/vendor_legacy_1min.py) `_CANONICAL_SOURCES` tuple with the 4 new 2026-H1 entries (`ES`, `NQ`, `MGC`, `SIL` coverage=`forward_2026_h1`).
+
+**(C) C3 super-Kelly on 2026-04-01 → 2026-05-15** (the "last month and a half" the operator asked about; [scripts/run_h062_c3_2026_q1q2.py](scripts/run_h062_c3_2026_q1q2.py)): single-config test-window-only simulation with warm-up bars to initialize channel + ATR state. Sidecar at [artifacts/runs/H062/c3_2026_q1q2_20260516T001902Z/sidecar.json](artifacts/runs/H062/c3_2026_q1q2_20260516T001902Z/sidecar.json) (sha256 `4b3d0960...`):
+
+| Symbol | Arm end | Arm ROI | Arm MaxDD | W/L/Z | Trades | Passive end | Passive ROI | Arm − Passive |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| ES | $9,016 | -9.8% | 9.8% | 0/6/0 | 6 | $11,418 | +14.2% | **-24.0 pp** |
+| NQ | $10,000 | 0.0% | 0.0% | 0/0/0 | 0 | $12,357 | +23.6% | -23.6 pp |
+| MGC | $9,392 | -6.1% | 32.3% | 23/68/0 | 91 | $9,853 | -1.5% | -4.6 pp |
+| SIL | $9,137 | -8.6% | 8.6% | 0/5/0 | 5 | $11,107 | +11.1% | -19.7 pp |
+| **Basket** | **$37,546** | **-6.1%** | n/a | 23/79/0 | 102 | $44,734 | +11.8% | **-18.0 pp** |
+
+In the most recent 6-week window, C3 super-Kelly LOST -6.1% on the basket while passive equal-weight long made +11.8%. The arm underperformed passive by 18 percentage points. **Zero NQ trades fired** (the channel + first-fire dwell + ID_1 trend gate intersection produced no eligible events on the 30-session test slice).
+
+**(D) Edge-vs-risk-amplification analysis** (the substantive question on whether profitability is attributable to H062 or to high risk tolerance):
+
+The honest answer is **both, with risk-amplification carrying most of the headline number**:
+
+1. **The H062 SIGNAL has a small but structurally-real positive-skew component**: L-skewness τ_3 = +0.74 with 95% CI [+0.728, +0.751] STRICTLY excludes zero per the v1 KPI report card. This is the load-bearing statistical anchor — the payoff DISTRIBUTION SHAPE is real and not a sample artifact. The Donchian channel + ATR-stop + first-fire dwell mechanic truncates left tail at -1R and lets right tail run to opposite-channel exit, producing skew-positive R-multiples by construction.
+
+2. **But the MEAN-EDGE is statistically marginal**: basket MPPM(ρ=1) point=-0.223 with 95% CI [-0.599, +0.172] COVERS zero per v1 KPI report card. The R-multiple-mean point=+0.044 CI=[-0.017, +0.109] also covers zero. **Statistically we cannot reject the null that the per-trade edge is zero.** The +0.044 R-multiple-mean is below the +0.5 threshold typically cited as the minimum for a robust positive-expectancy edge per Tharp 1998 (*practitioner*).
+
+3. **The +2,690% C3 basket aggregate is a tail-amplification result, not a robust-edge result**: When Kelly multiplier scales risk to 2× full-Kelly, both the right tail and left tail amplify proportionally. The realized 6-year OOS path captured enough of the right tail (NQ +9,619%, SIL +1,130%) to overwhelm the left tail (MGC -94%), yielding a positive basket aggregate. A similarly-sized adverse path on the same signal would have produced a symmetric massive loss. **A coin-flip with positive skew and zero mean has the same property** — concentrate risk on the right tail and you can get a 27× return; concentrate it on the left tail and you go bust.
+
+4. **The April-May 2026 6-week result is the empirical falsification**: when the right-tail wins don't happen in the realized window, C3 LOSES (-6.1%) and underperforms passive by 18 percentage points. In 6 weeks the +2,690% headline number is not robust — it's a 6-year aggregate-path point estimate. The 2026 window is small (N=30 sessions) so this single data point is also weak, but it is at least consistent with what the v1 KPI report card's forward-projection P(loss)=49% predicted.
+
+5. **The proper interpretive frame is ADR-0018 §"regime-conditional aggressive-growth paradigm"**: Lo 2004 Adaptive Markets Hypothesis says strategy decay is the null; H062's intraday Donchian breakout on large-cap futures + metals is a partially-decayed factor per Marshall-Cahan-Cahan 2008 + Hsu-Kuan 2005 + Park-Irwin 2007. The sweep validates that the signal has a real structural property (positive-skew payoff) and that aggressive sizing AMPLIFIES that property to extract massive but path-dependent compounding. Per ADR-0017 §3 + §4.2, the binding survival-constraints (P(ruin), Calmar-differential, terminal-wealth-q05) remain in marginal-or-negative territory across all sweep configs.
+
+**Operator interpretation**: the C3 result is **not** a green-light to deploy aggressive sizing in production. It is **structural evidence that proper position-sizing matters more than signal selection at the v1 KPI report card level** — the v1 quarter-Kelly + fixed-equity rebase was the binding bottleneck on the original $43K result. v2 cost-realistic calibration with current-equity rebase + a more conservative Kelly grid (km ≤ 1.0 per the inner-CV unanimous selection at quarter-Kelly) is the recommended path forward. NinjaScript implementation decision remains operator-discretionary per the 2026-05-04 standing directive.
+
+**New non-blocking follow-ups registered by Phase O.3**:
+- `P1-H062-V2-COST-REALISTIC-RERUN` (BLOCKING-BEFORE-LIVE; ADR-0023 v2 cost model + ADR-0017 §4.1 current-equity rebase per design.md §5.3 binding).
+- `P1-H062-MGC-LEFT-TAIL-INVESTIGATE` (why does MGC degrade monotonically as Kelly scales? Likely ATR-stop sizing systematically too tight given metals overnight gap behavior).
+- `P1-H062-2026-Q1-Q2-TRADE-FREQUENCY-INVESTIGATE` (NQ produced ZERO trades in 6 weeks; ES + SIL each produced 5-6 trades; investigate channel + first-fire intersection on 2026 substrate vs 2020-2025).
+- `P1-H062-INNER-CV-KELLY-UNANIMOUS-MEANING` (formal interpretation: 93/93 folds selected km=0.25 means MPPM(ρ=1) fitness prefers low-Kelly across the board → this is a SUB-EDGE indicator that the L-skew positive payoff does not compensate for negative mean-edge at the per-trade level).
+- `P1-DATABENTO-KEY-ROTATE-POST-CHAT-EXPOSURE-V2` (second exposure event 2026-05-15; rotate the new key after use).
+
 **Canonical launch command for next session** (per ADR-0011):
 ```
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \

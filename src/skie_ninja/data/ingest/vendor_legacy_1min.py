@@ -85,16 +85,22 @@ _CANONICAL_SOURCES: tuple[_SourceFile, ...] = (
     _SourceFile("ES", "oos_2022", "ES_2022_1min_databento.csv"),
     _SourceFile("ES", "in_sample_2023_2024", "ES_1min_databento.csv"),
     _SourceFile("ES", "forward_2025", "ES_2025_1min_databento.csv"),
+    _SourceFile("ES", "forward_2026_h1", "ES_2026_1min_databento.csv"),
     _SourceFile("NQ", "oos_2020", "NQ_2020_1min_databento.csv"),
     _SourceFile("NQ", "oos_2021", "NQ_2021_1min_databento.csv"),
     _SourceFile("NQ", "oos_2022", "NQ_2022_1min_databento.csv"),
     _SourceFile("NQ", "in_sample_2023_2024", "NQ_1min_databento.csv"),
+    _SourceFile("NQ", "forward_2026_h1", "NQ_2026_1min_databento.csv"),
     # Metals/energy expansion (ADR-0023 + H060). Stage-A 2026-05-12:
     # single-file-per-symbol full-window pull via Databento
     # parent-symbology covering 2015-01-01 -> 2025-12-31.
     _SourceFile("MCL", "full_2015_2025", "MCL_1min_databento.csv"),
     _SourceFile("MGC", "full_2015_2025", "MGC_1min_databento.csv"),
     _SourceFile("SIL", "full_2015_2025", "SIL_1min_databento.csv"),
+    # Phase O.3 2026-05-15 fresh OOS extension: 2026-01-01 -> 2026-05-15
+    # via the operator-authorized fresh Databento extraction; $4.6144 USD spend.
+    _SourceFile("MGC", "forward_2026_h1", "MGC_2026_1min_databento.csv"),
+    _SourceFile("SIL", "forward_2026_h1", "SIL_2026_1min_databento.csv"),
 )
 
 
