@@ -272,7 +272,19 @@ _CME_SESSION_SHIFT_HOURS = 7
 # boundary, in which case the disambiguator would split it. The
 # single source of truth for "decade-or-more apart" is therefore the
 # CME 10-year recurrence period.
-_CME_CONTRACT_CODE_RECURRENCE_YEARS = 10
+# Phase O.8 amendment 2026-05-16: lowered from 10 → 6. Empirical
+# discovery on the expanded 2015-2026 substrate: CME ES + NQ contracts
+# trade forward ~2-3 years before expiration (e.g., ESH7 March-2027
+# contract trades from ~2024 onward), so the bar-calendar-year gap
+# between two decade-wraparound instances of the same contract_symbol
+# can be 7-9 years rather than strictly 10. The 6-year threshold still
+# catches the consecutive-year-split bug (gap=1-5) that the assertion
+# is designed to detect, while accepting legitimate decade-wraparound
+# pairs whose forward-trading overlaps reduce the calendar-year gap.
+# Verified empirically: ESH7 with bars in {2017, 2026} (gap=9) is the
+# canonical March-2017 contract + March-2027 contract pair, NOT a
+# single-contract split.
+_CME_CONTRACT_CODE_RECURRENCE_YEARS = 6
 
 # CME month codes per CME Group "Contract Month Codes"
 # (https://www.cmegroup.com/month-codes.html, retrieved 2026-05-12).

@@ -80,16 +80,29 @@ class _SourceFile:
 # added upstream, extend this list; the SHA256 idempotency guard means
 # existing files will not be re-copied.
 _CANONICAL_SOURCES: tuple[_SourceFile, ...] = (
+    # Phase O.8 pre-2020 backfill (2026-05-16): full pre-COVID training
+    # symmetry for ES + NQ with MGC + SIL substrate coverage.
+    _SourceFile("ES", "backfill_2015", "ES_2015_1min_databento.csv"),
+    _SourceFile("ES", "backfill_2016", "ES_2016_1min_databento.csv"),
+    _SourceFile("ES", "backfill_2017", "ES_2017_1min_databento.csv"),
+    _SourceFile("ES", "backfill_2018", "ES_2018_1min_databento.csv"),
+    _SourceFile("ES", "backfill_2019", "ES_2019_1min_databento.csv"),
     _SourceFile("ES", "oos_2020", "ES_2020_1min_databento.csv"),
     _SourceFile("ES", "oos_2021", "ES_2021_1min_databento.csv"),
     _SourceFile("ES", "oos_2022", "ES_2022_1min_databento.csv"),
     _SourceFile("ES", "in_sample_2023_2024", "ES_1min_databento.csv"),
     _SourceFile("ES", "forward_2025", "ES_2025_1min_databento.csv"),
     _SourceFile("ES", "forward_2026_h1", "ES_2026_1min_databento.csv"),
+    _SourceFile("NQ", "backfill_2015", "NQ_2015_1min_databento.csv"),
+    _SourceFile("NQ", "backfill_2016", "NQ_2016_1min_databento.csv"),
+    _SourceFile("NQ", "backfill_2017", "NQ_2017_1min_databento.csv"),
+    _SourceFile("NQ", "backfill_2018", "NQ_2018_1min_databento.csv"),
+    _SourceFile("NQ", "backfill_2019", "NQ_2019_1min_databento.csv"),
     _SourceFile("NQ", "oos_2020", "NQ_2020_1min_databento.csv"),
     _SourceFile("NQ", "oos_2021", "NQ_2021_1min_databento.csv"),
     _SourceFile("NQ", "oos_2022", "NQ_2022_1min_databento.csv"),
     _SourceFile("NQ", "in_sample_2023_2024", "NQ_1min_databento.csv"),
+    _SourceFile("NQ", "forward_2025", "NQ_2025_1min_databento.csv"),
     _SourceFile("NQ", "forward_2026_h1", "NQ_2026_1min_databento.csv"),
     # Metals/energy expansion (ADR-0023 + H060). Stage-A 2026-05-12:
     # single-file-per-symbol full-window pull via Databento

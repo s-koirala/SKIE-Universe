@@ -1,0 +1,21 @@
+{
+  "config_resolved_sha256": null,
+  "dataset_checksums": {
+    "vendor_legacy_1min_roll_adjusted": "317429e49ad636746d15bf6310fd8f24bc45611ef03e50abefdc25fc6ba12dc7"
+  },
+  "env_id": "be80f7deb0f0c666d78e06d0e7917780f64f567b730e064d0515fc4142ec9d55",
+  "git_head": "29edf0a1970228ec835fd920364e41c52def3088",
+  "host": {
+    "cpu": "AMD64",
+    "os": "Windows 10",
+    "python": "3.11.15"
+  },
+  "hypothesis_id": "ingest_vendor_legacy_1min_roll_adjusted",
+  "model_hash": null,
+  "phase": "ingest",
+  "pip_freeze_path": "logs/reproducibility/env/73c17521a645e4d08d7f8f5156cde94394aaba6656dda1346ccbb9ea1a9115f6.txt",
+  "pip_freeze_sha256": "73c17521a645e4d08d7f8f5156cde94394aaba6656dda1346ccbb9ea1a9115f6",
+  "rng_seed": 42,
+  "run_id": "6c2fed4d78984be2ab7667df10e96103",
+  "timestamp_utc": "2026-05-16T20:42:29.271235+00:00"
+}
