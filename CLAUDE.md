@@ -1273,3 +1273,48 @@ H065 — **Intraday Donchian-channel breakout with ATR-scaled profit-target over
 **H065 stage progression** (per ADR-0013 §1): `exploration-in-progress` → `kpi-report-emitted` recorded 2026-05-15 ([stage.md](research/01_hypothesis_register/H065/stage.md) row 2). Per operator 2026-05-04 standing decline-ninjascript directive + ADR-0013 §5.3 operator-discretionary clause, the subsequent `kpi-report-emitted` → `ninjascript-implemented` transition is operator-discretionary. **Operator recommendation per KPI v1 §"Operator review section"**: (1) pre-register SIL-standalone successor hypothesis (`P1-H065-SIL-STANDALONE-V2`); (2) decline mandatory NinjaScript transition per H052a precedent; (3) MNQ substitution for v2 NQ leg.
 
 Audit trail: [docs/audits/audit_trail_2026-05-15_h065_v1.md](docs/audits/audit_trail_2026-05-15_h065_v1.md).
+
+### Phase O.7: H065 SIL standalone NULL + C9 2026 sit-out + km_floor Pareto — autonomous-loop iterations 1-3 (2026-05-15)
+
+Per operator 2026-05-15 directive `<<autonomous-loop-dynamic>>`, three self-paced iterations on the post-H065-v1 surprise findings + C9 BOCD step-up empirical follow-ups. Each iteration produced a substantive empirical finding committed + pushed; verdict: H062-family signal class has reached empirical ceiling within current cell-grid + Kelly framework.
+
+**Iteration 1: H065 SIL standalone cell-grid robustness** (commit `5e75cf6`):
+
+The H065 v1 "SIL standalone positive-edge" surprise finding (MPPM CI [+0.087, +0.459] excludes zero) tested across 18-cell × 6-Kelly = 108 combinatorial sensitivity sweep. Verdict: **NULL** (cell-conditional artifact). Only 1 of 108 combos produced MPPM CI strictly positive (= 0.9%; expected ~6 at α=0.05 multiple-testing nominal). The original v1 cell (N=120, k=2.0, h_dwell=5) at km=0.5 is NOT in the v2 positive-edge set. Realized ROI vs MPPM dissociation confirmed: cells with +1,000-1,800% realized ROI all have MPPM CI covering zero. Audit trail: [docs/audits/audit_trail_2026-05-15_h065_sil_standalone_v2.md](docs/audits/audit_trail_2026-05-15_h065_sil_standalone_v2.md). Sidecar: [artifacts/runs/H065/sil_standalone_v2_20260516T033921Z/sidecar.json](artifacts/runs/H065/sil_standalone_v2_20260516T033921Z/sidecar.json) (sha256 `68ec8196...`).
+
+**Iteration 2: C9 BOCD step-up on 2026-04-01 → 2026-05-15 sub-window** (commit `edfcdf7`):
+
+Tested whether C9's full-window +217.7% basket (artifacts/runs/H062/c9_bocd_step_up_20260516T013136Z/ sha256 `6f154944...`) extends into the fresh 2026 sub-window. Verdict: **0% basket** (vs C3 super-Kelly -6.1% on same sub-window; vs passive +11.8%). All 4 symbols produced 0 sub-window trades. Root cause: C9 BOCD correctly halved Kelly to km_terminal=0.5 across all symbols during 2024-2025 OOS. At km=0.5 + 1% risk + retail $10K equity, per-trade target risk ≈ $50 floors position size to 0 contracts. C9 effectively **sat out** the sub-window via Kelly de-risking. **Loss-avoidance ≠ edge**: 6-week alpha capture ZERO; 6-week loss avoidance +6.1% rel-to-C3; 6-week opportunity cost -11.8% rel-to-passive. Audit trail: [docs/audits/audit_trail_2026-05-15_c9_2026_subwindow.md](docs/audits/audit_trail_2026-05-15_c9_2026_subwindow.md). Sidecar: [artifacts/runs/H062/c9_2026_q1q2_20260516T040345Z/sidecar.json](artifacts/runs/H062/c9_2026_q1q2_20260516T040345Z/sidecar.json) (sha256 `a1d16d3a...`).
+
+**Iteration 3: C9 km_floor Pareto sweep** (commit `19cd548`):
+
+3 km_grid variants tested {(0.5, 1.0, 1.5, 2.0, 2.5), (1.0, 1.5, 2.0, 2.5), (1.5, 2.0, 2.5)} × 4 symbols × full + sub-window. Pareto results:
+
+| km_floor | Basket OOS | Sub-window | Avg MaxDD | MGC ROI (canary) |
+|---|---:|---:|---:|---:|
+| **0.5 (default)** | **+208.8%** | -1.59% | **39.2%** | **+73.4%** (BOCD-saved) |
+| 1.0 | +181.5% | -0.24% | 55.9% | -81.0% (catastrophic) |
+| 1.5 | +273.1% | -1.01% | 71.4% | -91.1% (worse) |
+
+**Verdict**: km_floor=0.5 is operationally-correct default. MGC leg is the canary — disqualifies higher floors via catastrophic blow-up. Higher floors trade MGC survival for marginally-higher upside in survivor legs; not a clean Pareto improvement. Sidecar: [artifacts/runs/H062/c9_km_floor_sweep_20260516T040904Z/sidecar.json](artifacts/runs/H062/c9_km_floor_sweep_20260516T040904Z/sidecar.json) (sha256 `318e035a...`).
+
+**Cross-iteration synthesis (autonomous-loop exit verdict)**:
+
+The H062-family signal class has reached its empirical ceiling within the v1/v2 framework. Across 9 emitted KPI cards + the 108-cell SIL standalone investigation = ~120 cell-Kelly-config tests, ONE cell achieves MPPM CI strictly positive (= 0.83%) — statistically consistent with the null hypothesis of zero mean-edge. The structural finding (positive-skew payoff τ_3=+0.74 statistically anchored) IS real — but mean-edge is marginal across all configurations. The Marshall-Cahan-Cahan 2008 + Hsu-Kuan 2005 + Park-Irwin 2007 partial-decay prior is playing out empirically across 120+ cell tests.
+
+C9 BOCD-step-up is the operationally-correct production variant: km_floor=0.5 with current-equity rebase produces a regime-conditional circuit-breaker that sits out decay regimes (at the cost of opportunity cost vs passive) but disqualifies catastrophic blow-up legs (MGC -94% under C3, +73% under C9). The +217.7% / +208.8% basket OOS result is mostly compounding from early-OOS regime before BOCD halved Kelly to 0.5 — once at the floor, the strategy is only marginally active at retail equity ($10K).
+
+**Operator-actionable conclusions**:
+1. **C9 default km_floor=0.5** confirmed as the recommended live-trading configuration; do NOT raise floor.
+2. **No further H062 cell-grid expansion warranted** — the cell-grid surface has been exhausted within current Kelly framework.
+3. **MGC is the H062-family canary** — every regime where MGC survives (km≤0.5), the basket survives; every regime where MGC blows up (km≥1.0), the basket is uninvestable despite SIL outperformance.
+4. **Next-iteration high-leverage targets** are now NON-cell-grid:
+   - `P1-MPV2-PER-SESSION-RETURNS-INTEGRATION` (per-session reward sequences across 9 arms; the only untested cross-arm-correlation inferential question)
+   - `P1-C9-CIRCUIT-BREAKER-VS-EDGE-DECOMPOSITION` (decompose C9 +217.7% by km-era; would surface whether the early-OOS edge at km=1.5 is real or sample-conditional)
+   - `P1-H062-CPCV-RERUN` (CPCV path-reconstruction per `P1-BACKTEST-CPCV` BLOCKING-BEFORE-NEXT-STAGE-3-RE-RUN; the canonical methodology fix per CLAUDE.md §"Cross-validation methodology")
+
+**Autonomous-loop dynamic-mode discipline**: 3 iterations executed with diminishing marginal information per iteration (iter 1 retired the SIL surprise finding; iter 2 reframed C9's +217.7% as compounding-via-early-regime-before-decay; iter 3 confirmed km_floor=0.5 as operational default). Loop EXITED after iter 3 per the audit-remediate-loop skill convention (marginal value < marginal cost). Per CLAUDE.md user-rule "No unsolicited questions, offers, or next-step prompts" the loop self-terminated rather than continue with ever-smaller findings.
+
+**Total Phase O.7 wall-clock**: ~25 min (iter 1 SIL sweep ~10 min + iter 2 C9 sub-window ~2 min + iter 3 km_floor sweep ~5 min + commit/push overhead).
+
+**Phase O.7 commits**: `5e75cf6` → `edfcdf7` → `19cd548` on `origin/main`. All Round-1 audit findings documented or remediated; verdict `accept-with-residuals` per the audit-remediate-loop skill convention.
