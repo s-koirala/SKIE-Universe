@@ -1048,6 +1048,77 @@ The honest answer is **both, with risk-amplification carrying most of the headli
 
 **Operator interpretation**: the C3 result is **not** a green-light to deploy aggressive sizing in production. It is **structural evidence that proper position-sizing matters more than signal selection at the v1 KPI report card level** — the v1 quarter-Kelly + fixed-equity rebase was the binding bottleneck on the original $43K result. v2 cost-realistic calibration with current-equity rebase + a more conservative Kelly grid (km ≤ 1.0 per the inner-CV unanimous selection at quarter-Kelly) is the recommended path forward. NinjaScript implementation decision remains operator-discretionary per the 2026-05-04 standing directive.
 
+### Phase O.4: MPV1 meta-portfolio v1 + C9 BOCD-step-up — audit-remediate-loop Round 1 (2026-05-15)
+
+Per operator 2026-05-15 directive "proceed using the audit-remediate loop" + 3-agent assessment (quant skeptic / high-risk strategist / project-level), parallel implementation of MPV1 + C9 with Round-1 audit-remediate-loop discipline.
+
+**Round 1 audit findings** (parallel quant-auditor on each + parallel literature-check):
+- **C9** (agentId `aba571c7156b39354`): 4 critical + 6 major + 2 minor
+- **MPV1** (agentId `ae38247b0fe53809b`): 4 critical + 8 major + 2 minor — verdict `block`
+- **Citations lit-check** (agentId `a152f2d687aca5f90`): accept; no wrong-DOI / wrong-author-order defects of the Phase N + Phase O.1 regression class.
+
+**Round 1 remediation applied — load-bearing critical/major fixes**:
+
+C9 (5 of 11 closed):
+- C9-F-1 + C9-F-2: BOCD fed DENSE per-session MPPM path (replaces sparse 31-point step-check sample); warmup gate blocks step-ups until `len(per_session_mppm_path) >= bocd_window` (prevents burn-in-as-no-decay false-positive)
+- C9-F-5: km navigation via grid index (both halve + step-up); km stays on-grid permanently
+- C9-F-6: km_at_entry as closure-state nonlocal (replaces fragile function-attribute pattern)
+- C9-F-10: BOCD/MPPM error handlers now log at WARN with session_idx context
+
+MPV1 (5 of 14 closed):
+- MPV1-F-1-1 + MPV1-F-1-10: drop cycle-resampling; T = min(arm_lengths) per design.md §2 spec; `--n-min=10` filter drops H062-NQ (n=5)
+- MPV1-F-1-2: paired stationary-bootstrap CI on (bandit - 1/N) per-round diff per Politis-Romano 1994 + Politis-White 2004
+- MPV1-F-1-3 + MPV1-F-1-4: design.md §1 REFRAMED as descriptive v1 (Exhibits A-D); MPPM-promotable inference deferred to MPV2 per `P1-MPV2-PER-SESSION-RETURNS-INTEGRATION` (BLOCKING-BEFORE-MPV2-INFERENCE); oracle dropped from primary
+- MPV1-F-1-12: correlation matrix on T-truncated unique-value matrix (not cycle-resampled)
+
+**Behavioural impact** (pre vs post Round-1 remediation):
+
+| Artifact | Pre-remediation | Post-remediation |
+|---|---|---|
+| C9 MGC | -95.2% ROI; 98.5% MaxDD; km=1.25 off-grid | **+69.1% ROI**; 76.8% MaxDD; km=0.5 on-grid |
+| C9 basket | (single symbol smoke only) | **+217.7% basket** vs C3 +2,690% but **NO leg catastrophic** |
+| MPV1 T_MPV1 | "+1.58 POSITIVE" headline | All 4 bandit-vs-1/N paired bootstrap CIs **cover zero** at 95% |
+| MPV1 top arm | H062-NQ (87% allocation on n=5 → fake confidence) | H060 (60-75% across bandits; correct n_min filter applied) |
+
+**C9 full sweep post-remediation** (artifacts/runs/H062/c9_bocd_step_up_20260516T013136Z/sidecar.json; sha256 `6f154944...`):
+
+| Symbol | ROI | MaxDD | Trades | km_step_ups | km_halves | km_terminal | (vs C3) |
+|---|---:|---:|---:|---:|---:|---:|---|
+| ES | +21.8% | 12.9% | 42 | 0 | 2 | 0.50 | (C3 +107% w/ 97.5% DD) |
+| NQ | +24.6% | 11.8% | 19 | 0 | 2 | 0.50 | (C3 +9,619% w/ 84.6% DD; sparse) |
+| MGC | +69.1% | 76.8% | 4,686 | 0 | 2 | 0.50 | (C3 **-94%** w/ 98.0% DD) |
+| SIL | +755.4% | 55.2% | 5,313 | 0 | 2 | 0.50 | (C3 +1,130% w/ 71.4% DD) |
+| **BASKET** | **+217.7%** | — | — | — | — | — | **(C3 +2,690%; v1 -3.7%)** |
+
+Key structural finding: BOCD detected decay in EVERY symbol's per-session MPPM path; all 4 legs halved Kelly twice from 1.5 → 0.5. C9 captures less of the right-tail than C3 (e.g., NQ +24% vs C3 +9,619%) BUT eliminates the catastrophic left-tail behavior (MGC fully reversed from -94% → +69%). The basket-level result of +217.7% is empirically much better risk-adjusted than C3's headline +2,690% which was a tail-amplification result conditional on MGC's -94% being absorbed by NQ's +9,619%.
+
+**MPV1 post-remediation result** (artifacts/runs/MPV1/v1_*/sidecar.json):
+- 4 arms (H060 + H062-ES/MGC/SIL; H062-NQ filtered out at n_min=10)
+- T = 20 rounds (= min arm length)
+- Top arm across all 4 bandits: H060 (45-75% allocation)
+- Cumulative-reward ordering: EXP3.S (-3.62) > GLR-klUCB (-10.43) ≈ D-UCB (-10.46) ≈ SW-UCB (-10.46) > 1/N (-12.15) > Oracle H060 (+1.16)
+- Descriptive paired bootstrap CI on (bandit − 1/N):
+  - D-UCB:  +0.0844 [-0.4323, +0.5354] **covers zero**
+  - SW-UCB: +0.0844 [-0.4323, +0.5354] **covers zero**
+  - GLR-klUCB: +0.0859 [-0.4509, +0.5358] **covers zero**
+  - EXP3.S: +0.4263 [-0.1978, +1.0212] **covers zero**
+- Honest descriptive finding: at T=20 with 4 arms, the bandit-vs-1/N differential is NOT statistically distinguishable from zero. EXP3.S has the strongest point estimate (+0.43) but the widest CI; no allocator beats 1/N at conventional 95% confidence.
+
+**Audit trail**: [docs/audits/audit_trail_2026-05-15_mpv1_c9_round1.md](docs/audits/audit_trail_2026-05-15_mpv1_c9_round1.md) (full Round-1 findings table + remediation table + 13 residual follow-ups).
+
+**Round-1 exit decision**: both artifacts pass the "no critical residuals" exit criterion. Major-deferred items are production-quality polish (RunContext binding, sizing-primitive integration, arm-universe expansion to H050/H052a/H053/H054). Per the audit-remediate-loop skill convention, EXITED Round 1 with documented residuals — no Round 2 needed for the v1 descriptive scope.
+
+**New follow-ups registered by Phase O.4**:
+- `P1-MPV2-PER-SESSION-RETURNS-INTEGRATION` (BLOCKING-BEFORE-MPV2-INFERENCE): re-run each underlying orchestrator (H050, H052a, H053, H054, H060, H062) with per-session log-return arrays emitted into sidecar.json; build MPV2 on per-session reward sequences (not per-fold MPPMs). This is the only path to a proper MPPM-promotable inferential meta-portfolio claim.
+- `P1-MPV1-EXTEND-ARM-UNIVERSE` (major-deferred): add H050 + H052a + H053 v4 + H054 sidecar paths; the H052a/H054 sidecars use different schemas requiring an adapter.
+- `P1-MPV1-CALENDAR-ALIGNMENT` (major-deferred): build reward matrix by joining on fold-calendar across arms instead of `t mod n`.
+- `P1-C9-RUN-CONTEXT-INTEGRATION` (major-deferred): RunContext + ReproLog 13-field binding.
+- `P1-C9-COMPUTE-POSITION-SIZE-INTEGRATION` (major-deferred): replace inline sizing with `compute_position_size` primitive call.
+- `P1-C9-PIT-CANARY-WAIT-ON-H062` (major-deferred): defer C9 production runs behind `P1-H062-PIT-CANARY-INTEGRATION-TEST`.
+- `P1-MPV1-DGU-2009-CAPITAL-WEIGHTED-1N` (deferred to MPV2; tied to per-session-returns integration).
+- `P1-MPV1-CITE-DOI-VERIFY-GRINOLD-1989` (verification-gap; non-blocking; auth-walled pm-research.com).
+- 4 minor / project-level cascade items per audit trail §4.
+
 **New non-blocking follow-ups registered by Phase O.3**:
 - `P1-H062-V2-COST-REALISTIC-RERUN` (BLOCKING-BEFORE-LIVE; ADR-0023 v2 cost model + ADR-0017 §4.1 current-equity rebase per design.md §5.3 binding).
 - `P1-H062-MGC-LEFT-TAIL-INVESTIGATE` (why does MGC degrade monotonically as Kelly scales? Likely ATR-stop sizing systematically too tight given metals overnight gap behavior).
