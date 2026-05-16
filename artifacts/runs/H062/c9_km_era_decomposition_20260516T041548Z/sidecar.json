@@ -1,0 +1,257 @@
+{
+  "c9_config": {
+    "km_grid": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5
+    ],
+    "km_start": 1.5,
+    "risk_budget_pct": 0.01
+  },
+  "cross_symbol_summary": [
+    {
+      "avg_per_symbol_roi_pct": 15.910178704109986,
+      "km": 0.5,
+      "n_symbols_active_at_this_km": 3,
+      "sum_cum_log_return_across_symbols": 0.21713796918542833,
+      "total_session_days_across_4_symbols": 3233
+    },
+    {
+      "avg_per_symbol_roi_pct": 30.70975776595255,
+      "km": 1.0,
+      "n_symbols_active_at_this_km": 2,
+      "sum_cum_log_return_across_symbols": 0.47118559728078196,
+      "total_session_days_across_4_symbols": 117
+    },
+    {
+      "avg_per_symbol_roi_pct": 96.91351052296824,
+      "km": 1.5,
+      "n_symbols_active_at_this_km": 4,
+      "sum_cum_log_return_across_symbols": 2.378043222421014,
+      "total_session_days_across_4_symbols": 261
+    }
+  ],
+  "experiment": "c9_km_era_decomposition",
+  "feature_cell": {
+    "atr_n": 14,
+    "channel_n": 120,
+    "h_dwell": 5,
+    "k_atr": 2.0,
+    "trend_id": "a_ts_mom",
+    "trend_id_lookback_l": 60,
+    "trend_id_threshold": 1.0
+  },
+  "per_symbol_decomposition": [
+    {
+      "full_window_max_dd_pct": 12.94092652936343,
+      "full_window_n_trades": 42,
+      "full_window_roi_pct": 21.82417434531292,
+      "km_terminal": 0.5,
+      "km_timeline": [
+        {
+          "km": 1.5,
+          "session_idx": 0
+        },
+        {
+          "km": 1.0,
+          "session_idx": 120
+        },
+        {
+          "km": 0.5,
+          "session_idx": 180
+        }
+      ],
+      "n_km_halves": 2,
+      "n_km_step_ups": 0,
+      "per_km_era": [
+        {
+          "cum_log_return": 0.05074957409088654,
+          "era_roi_pct_on_unit_bankroll": 5.205939736045262,
+          "first_session_date": "2021-04-02",
+          "km": 0.5,
+          "last_session_date": "2021-04-02",
+          "log_ret_mean": 0.05074957409088654,
+          "log_ret_std": 0.0,
+          "n_sessions": 1,
+          "sharpe_annualized": NaN,
+          "sharpe_per_session": NaN
+        },
+        {
+          "cum_log_return": 0.14665905124459985,
+          "era_roi_pct_on_unit_bankroll": 15.795909100723504,
+          "first_session_date": "2020-01-02",
+          "km": 1.5,
+          "last_session_date": "2020-02-21",
+          "log_ret_mean": 0.005866362049783994,
+          "log_ret_std": 0.05305475118327066,
+          "n_sessions": 25,
+          "sharpe_annualized": 1.7552737206265128,
+          "sharpe_per_session": 0.11057185113392423
+        }
+      ],
+      "symbol": "ES"
+    },
+    {
+      "full_window_max_dd_pct": 11.768469079076105,
+      "full_window_n_trades": 19,
+      "full_window_roi_pct": 24.600265195002425,
+      "km_terminal": 0.5,
+      "km_timeline": [
+        {
+          "km": 1.5,
+          "session_idx": 0
+        },
+        {
+          "km": 1.0,
+          "session_idx": 120
+        },
+        {
+          "km": 0.5,
+          "session_idx": 180
+        }
+      ],
+      "n_km_halves": 2,
+      "n_km_step_ups": 0,
+      "per_km_era": [
+        {
+          "cum_log_return": 0.21994054873380245,
+          "era_roi_pct_on_unit_bankroll": 24.600265195002425,
+          "first_session_date": "2020-01-02",
+          "km": 1.5,
+          "last_session_date": "2020-02-18",
+          "log_ret_mean": 0.016918503748754036,
+          "log_ret_std": 0.06771065785445997,
+          "n_sessions": 13,
+          "sharpe_annualized": 3.96647927161459,
+          "sharpe_per_session": 0.249864707932972
+        }
+      ],
+      "symbol": "NQ"
+    },
+    {
+      "full_window_max_dd_pct": 76.7775085387402,
+      "full_window_n_trades": 4736,
+      "full_window_roi_pct": 73.42254699097059,
+      "km_terminal": 0.5,
+      "km_timeline": [
+        {
+          "km": 1.5,
+          "session_idx": 0
+        },
+        {
+          "km": 1.0,
+          "session_idx": 120
+        },
+        {
+          "km": 0.5,
+          "session_idx": 180
+        }
+      ],
+      "n_km_halves": 2,
+      "n_km_step_ups": 0,
+      "per_km_era": [
+        {
+          "cum_log_return": -0.3935720518251879,
+          "era_roi_pct_on_unit_bankroll": -32.53572934127214,
+          "first_session_date": "2020-07-31",
+          "km": 0.5,
+          "last_session_date": "2026-05-14",
+          "log_ret_mean": -0.0002524516047627889,
+          "log_ret_std": 0.018245760124244195,
+          "n_sessions": 1559,
+          "sharpe_annualized": -0.21964253384894583,
+          "sharpe_per_session": -0.01383617909277136
+        },
+        {
+          "cum_log_return": -0.019608050523532147,
+          "era_roi_pct_on_unit_bankroll": -1.9417063035357174,
+          "first_session_date": "2020-05-22",
+          "km": 1.0,
+          "last_session_date": "2020-07-30",
+          "log_ret_mean": -0.0003268008420588691,
+          "log_ret_std": 0.023410576047424952,
+          "n_sessions": 60,
+          "sharpe_annualized": -0.22160080672496837,
+          "sharpe_per_session": -0.013959538688703714
+        },
+        {
+          "cum_log_return": 0.963741001037053,
+          "era_roi_pct_on_unit_bankroll": 162.14851309114772,
+          "first_session_date": "2020-01-02",
+          "km": 1.5,
+          "last_session_date": "2020-05-21",
+          "log_ret_mean": 0.008761281827609572,
+          "log_ret_std": 0.054170837092808705,
+          "n_sessions": 110,
+          "sharpe_annualized": 2.5674522447150756,
+          "sharpe_per_session": 0.1617342891083485
+        }
+      ],
+      "symbol": "MGC"
+    },
+    {
+      "full_window_max_dd_pct": 55.24357726104399,
+      "full_window_n_trades": 5425,
+      "full_window_roi_pct": 715.3576914043789,
+      "km_terminal": 0.5,
+      "km_timeline": [
+        {
+          "km": 1.5,
+          "session_idx": 0
+        },
+        {
+          "km": 1.0,
+          "session_idx": 120
+        },
+        {
+          "km": 0.5,
+          "session_idx": 180
+        }
+      ],
+      "n_km_halves": 2,
+      "n_km_step_ups": 0,
+      "per_km_era": [
+        {
+          "cum_log_return": 0.5599604469197297,
+          "era_roi_pct_on_unit_bankroll": 75.06032571755684,
+          "first_session_date": "2020-07-31",
+          "km": 0.5,
+          "last_session_date": "2026-05-14",
+          "log_ret_mean": 0.00033470439146427355,
+          "log_ret_std": 0.020759033632399528,
+          "n_sessions": 1673,
+          "sharpe_annualized": 0.25594965494547,
+          "sharpe_per_session": 0.01612331274139302
+        },
+        {
+          "cum_log_return": 0.4907936478043141,
+          "era_roi_pct_on_unit_bankroll": 63.361221835440816,
+          "first_session_date": "2020-05-22",
+          "km": 1.0,
+          "last_session_date": "2020-07-30",
+          "log_ret_mean": 0.008610414873759896,
+          "log_ret_std": 0.056189705289623346,
+          "n_sessions": 57,
+          "sharpe_annualized": 2.432582586824919,
+          "sharpe_per_session": 0.15323829924678387
+        },
+        {
+          "cum_log_return": 1.047702621405559,
+          "era_roi_pct_on_unit_bankroll": 185.10935470499933,
+          "first_session_date": "2020-01-02",
+          "km": 1.5,
+          "last_session_date": "2020-05-21",
+          "log_ret_mean": 0.009271704614208487,
+          "log_ret_std": 0.06871190841902189,
+          "n_sessions": 113,
+          "sharpe_annualized": 2.142041331984437,
+          "sharpe_per_session": 0.13493592053458014
+        }
+      ],
+      "symbol": "SIL"
+    }
+  ],
+  "written_at_utc": "2026-05-16T04:16:32.521021+00:00"
+}
