@@ -1,0 +1,365 @@
+{
+  "arm_ids": [
+    "H060",
+    "H062-ES",
+    "H062-MGC",
+    "H062-SIL"
+  ],
+  "arms": [
+    {
+      "arm_id": "H060",
+      "description": "H060 cross-futures TSMOM daily-cadence basket",
+      "filter_symbol": null,
+      "n_rewards": 21,
+      "reward_mean": 0.08174583552668799,
+      "reward_std": 0.3548163602099364,
+      "source_sidecar": "artifacts/runs/H060/cbddc3c9dd6d47c7b0ac4f9cfdd5a3d9/sidecar.json"
+    },
+    {
+      "arm_id": "H062-ES",
+      "description": "H062 intraday Donchian ES leg",
+      "filter_symbol": "ES",
+      "n_rewards": 18,
+      "reward_mean": -1.0509234573992063,
+      "reward_std": 2.1714938056056114,
+      "source_sidecar": "artifacts/runs/H062/eb729b201595484594ce4c9ddde72d05/sidecar.json"
+    },
+    {
+      "arm_id": "H062-MGC",
+      "description": "H062 intraday Donchian MGC leg",
+      "filter_symbol": "MGC",
+      "n_rewards": 26,
+      "reward_mean": 0.24885810300086517,
+      "reward_std": 1.8749900433939353,
+      "source_sidecar": "artifacts/runs/H062/eb729b201595484594ce4c9ddde72d05/sidecar.json"
+    },
+    {
+      "arm_id": "H062-SIL",
+      "description": "H062 intraday Donchian SIL leg",
+      "filter_symbol": "SIL",
+      "n_rewards": 26,
+      "reward_mean": 0.0799718692689228,
+      "reward_std": 1.9299982500674882,
+      "source_sidecar": "artifacts/runs/H062/eb729b201595484594ce4c9ddde72d05/sidecar.json"
+    }
+  ],
+  "bandit_results": [
+    {
+      "allocation_share": [
+        0.2777777777777778,
+        0.05555555555555555,
+        0.16666666666666666,
+        0.5
+      ],
+      "arm_choices": [
+        0,
+        1,
+        2,
+        3,
+        0,
+        3,
+        0,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        0,
+        0,
+        3,
+        2
+      ],
+      "bandit": "DUCBBandit",
+      "cumulative_reward": -5.781365250039536,
+      "final_cumulative_regret": 33.53214754268395,
+      "kwargs": {
+        "discount_factor": 0.99,
+        "exploration_constant": 2.0
+      },
+      "mean_reward_per_round": -0.3211869583355298,
+      "realized_rewards": [
+        0.4884689181998466,
+        -3.7420612086424763,
+        -0.850173269667779,
+        0.07800333361431411,
+        -0.44365420924054727,
+        -0.694252670790677,
+        -0.3945754095981218,
+        -0.8760840142495119,
+        0.9939423961514483,
+        5.16544312510012,
+        2.5328651216377405,
+        -2.485253831386745,
+        -1.2452653529994202,
+        -0.610680915315633,
+        0.3853783737159183,
+        -0.22864353984130725,
+        -4.4983127852830025,
+        0.6434906885562962
+      ]
+    },
+    {
+      "allocation_share": [
+        0.2777777777777778,
+        0.05555555555555555,
+        0.16666666666666666,
+        0.5
+      ],
+      "arm_choices": [
+        0,
+        1,
+        2,
+        3,
+        0,
+        3,
+        0,
+        2,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        0,
+        0,
+        3,
+        2
+      ],
+      "bandit": "SWUCBBandit",
+      "cumulative_reward": -5.781365250039536,
+      "final_cumulative_regret": 33.53214754268395,
+      "kwargs": {
+        "exploration_constant": 2.0,
+        "window": 60
+      },
+      "mean_reward_per_round": -0.3211869583355298,
+      "realized_rewards": [
+        0.4884689181998466,
+        -3.7420612086424763,
+        -0.850173269667779,
+        0.07800333361431411,
+        -0.44365420924054727,
+        -0.694252670790677,
+        -0.3945754095981218,
+        -0.8760840142495119,
+        0.9939423961514483,
+        5.16544312510012,
+        2.5328651216377405,
+        -2.485253831386745,
+        -1.2452653529994202,
+        -0.610680915315633,
+        0.3853783737159183,
+        -0.22864353984130725,
+        -4.4983127852830025,
+        0.6434906885562962
+      ]
+    },
+    {
+      "allocation_share": [
+        0.2222222222222222,
+        0.05555555555555555,
+        0.1111111111111111,
+        0.6111111111111112
+      ],
+      "arm_choices": [
+        0,
+        1,
+        2,
+        3,
+        0,
+        3,
+        0,
+        0,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        2
+      ],
+      "bandit": "GLRKLUCBBandit",
+      "cumulative_reward": -5.801688573543892,
+      "final_cumulative_regret": 33.5524708661883,
+      "kwargs": {},
+      "mean_reward_per_round": -0.32231603186354957,
+      "realized_rewards": [
+        0.4884689181998466,
+        -3.7420612086424763,
+        -0.850173269667779,
+        0.07800333361431411,
+        -0.44365420924054727,
+        -0.694252670790677,
+        -0.3945754095981218,
+        0.009211180549941102,
+        0.9939423961514483,
+        5.16544312510012,
+        2.5328651216377405,
+        -2.485253831386745,
+        -1.2452653529994202,
+        -0.610680915315633,
+        -0.74234866417267,
+        -0.006535020256528051,
+        -4.4983127852830025,
+        0.6434906885562962
+      ]
+    },
+    {
+      "allocation_share": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.05555555555555555,
+        0.2777777777777778
+      ],
+      "arm_choices": [
+        3,
+        0,
+        1,
+        3,
+        2,
+        3,
+        1,
+        1,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        3,
+        0,
+        3,
+        0
+      ],
+      "bandit": "EXP3SBandit",
+      "cumulative_reward": -1.1622802499842428,
+      "final_cumulative_regret": 28.913062542628655,
+      "kwargs": {},
+      "mean_reward_per_round": -0.0645711249991246,
+      "realized_rewards": [
+        0.38641015364633413,
+        0.3059423710349073,
+        3.369854781457268,
+        0.07800333361431411,
+        0.8290276198026059,
+        -0.694252670790677,
+        2.4778322238432593,
+        0.6005602194020686,
+        -0.2055215854457671,
+        -1.2063880448784232,
+        0.0031245232239916513,
+        1.1115172337490942,
+        -2.9090433075451334,
+        0.024086121760585694,
+        -0.74234866417267,
+        -0.22864353984130725,
+        -4.4983127852830025,
+        0.13587176643830806
+      ]
+    }
+  ],
+  "correlation_matrix_pearson": [
+    [
+      1.0,
+      -0.1402853229624826,
+      -0.2084335607337438,
+      -0.3156417772971941
+    ],
+    [
+      -0.1402853229624826,
+      1.0,
+      -0.28594178792431324,
+      0.02667880305477862
+    ],
+    [
+      -0.2084335607337438,
+      -0.28594178792431324,
+      1.0,
+      0.38414881086423297
+    ],
+    [
+      -0.3156417772971941,
+      0.026678803054778617,
+      0.38414881086423297,
+      1.0
+    ]
+  ],
+  "descriptive_paired_bootstrap_ci_bandit_minus_eq_weight": {
+    "DUCBBandit": {
+      "block_length": 1.349924767213841,
+      "ci_high": 0.8692118596260496,
+      "ci_low": -0.6696460031713595,
+      "excludes_zero": false,
+      "n_bootstrap": 1000,
+      "point_estimate": 0.04724822390287373
+    },
+    "EXP3SBandit": {
+      "block_length": 1.0,
+      "ci_high": 1.0354554349235183,
+      "ci_low": -0.41209369377341337,
+      "excludes_zero": false,
+      "n_bootstrap": 1000,
+      "point_estimate": 0.30386405723927884
+    },
+    "GLRKLUCBBandit": {
+      "block_length": 1.26596025371698,
+      "ci_high": 0.852543088576092,
+      "ci_low": -0.6349456203327053,
+      "excludes_zero": false,
+      "n_bootstrap": 1000,
+      "point_estimate": 0.04611915037485395
+    },
+    "SWUCBBandit": {
+      "block_length": 1.349924767213841,
+      "ci_high": 0.8692118596260496,
+      "ci_low": -0.6696460031713595,
+      "excludes_zero": false,
+      "n_bootstrap": 1000,
+      "point_estimate": 0.04724822390287373
+    }
+  },
+  "descriptive_v1_no_inferential_claim": "Per Round-1 audit-remediate-loop reframing: MPV1 v1 emits descriptive exhibits ONLY. No MPPM-promotable inferential claim. See design.md \u00a71 reframed deliverables A-D. Sharpe-promotable inference deferred to MPV2 per P1-MPV2-PER-SESSION-RETURNS-INTEGRATION.",
+  "equal_weight_baseline": {
+    "cumulative_reward": -6.631833280291263,
+    "mean_reward_per_round": -0.36843518223840355,
+    "name": "1_over_N_equal_weight",
+    "realized_rewards": [
+      0.35617395812918573,
+      -1.3696175283805674,
+      0.34031449321991164,
+      -1.1103598368969552,
+      -0.6548185964677669,
+      -0.7230237517206474,
+      0.931535993709534,
+      -0.4462373341604339,
+      0.22492713765189193,
+      0.9008634716796923,
+      0.4005799303762507,
+      -1.2863958103821105,
+      -0.3768542035890139,
+      -1.7818888222373857,
+      -0.5250730350869925,
+      0.11524996419698816,
+      -2.2080564377165235,
+      0.5808471273836788
+    ]
+  },
+  "experiment": "v1_meta_portfolio_d_ucb",
+  "hypothesis_id": "MPV1",
+  "n_arms_K": 4,
+  "n_rounds_T": 18,
+  "oracle_baseline": {
+    "best_arm_id": "H060",
+    "best_arm_idx": 0,
+    "best_arm_mean": 0.029256748541175732,
+    "cumulative_reward": 0.5266214737411633,
+    "name": "oracle_best_arm"
+  },
+  "rng_seed": 20260515,
+  "written_at_utc": "2026-05-18T22:29:10.169802+00:00"
+}

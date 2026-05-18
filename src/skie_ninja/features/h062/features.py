@@ -213,11 +213,11 @@ def compute_h062_features(
       - eligible_events[t] = filtered_events[t] × (trend_side gate pass)
     """
     h = np.asarray(high, dtype=float).ravel()
-    l = np.asarray(low, dtype=float).ravel()
+    lo = np.asarray(low, dtype=float).ravel()
     c = np.asarray(close, dtype=float).ravel()
-    if h.shape != l.shape or h.shape != c.shape:
+    if h.shape != lo.shape or h.shape != c.shape:
         raise ValueError(
-            f"OHLC shape mismatch: high {h.shape}, low {l.shape}, close {c.shape}"
+            f"OHLC shape mismatch: high {h.shape}, low {lo.shape}, close {c.shape}"
         )
 
     # Donchian channel + raw events + first-fire filter.
@@ -226,14 +226,14 @@ def compute_h062_features(
     filtered_events = first_fire_filter(raw_events, h_dwell=config.h_dwell)
 
     # ATR.
-    atr = atr_wilder(h, l, c, n=config.atr_n)
+    atr = atr_wilder(h, lo, c, n=config.atr_n)
 
     # Trend-filter side. Use log(close) for trend_id_a/c.
     log_prices = np.log(np.where(c > 0, c, np.nan))
     trend_side = select_trend_id_side(
         config,
         high=h,
-        low=l,
+        low=lo,
         close=c,
         log_prices=log_prices,
     )

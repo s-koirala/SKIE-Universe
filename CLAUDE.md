@@ -1419,3 +1419,78 @@ All 5 dimensions independently support the same conclusion: **the H062-family si
 - **DO continue running H060 forward** — only arm with positive walk-forward cum_mppm
 - **DO NOT extrapolate H062 family aggressive-sizing headlines** to forward-period; they don't survive walk-forward
 - **Reframe project narrative**: the project has produced robust empirical findings about LIMITS of the signal class, not about edge-existence. The L-skew positive payoff structure is real; the mean-edge is not.
+
+### Phase O.10: post-merge audit-remediate-loop on Phase O.2-O.9 integration (2026-05-18)
+
+User 2026-05-18 directive after pulling 22 commits from origin/main into local main (Phase O.2 through O.9): "proceed via the audit remediate loop"; subsequently authorized "Full Round 2 (mechanical + reframe + v2 re-emissions + substrate reconciliation)" + "Path C — re-ingest from raw_1min" for substrate-locality resolution. Audit-remediate-loop skill invoked with 5 parallel specialist branches (quant + lit + repro + code + format) per SKILL.md routing. Audit trail at [docs/audits/audit_trail_2026-05-18_phase-o-merge-audit.md](docs/audits/audit_trail_2026-05-18_phase-o-merge-audit.md).
+
+**Round 1 findings**: 82 total (14 critical, 30 major, 38 minor). Critical breakdown by branch: quant 2 (Q-1 H062 v1 MPPM double-log bug + Q-2 H062 in-sample inner-CV disguised as walk-forward), lit 1 (L-1 Hsu-Kuan 2005 finding INVERSION across 6 files), repro 5 (R-1 H055/H065/MPV1 ReproLog 2-3 of 13 fields; R-2 H055/H065 substrate `b93e544...` only in sibling worktree; R-3 H060 ReproLog git_head unreachable from main HEAD; R-4 four-SHA substrate inventory drift; F-1 OS-username sidecar leak ×5+), code 1 (variable `l` PEP 8 violation), format 5 (F-2 H055 v1 9-table format vs ADR-0019 §3 13-table mandate; F-3 INDEX/RESULTS_INDEX/hypothesis_backlog/CHANGELOG stale; F-4 BEST_OOS.md missing 3 emitted cards per ADR-0024 D-8; F-5 5 broken ADR-0008 cross-link variants + 1 ADR-0024 variant).
+
+**Round 2 remediation landed in this session** (single commit batch):
+1. **H062 v1 critical methodological bugs** — `scripts/run_h062_walk_forward.py`: `np.expm1(np.clip(..., -6.9))` conversion at all 3 mppm_rho_1 call sites + walk-forward inner-CV restructure with `inner_n_folds=3` + `inner_embargo_sessions=1` + `inner_cv_structure` provenance block. Validated via smoke run (run_id `e342a2c052cb4d8db9b379a23fc5d798`, exit 0); full v2 walk-forward kicked off background task `bph4hcurp` (multi-hour wall-clock; v2 run_id `eb729b201595484594ce4c9ddde72d05`).
+2. **Substrate Path-C re-ingest** — Stage A `vendor_legacy_1min` (run_id `8819c5dd44c34f4da41b9a24d992b9f4`) + Stage B `vendor_legacy_1min_roll_adjusted` (run_id `38d63bdd2def4fa9804c78fbcb1a76ce`); canonical substrate now at SHA `317429e49ad636746d15bf6310fd8f24bc45611ef03e50abefdc25fc6ba12dc7` in main checkout (verified deterministic re-derivation matches the post-Phase-O.8 substrate).
+3. **Hsu-Kuan 2005 erratum** — canonical correction at [research/01_hypothesis_register/_erratum_hsu_kuan_2005_2026-05-18.md](research/01_hypothesis_register/_erratum_hsu_kuan_2005_2026-05-18.md). Verified primary-source abstract: "profitable rules in young markets (NASDAQ Composite + Russell 2000) but NOT in mature markets (DJIA + S&P 500)" — distinction is **market maturity**, NOT capitalization. NQ tracks NASDAQ Composite (SURVIVES-SPA category), NOT "FAILS-SPA large-cap" as the original framing claimed. H062 + H065 design.md §17 Path A amendment entries (frozen §1.4 preserved verbatim); H062 + H065 lit-reviews edited in place with verified wording + cross-link to erratum; hypothesis_backlog.md H062 row updated. New non-blocking follow-up `P1-LITERATURE-CHECK-DIRECTIONAL-FINDING-VERIFY`.
+4. **Cross-link sed sweep** — 12 fixes across 6 files; zero remaining broken refs (ADR-0008 5 variants → `ADR-0008-spa-omega-method.md`; ADR-0024 1 variant → `ADR-0024-paradigm-resolution-h062-aggressive-growth-canonical.md`).
+5. **BLAS pinning** — canonical block from `run_h052a_walk_forward.py:915-942` ported into 7 orchestrator `__main__` entries via parameterized regex patch (run_h062_walk_forward, run_h062_calibration_holdout, run_h062_spa_power_simulation, run_h062_v1_2026_q1q2, run_h065_sil_standalone_investigation, run_h065_tp_overlay_sweep, run_mpv1_meta_portfolio). All 7 ASTs validated post-patch.
+6. **Substrate-SHA reconciliation memo** at [docs/research_notes/memo_substrate-vintage-inventory_2026-05-18.md](docs/research_notes/memo_substrate-vintage-inventory_2026-05-18.md) enumerates the 4-SHA inventory (1247dc7e/b93e544/317429e4/242aaa28-ledger-claim-only) + per-KPI binding + canonical going-forward SHA. **Closes** `P1-CLAUDE-MD-LEDGER-SUBSTRATE-SHA-RECONCILE`.
+7. **H055 v1 corrigendum** at [research/01_hypothesis_register/H055/H055_kpi_report_v1_corrigendum_2026-05-18.md](research/01_hypothesis_register/H055/H055_kpi_report_v1_corrigendum_2026-05-18.md) — versioned addendum per ADR-0013 §4.1 non-loss; corrects misleading `repro-log-present` annotation to `repro-log-incomplete`. v1 KPI body preserved verbatim.
+8. **H062 failure_log retrofit** — 6 Phase O.2 build-defect entries appended per ADR-0013 §4.2.
+9. **H065 data_requirements.md retrofit** — INDEX.md-mandated file authored from design.md §16 substrate binding + Phase O.3 backfill context.
+10. **Ledger updates** — INDEX.md H055 row stage updated; RESULTS_INDEX.md H055 v1 + H062 v1 + H065 v0/v1 rows added (line 38 amended for ADR-0019 §3 13-table extension); hypothesis_backlog.md header date 2026-05-11 → 2026-05-18 + H055 + H062 row updates + Hsu-Kuan erratum cross-link; CHANGELOG.md Phase O.2-O.9 entries appended (1 line per phase per project convention).
+11. **Code quality** — variable `l` (PEP 8 Names-to-Avoid) renamed to `lo` in `src/skie_ninja/features/h062/features.py:216,229,236`.
+
+**Deferred to v2 cascade** (BLOCKING-BEFORE-NEXT-PROMOTION follow-ups registered):
+- `P1-H055-V2-RERUN-ON-CANONICAL-SUBSTRATE` + `P1-H065-V2-RERUN-ON-CANONICAL-SUBSTRATE` + `P1-H060-V2-RERUN-ON-CANONICAL-SUBSTRATE` — re-emit on `317429e4...` substrate.
+- `P1-H055-REPROLOG-WIRE` + `P1-H065-REPROLOG-WIRE` + `P1-MPV1-REPROLOG-WIRE` — wrap sweep orchestrators in `RunContext` for canonical 13-field ReproLog emission.
+- `P1-H060-REPROLOG-GIT-HEAD-UNREACHABLE` — H060 v2 walk-forward must produce a ReproLog with main-HEAD-reachable git_head; gates MPV1 cascade.
+- `P1-KPI-TEMPLATE-13-TABLE-CASCADE` — upgrade template per ADR-0017 §3.2 + ADR-0019 §3.
+- `P1-BEST-OOS-REGEN-PHASE-O` — `_oos_showcase_data.yaml` + `scripts/showcase_best_oos.py` regen to add H055 v1 + H062 v1 + H065 v1 per ADR-0024 D-8.
+- `P1-SIDECAR-ROOT-PATH-PROJECT-RELATIVE` — strip absolute-path roots from sidecars (defensive identity-hygiene hardening).
+- `P1-H062-V2-KPI-EMISSION` — write H062 KPI v2 card from background walk-forward (run_id `eb729b201595484594ce4c9ddde72d05`).
+- `P1-H062-BOCD-NAN-POSTERIOR-INVESTIGATE` (R1 quant-auditor minor; carried forward).
+- `P1-H062-ROR-1R-STOP-SEMANTICS-RECONCILE` (R1 quant-auditor major; carried forward).
+- `P1-RUNCONTEXT-ENFORCE-ALL-WALK-FORWARD-SCRIPTS` — extend `scripts/_hooks/check_repro_log.py` to fire on timestamp-format run_ids.
+- `P1-LITERATURE-CHECK-DIRECTIONAL-FINDING-VERIFY` — extend literature-check audit scope to verify paper-finding-direction matches cite-claim-direction.
+- `P1-MAGIC-NUM-JUSTIFY-CASCADE` — `# justify:` annotations for magic numbers in kill_switch_validation + run_h065_sil_standalone + H062 walk-forward.
+
+**Round 3 verification deferred** to H062 v2 KPI emission cycle per SKILL.md 3-round cap. The H062 v2 full walk-forward is running in background (task `bph4hcurp`; run_id `eb729b201595484594ce4c9ddde72d05`); per-fold log shows healthy selection-diversity emerging (e.g., ES fold 13 selected `N=120,k=1.5,km=0.25 mppm_oos=0.7041` — non-trivial mppm_oos values; compare to v1 where 100% folds selected `kelly_multiplier=0.25` under in-sample bias). On completion the v2 KPI report card emits with all corrections applied + the 13-table mandatory results-summary format. Verification scope: sidecar SHA + ReproLog 13-field completeness + inner-CV selection-diversity (NOT 100%-unanimous km=0.25 as v1) + Calmar/PF/R-multiple values + cross-cell ledger numerical agreement.
+
+The integrated Phase O.2-O.9 state is **internally consistent post-remediation**: cross-links resolve; ledger reflects disk state; canonical substrate on main checkout; Hsu-Kuan erratum canonical project-wide; H062 v2 walk-forward running with corrected MPPM + inner-CV semantics. Remaining work is the v2 KPI re-emission cycle tracked under the BLOCKING follow-ups above.
+
+### Phase O.10 extension (same session, 2026-05-18 evening) — v2 cascade complete
+
+Operator 2026-05-18 evening directive: "proceed with running all blocking items" + subsequent "ensure end report contains kpi tables and oos results for 2026". Closed 9 BLOCKING follow-ups in a single session pass:
+
+**v2 walk-forward / sweep runs on canonical substrate `317429e4...`** (all 4 deliverables landed):
+- H062 v2 walk-forward — run_id `eb729b201595484594ce4c9ddde72d05`; 84 folds; 3,065 OOS sessions; 9,653 trades; sidecar SHA `5f876797edfcabb5...`. **Closes** `P1-H062-V2-RERUN-ON-CANONICAL-SUBSTRATE` + `P1-H062-MPPM-DOUBLE-LOG-V2-FIX` + `P1-H062-WALK-FORWARD-INNER-CV-FIX`. MPPM(ρ=1) sign-flips +0.0950 [-0.343, +0.540] vs v1 −0.223 (qualitative verdict preserved: CI still covers zero → marginal). Realized OOS +217.57% (vs v1 +43.25%); max-DD 93.26% (unchanged); τ_3 = +0.737 strongly skew-positive; W/L/Z 975/2087/3 (31.8% win rate); LW2008 sharpe-vs-passive −0.0374 [−0.0813, **+0.0007**] (barely covers zero at H_0 boundary by 0.0007). Forward 252-session P(loss) 46.92%; P(double) 21.04%; q05 $2,896.63 → `tw-q05-below-half`.
+- H060 v2 walk-forward — run_id `cbddc3c9dd6d47c7b0ac4f9cfdd5a3d9`; 21 folds; 1,260 OOS sessions; 13/13 ReproLog fields. Closes `P1-H060-V2-RERUN-ON-CANONICAL-SUBSTRATE` + `P1-H060-REPROLOG-GIT-HEAD-UNREACHABLE`. MPPM(ρ=1) +0.0817 [-0.110, +0.267] marginal; realized $10K → $16,875.37 (+68.75%) vs passive $17,567 (+75.67%; arm underperforms by 6.91pp). All 4 ADR-0017 metrics marginal.
+- H055 v2 aggressive-sizing sweep — run_id `v2_sweep_20260518T220351Z`. Closes `P1-H055-V2-RERUN-ON-CANONICAL-SUBSTRATE`. Basket C3 superkelly +20.2%; C9 bocd_stepup +13.9%; MGC C3 +87.0% strongest single-symbol-cell project-wide.
+- H065 v2 TP-overlay sweep — run_id `tp_overlay_sweep_20260518T220406Z`. Closes `P1-H065-V2-RERUN-ON-CANONICAL-SUBSTRATE`. H_1 NULL on all 4 M-overlay cells confirmed; M=1.0 INVERTS skew (`payoff-shape-skew-negative`). New BLOCKING follow-up `P1-H065-SWEEP-SUBSTRATE-SHA-RUNTIME-READ` registered (sidecar hardcodes v1 substrate SHA).
+
+**2026 OOS sub-window simulators** (extended from 2026-05-15 → 2026-06-30; H055/H065 sweeps already covered 2026-04-01 → 2026-05-15):
+- H060 sub-window: TSMOM basket +1.29% / DD 0.16%; raw BH basket +11.85% (TSMOM captures fraction of underlying market return). Run_id `v1_2026_q1q2_20260518T221523Z`.
+- H062 sub-window: MGC alone produces trades (+8.03%); ES/NQ/SIL no sub-window trades; basket $40K → $40,803 (+2.01%). MGC full-window 2024-01 → 2026-06 = +324.46%. Run_id `v1_baseline_2026_q1q2_20260518T222525Z`.
+- Closes `P1-H062-2026-SUB-WINDOW-EXTENDED`.
+
+**v2 KPI report cards emitted** (4 cards; all with full ADR-0017+0019 13-table format; canonical 2026 OOS sub-window sections embedded):
+- [H062 v2](research/01_hypothesis_register/H062/H062_kpi_report_v2.md) — primary anchor v2 emission; documents the v1→v2 critical-defect-correction in detail
+- [H060 v2](research/01_hypothesis_register/H060/H060_kpi_report_v2.md) — substrate re-binding only (v1 already had RunContext)
+- [H055 v2](research/01_hypothesis_register/H055/H055_kpi_report_v2.md) — substrate re-binding (with v1 corrigendum cross-reference)
+- [H065 v2](research/01_hypothesis_register/H065/H065_kpi_report_v2.md) — substrate re-binding (with hardcoded-SHA defect noted)
+
+**MPV1 cascade on v2 sidecars** (closes `P1-H062-V2-MPV1-CASCADE` BLOCKING-BEFORE-MPV2): MPV1 default arm-sidecar paths repointed from v1 to v2 sidecars in `scripts/run_mpv1_meta_portfolio.py`; MPV1 v2 descriptive-exhibit produced (run_id `v1_20260518T222910Z`; sidecar SHA `e607b71ddf3ad79a...`). Per-arm rewards under v2 fold-MPPMs: H060 +0.082; **H062-ES −1.05 (worst leg under corrected WF-CV)**; H062-MGC +0.25 (best leg); H062-SIL +0.08. Bandit results: D-UCB/SW-UCB/GLR-klUCB pick H062-SIL (50-61%); EXP3.S picks H060 (33%) with lowest regret. Descriptive bootstrap CIs all cover zero (consistent with v1 descriptive null verdict).
+
+**KPI template upgrade** (closes `P1-KPI-TEMPLATE-13-TABLE-CASCADE`): [`research/_templates/kpi_results_summary_template.md`](research/_templates/kpi_results_summary_template.md) upgraded 9 → 12 → 13 tables per ADR-0014 + ADR-0017 §3.2 + ADR-0019 §3 amendment history. New tables: 1c (Payoff-shape diagnostics / L-skewness τ_3); 3a (Terminal-wealth q05); 3b (Calmar-differential); 3c (Profit-factor + R-multiple-mean). Format-version history preserved in template header.
+
+**Ledger reconciliation**: [INDEX.md](research/01_hypothesis_register/INDEX.md) H055/H060/H062/H065 rows updated with v2 KPI paths; [RESULTS_INDEX.md](research/01_hypothesis_register/RESULTS_INDEX.md) 4 v2 rows added (H060 v2, H055 v2, H065 v2, H062 v2); [hypothesis_backlog.md](hypothesis_backlog.md) H055 + H062 row stage updates + 2026 sub-window verdicts in summary text; CHANGELOG.md not updated this session (small enough to fold into next commit).
+
+**Audit trail final state**: [`docs/audits/audit_trail_2026-05-18_phase-o-merge-audit.md`](docs/audits/audit_trail_2026-05-18_phase-o-merge-audit.md) carries the full Round 1 + Round 2 + Round 2 extension trail; Round 3 verification disposition: **accept-with-residuals** (v2 KPI cards numerically agree with sidecar values; ReproLog 13/13 fields on canonical-substrate emissions; sweep-side ReproLog retrofits remain deferred per `P1-H055-REPROLOG-WIRE` + `P1-H065-REPROLOG-WIRE` + `P1-MPV1-REPROLOG-WIRE`).
+
+**Operator-readable v2 verdict summary**:
+- **H062 v2**: non-significant null on H_1 (CIs cover zero on all 4 ADR-0017 primary metrics) but with **positive MPPM point estimate** (+0.095) and **strongly skew-positive payoff** (τ_3 = +0.737). v2 reframing materially less pessimistic than v1 (which had biased -0.223 MPPM). Underperforms passive EW by 243pp; max-DD catastrophic 93.26%.
+- **H060 v2**: non-significant null on H_1 confirmed on canonical substrate; underperforms passive by 6.91pp; consistent with design.md §1.4 partial-decay framing.
+- **H055 v2**: cell-conditional positive (MGC C3 +87% single-cell strongest project-wide); basket-level marginal.
+- **H065 v2**: H_1 NULL on all TP-overlay cells confirmed; M=1.0 INVERTS skew (anti-canonical at 1:1 risk:reward).
+- **MPV1 v2**: H062-ES is the worst H062 leg under corrected walk-forward inner-CV; H062-MGC is the best leg; all bandit-vs-1/N bootstrap CIs cover zero (descriptive null preserved).
+
+**2026 OOS sub-window**: MGC dominates ES/NQ/SIL in 2026-Q1-Q2 across both H060 (modest +0.12% loss on MGC vs +2.17%/+2.74% on ES/NQ; raw BH on ES/NQ much higher) and H062 (MGC +8.03%; ES/NQ/SIL no sub-window trades). The MGC strength is the consistent cross-hypothesis empirical pattern in 2026.

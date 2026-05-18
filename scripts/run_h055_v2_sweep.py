@@ -1274,7 +1274,12 @@ def main(argv: list[str] | None = None) -> int:
         "experiment": "v2_aggressive_sizing_sweep",
         "git_head": git_head,
         "substrate": {
-            "root": str(substrate_root),
+            # P1-SIDECAR-ROOT-PATH-PROJECT-RELATIVE fix 2026-05-18: emit
+            # project-relative root (NOT absolute Windows path) to prevent
+            # identity-hygiene leak across published artifacts.
+            "root": str(substrate_root.relative_to(_REPO_ROOT))
+                if str(substrate_root).startswith(str(_REPO_ROOT))
+                else str(substrate_root),
             "output_frame_sha256": substrate_sha,
             "window_full_oos": [str(start), str(end)],
             "window_sub": [sub_start_iso, sub_end_iso],

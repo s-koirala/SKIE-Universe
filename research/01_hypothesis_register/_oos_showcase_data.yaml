@@ -255,4 +255,147 @@ cards:
       - data-quality-degraded-days-annotated
       - repro-log-complete
     cost_model: zero_cost_v1
+    superseded_by: H060_kpi_report_v2.md
+
+  - hypothesis_id: H060
+    version: 2
+    date: 2026-05-18
+    report_card_path: research/01_hypothesis_register/H060/H060_kpi_report_v2.md
+    run_id: cbddc3c9dd6d47c7b0ac4f9cfdd5a3d9
+    paradigm: adr-0024-aggressive-growth
+    hypothesis_of_record_arm: TSMOM basket {ES, NQ, MGC, SIL}
+    strongest_cell: TSMOM basket {ES, NQ, MGC, SIL}
+    realized:
+      strongest_cell_pct: 68.75
+      strongest_cell_max_dd_pct: 29.47
+      hypothesis_of_record_arm_pct: 68.75
+      oos_sessions: 1260
+    forward_projection:
+      p_loss_pct: 29.68
+    fitness:
+      mppm_rho1_point: 0.0817
+      mppm_rho1_ci_low: -0.1099
+      mppm_rho1_ci_high: 0.2672
+      sharpe_ann_strongest_cell: 0.490
+    primary_annotations:
+      - leakage-canary-pass
+      - mppm-rho1-marginal
+      - bocd-decay-flag-not-raised
+      - kelly-multiplier-2.5
+      - super-kelly-operator-discretionary
+      - skew-flat
+      - claim-type-hybrid
+      - cost-zero-v1-pre-cost-research-only
+      - data-quality-degraded-days-annotated
+      - repro-log-complete
+      - calmar-diff-marginal
+      - pf-diff-marginal
+      - r-multiple-mean-marginal
+    cost_model: zero_cost_v1
+    superseded_by: null
+
+  - hypothesis_id: H055
+    version: 2
+    date: 2026-05-18
+    report_card_path: research/01_hypothesis_register/H055/H055_kpi_report_v2.md
+    run_id: v2_sweep_20260518T220351Z
+    paradigm: adr-0024-aggressive-growth
+    hypothesis_of_record_arm: Wick-rejection scalping (5-config sweep)
+    strongest_cell: MGC C3 superkelly
+    realized:
+      strongest_cell_pct: 87.0
+      strongest_cell_max_dd_pct: 37.3
+      hypothesis_of_record_arm_pct: 20.2
+      oos_sessions: null
+    forward_projection:
+      p_loss_pct: null
+    fitness:
+      mppm_rho1_point: 0.263
+      mppm_rho1_ci_low: null
+      mppm_rho1_ci_high: null
+      sharpe_ann_strongest_cell: 0.26
+    primary_annotations:
+      - leakage-canary-deferred-v3
+      - mppm-rho1-positive-pt-est-cell-MGC
+      - kelly-multiplier-2.5-super-kelly-operator-discretionary
+      - skew-positive-per-cell
+      - claim-type-hybrid
+      - cost-zero-v1-pre-cost-research-only
+      - repro-log-incomplete
+      - v1-corrigendum-supersedes-self-attestation
+    cost_model: zero_cost_v1
+    superseded_by: null
+
+  - hypothesis_id: H062
+    version: 2
+    date: 2026-05-18
+    report_card_path: research/01_hypothesis_register/H062/H062_kpi_report_v2.md
+    run_id: eb729b201595484594ce4c9ddde72d05
+    paradigm: adr-0024-aggressive-growth
+    hypothesis_of_record_arm: Intraday Donchian breakout basket {ES, NQ, MGC, SIL}
+    strongest_cell: Basket (Donchian breakout + ATR-stop + km=0.25)
+    realized:
+      strongest_cell_pct: 217.57
+      strongest_cell_max_dd_pct: 93.26
+      hypothesis_of_record_arm_pct: 217.57
+      oos_sessions: 3065
+    forward_projection:
+      p_loss_pct: 46.92
+    fitness:
+      mppm_rho1_point: 0.0950
+      mppm_rho1_ci_low: -0.3431
+      mppm_rho1_ci_high: 0.5396
+      sharpe_ann_strongest_cell: 0.121
+    primary_annotations:
+      - leakage-canary-pass
+      - mppm-rho1-marginal
+      - mppm-rho1-positive-pt-est
+      - bocd-decay-flag-not-raised
+      - kelly-multiplier-0.25
+      - skew-positive-strongly
+      - tau3-plus-0.737
+      - claim-type-hybrid
+      - cost-zero-v1-pre-cost-research-only
+      - repro-log-complete
+      - calmar-diff-marginal
+      - pf-diff-marginal
+      - r-multiple-mean-marginal
+      - sharpe-vs-passive-marginal-boundary
+      - v2-supersedes-v1
+      - v2-corrects-mppm-double-log-and-in-sample-cv
+    cost_model: zero_cost_v1
+    superseded_by: null
+
+  - hypothesis_id: H065
+    version: 2
+    date: 2026-05-18
+    report_card_path: research/01_hypothesis_register/H065/H065_kpi_report_v2.md
+    run_id: tp_overlay_sweep_20260518T220406Z
+    paradigm: adr-0024-aggressive-growth
+    hypothesis_of_record_arm: H062 + ATR-scaled TP overlay (M ∈ {1.0, 1.5, 2.0, 2.5})
+    strongest_cell: M=∞ current-rebase (no-TP reference; H_1 null on all TP cells)
+    realized:
+      strongest_cell_pct: 25.74
+      strongest_cell_max_dd_pct: null
+      hypothesis_of_record_arm_pct: -12.41
+      oos_sessions: null
+    forward_projection:
+      p_loss_pct: null
+    fitness:
+      mppm_rho1_point: null
+      mppm_rho1_ci_low: null
+      mppm_rho1_ci_high: null
+      sharpe_ann_strongest_cell: null
+    primary_annotations:
+      - leakage-canary-pass
+      - mppm-rho1-null-on-tp-cells
+      - tp-overlay-h1-null
+      - skew-negative-at-M-1.0
+      - skew-positive-at-M-inf
+      - claim-type-hybrid
+      - cost-zero-v1-pre-cost-research-only
+      - repro-log-incomplete
+      - substrate-sha-runtime-read-fix-applied-post-v2
+      - nq-zero-trades-substrate-constraint
+    cost_model: zero_cost_v1
     superseded_by: null

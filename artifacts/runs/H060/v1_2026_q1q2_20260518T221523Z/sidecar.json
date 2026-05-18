@@ -1,0 +1,130 @@
+{
+  "basket": {
+    "end_equity_subwin_sum_of_symbols": 40515.98751588435,
+    "starting_equity_total": 40000.0,
+    "subwin_max_dd_pct_equal_weight": 0.15708362703621498,
+    "subwin_roi_pct_equal_weight_log_avg": 1.2596822429338017,
+    "subwin_roi_pct_sum_of_symbols": 1.2899687897108825
+  },
+  "config": {
+    "kelly_multiplier": 0.25,
+    "lookback": 252,
+    "rng_seed": 20260516,
+    "vol_com": 60,
+    "vol_target": 0.1
+  },
+  "daily_close_caveat": "Daily resampling is UTC-calendar-day, not CME session-date (16:00 ET / 17:00 CT). Approximate for ES/NQ; may split sessions for MGC/SIL 24/5. Tracked under R1 audit F-1-3.",
+  "daily_close_convention": "utc_day",
+  "descoped_kpis": {
+    "authorized_by": "operator 2026-05-16",
+    "missing": [
+      "mppm_rho1_ci",
+      "calmar_differential_ci",
+      "profit_factor_ci",
+      "r_multiple_mean_ci",
+      "terminal_wealth_q05",
+      "probability_of_ruin",
+      "l_skewness_tau3",
+      "forward_projection_252_session"
+    ],
+    "reason": "sub-window N~38 sessions insufficient for stationary-bootstrap CI per Politis-White 2004 minimum-block-length threshold",
+    "refs": [
+      "ADR-0013",
+      "ADR-0017",
+      "ADR-0018"
+    ]
+  },
+  "experiment": "h060_v1_2026_q1q2_subwindow",
+  "kpi_report_card": false,
+  "per_symbol": [
+    {
+      "n_sessions_subwin": 38,
+      "passive_raw_bh_subwin_max_dd_pct": 1.1582589692223633,
+      "passive_raw_bh_subwin_roi_pct": 14.131795591638529,
+      "passive_vol_scaled_subwin_max_dd_pct": 0.1855018591086781,
+      "passive_vol_scaled_subwin_roi_pct": 2.174751532154362,
+      "signal_n_neg_full_window": 317,
+      "signal_n_neg_subwin": 0,
+      "signal_n_pos_full_window": 1333,
+      "signal_n_pos_subwin": 38,
+      "signal_n_zero_full_window": 0,
+      "subwin_end_equity": 10217.475153215437,
+      "subwin_losses": 13,
+      "subwin_max_dd_pct": 0.1855018591086781,
+      "subwin_roi_pct": 2.174751532154362,
+      "subwin_wins": 25,
+      "subwin_zeros": 0,
+      "symbol": "ES"
+    },
+    {
+      "n_sessions_subwin": 38,
+      "passive_raw_bh_subwin_max_dd_pct": 1.3776497059171757,
+      "passive_raw_bh_subwin_roi_pct": 23.502371245527897,
+      "passive_vol_scaled_subwin_max_dd_pct": 0.17408281031435519,
+      "passive_vol_scaled_subwin_roi_pct": 2.735094100960911,
+      "signal_n_neg_full_window": 342,
+      "signal_n_neg_subwin": 0,
+      "signal_n_pos_full_window": 1320,
+      "signal_n_pos_subwin": 38,
+      "signal_n_zero_full_window": 0,
+      "subwin_end_equity": 10273.50941009609,
+      "subwin_losses": 12,
+      "subwin_max_dd_pct": 0.17408281031435519,
+      "subwin_roi_pct": 2.735094100960911,
+      "subwin_wins": 26,
+      "subwin_zeros": 0,
+      "symbol": "NQ"
+    },
+    {
+      "n_sessions_subwin": 37,
+      "passive_raw_bh_subwin_max_dd_pct": 6.865911101055169,
+      "passive_raw_bh_subwin_roi_pct": -1.4351940052073187,
+      "passive_vol_scaled_subwin_max_dd_pct": 0.5689427748848045,
+      "passive_vol_scaled_subwin_roi_pct": -0.12200054589615039,
+      "signal_n_neg_full_window": 548,
+      "signal_n_neg_subwin": 0,
+      "signal_n_pos_full_window": 1177,
+      "signal_n_pos_subwin": 37,
+      "signal_n_zero_full_window": 0,
+      "subwin_end_equity": 9987.799945410385,
+      "subwin_losses": 21,
+      "subwin_max_dd_pct": 0.5689427748848045,
+      "subwin_roi_pct": -0.12200054589615039,
+      "subwin_wins": 16,
+      "subwin_zeros": 0,
+      "symbol": "MGC"
+    },
+    {
+      "n_sessions_subwin": 37,
+      "passive_raw_bh_subwin_max_dd_pct": 11.118821068352078,
+      "passive_raw_bh_subwin_roi_pct": 11.194460604609535,
+      "passive_vol_scaled_subwin_max_dd_pct": 0.38865287118541353,
+      "passive_vol_scaled_subwin_roi_pct": 0.37203007162436297,
+      "signal_n_neg_full_window": 662,
+      "signal_n_neg_subwin": 0,
+      "signal_n_pos_full_window": 1063,
+      "signal_n_pos_subwin": 37,
+      "signal_n_zero_full_window": 0,
+      "subwin_end_equity": 10037.203007162436,
+      "subwin_losses": 15,
+      "subwin_max_dd_pct": 0.38865287118541353,
+      "subwin_roi_pct": 0.37203007162436297,
+      "subwin_wins": 22,
+      "subwin_zeros": 0,
+      "symbol": "SIL"
+    }
+  ],
+  "provenance": {
+    "git_head": "a5766fdba9193c46a1815a96ab10817f19a0f854",
+    "producing_script_path": "scripts\\run_h060_2026_q1q2.py",
+    "producing_script_sha256": "957c18e3d772fcb7fb95ca60edcb4c63b8f216f2ec784ec011bde35b61ba77f9",
+    "rng_seed": 20260516,
+    "substrate_dataset_checksum": "317429e49ad636746d15bf6310fd8f24bc45611ef03e50abefdc25fc6ba12dc7",
+    "substrate_provenance_path": "data\\processed\\_provenance\\vendor_legacy_1min_roll_adjusted_20260516.json"
+  },
+  "scope": "subwindow_diagnostic",
+  "subwin_end": "2026-06-30 00:00:00+00:00",
+  "subwin_start": "2026-04-01 00:00:00+00:00",
+  "warm_up_start": "2020-01-01 00:00:00+00:00",
+  "written_at_utc": "2026-05-18T22:15:26.490914+00:00"
+}

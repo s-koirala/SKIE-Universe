@@ -97,10 +97,10 @@ def main() -> int:
     warmup_start = pd.Timestamp("2024-01-01", tz="UTC")
     subwin_start = pd.Timestamp("2026-04-01", tz="UTC")
     sym_ends = {
-        "ES": pd.Timestamp("2026-05-15", tz="UTC"),
-        "NQ": pd.Timestamp("2026-05-15", tz="UTC"),
-        "MGC": pd.Timestamp("2026-05-15", tz="UTC"),
-        "SIL": pd.Timestamp("2026-05-15", tz="UTC"),
+        "ES": pd.Timestamp("2026-06-30", tz="UTC"),
+        "NQ": pd.Timestamp("2026-06-30", tz="UTC"),
+        "MGC": pd.Timestamp("2026-06-30", tz="UTC"),
+        "SIL": pd.Timestamp("2026-06-30", tz="UTC"),
     }
 
     feat_cfg = H062FeatureConfig(
@@ -316,4 +316,33 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # ADR-0009 BLAS thread-pinning carry-forward (canonical block from
+    # scripts/run_h052a_walk_forward.py:915-942). Required for byte-deterministic
+    # numpy/scipy results across machines; without this, bootstrap CIs +
+    # MPPM/SPA/Calmar/PF/R-multiple primitives may produce non-reproducible
+    # output, breaking the ReproLog contract. Closes the Phase O.2-O.9 Round-1
+    # code-reviewer audit finding (BLAS pinning missing at 7 orchestrator
+    # __main__ entries).
+    import os as _os
+    _required_thread_pinning = (
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+    )
+    _missing_pinning = [
+        k for k in _required_thread_pinning if _os.environ.get(k) != "1"
+    ]
+    if _missing_pinning:
+        raise RuntimeError(
+            f"BLAS thread-pinning env vars {_missing_pinning!r} must be "
+            "set to '1' per ADR-0009. The canonical launch path prefixes "
+            "the orchestrator invocation with: "
+            "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1"
+        )
+    try:
+        from threadpoolctl import threadpool_limits as _threadpool_limits
+    except ImportError:
+        _threadpool_limits = None
+    if _threadpool_limits is not None:
+        _threadpool_limits(limits=1)
     sys.exit(main())

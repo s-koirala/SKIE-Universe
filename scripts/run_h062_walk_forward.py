@@ -516,17 +516,64 @@ def _select_best_cell_inner_cv(
     atr_n: int,
     delta_t: float,
     eod_flatten_minutes_from_open: int,
+    inner_n_folds: int = 3,
+    inner_embargo_sessions: int = 1,
 ) -> dict[str, Any]:
-    """Inner-CV cell selection by MPPM(ρ=1) on per-session log-returns.
+    """Inner-CV cell selection by MPPM(ρ=1) on walk-forward inner-fold OOF series.
 
-    Per design.md §5.7 — simplified to the (channel_n × k_atr × kelly_mult)
-    representative inner-CV grid for v1 launch. Full design.md §5
-    nested-CV protocol (Level-A trend_id + Level-B cell grid disjoint
-    partitions) tracked under `P1-H062-CALIBRATION-HOLDOUT-RUN`.
+    Per design.md §5.6 + §5.7 + rules/quant-project.md "Walk-forward only.
+    No k-fold. Time-ordered disjoint splits." Partitions df_5m_train by
+    session_date into `inner_n_folds` walk-forward folds with embargo;
+    each cell is fit on inner-train slice, evaluated on inner-validation
+    slice; per-cell score is the average MPPM(ρ=1) across inner folds.
+
+    Round-2 audit-remediate-loop remediation 2026-05-18 (Phase O.2-O.9 merge
+    audit Round-1 quant-auditor Q-2 critical): prior implementation ran
+    full-IS optimization disguised as inner-CV; 100% unanimous km=0.25
+    selection across 93/93 outer folds was the canonical signature of
+    conservative-Kelly bias under in-sample-noise minimization. Walk-forward
+    inner-fold structure restores the design.md §5.6 frozen specification.
+
+    Round-2 audit-remediate-loop remediation 2026-05-18 (Phase O.2-O.9 merge
+    audit Round-1 quant-auditor Q-1 critical): every mppm_rho_1 call now
+    converts per-session log-returns to arithmetic returns via np.expm1
+    (clamped at -0.999 to preserve `1 + r > 0` invariant) per the H055 v2
+    + H065 v1 precedent. MPPM primitive expects arithmetic returns per
+    GISW 2007 §2 + mppm.py docstring; passing log-returns double-logs and
+    biases by ~+σ²/2.
     """
     best_cell = None
     best_mppm = -np.inf
     cell_records: list[dict[str, Any]] = []
+
+    # Build inner-fold session-date partition: walk-forward split with embargo.
+    train_session_dates = sorted(set(df_5m_train["session_date_et"].tolist()))
+    n_train_sessions = len(train_session_dates)
+    if n_train_sessions < inner_n_folds * 4:
+        # Fallback: too few sessions for nested CV; single-fold IS evaluation
+        # with explicit annotation. Tracked under
+        # `P1-H062-INNER-CV-UNDERPOWERED-FALLBACK`.
+        _log.warning(
+            "%s inner-CV fallback: %d sessions < %d * 4 minimum; "
+            "single-fold IS evaluation used",
+            symbol, n_train_sessions, inner_n_folds,
+        )
+        inner_folds: list[tuple[list, list]] = [(train_session_dates, [])]
+    else:
+        # Walk-forward inner folds: fold i trains on sessions[0:k_i_train],
+        # validates on sessions[k_i_train + embargo : k_i_val_end].
+        inner_folds = []
+        fold_step = n_train_sessions // (inner_n_folds + 1)
+        for i in range(inner_n_folds):
+            tr_end = fold_step * (i + 1)
+            val_start = tr_end + inner_embargo_sessions
+            val_end = min(val_start + fold_step, n_train_sessions)
+            if val_end - val_start < 3:
+                continue
+            tr_sessions = train_session_dates[:tr_end]
+            val_sessions = train_session_dates[val_start:val_end]
+            inner_folds.append((tr_sessions, val_sessions))
+
     for channel_n in grid_channel_n:
         for k_atr in grid_k_atr:
             for kelly_multiplier in grid_kelly:
@@ -539,25 +586,46 @@ def _select_best_cell_inner_cv(
                         trend_id_lookback_l=trend_id_lookback_l,
                         trend_id_threshold=trend_id_threshold,
                     )
-                    sim = _run_per_trade_simulation(
-                        symbol=symbol,
-                        df_5m=df_5m_train,
-                        feature_config=feat_cfg,
-                        k_atr=k_atr,
-                        eod_flatten_minutes_from_open=eod_flatten_minutes_from_open,
-                        kelly_multiplier=kelly_multiplier,
-                    )
-                    if sim["per_session_logret"].size < 5:
+                    fold_mppms: list[float] = []
+                    for _tr_sessions, val_sessions in inner_folds:
+                        # Use the validation slice (or the full train if
+                        # the fallback single-fold IS path is active).
+                        eval_sessions = val_sessions if val_sessions else _tr_sessions
+                        df_eval = df_5m_train[
+                            df_5m_train["session_date_et"].isin(eval_sessions)
+                        ]
+                        if df_eval.empty:
+                            continue
+                        sim = _run_per_trade_simulation(
+                            symbol=symbol,
+                            df_5m=df_eval,
+                            feature_config=feat_cfg,
+                            k_atr=k_atr,
+                            eod_flatten_minutes_from_open=eod_flatten_minutes_from_open,
+                            kelly_multiplier=kelly_multiplier,
+                        )
+                        if sim["per_session_logret"].size < 5:
+                            continue
+                        # Convert log-returns → arithmetic before MPPM
+                        # primitive (which expects `r > -1`); clamp at
+                        # -0.999 to preserve the `1 + r > 0` invariant per
+                        # mppm.py invariant. Closes Q-1 critical from
+                        # 2026-05-18 Phase O.2-O.9 merge audit.
+                        per_sess_arith = np.expm1(
+                            np.clip(sim["per_session_logret"], a_min=-6.9, a_max=None)
+                        )
+                        fold_mppms.append(
+                            float(mppm_rho_1(per_sess_arith, delta_t=delta_t))
+                        )
+                    if not fold_mppms:
                         continue
-                    mppm_val = float(
-                        mppm_rho_1(sim["per_session_logret"], delta_t=delta_t)
-                    )
+                    mppm_val = float(np.mean(fold_mppms))
                     cell_records.append({
                         "channel_n": channel_n,
                         "k_atr": k_atr,
                         "kelly_multiplier": kelly_multiplier,
-                        "mppm": mppm_val,
-                        "n_trades": sim["n_trades"],
+                        "mppm_inner_oof_mean": mppm_val,
+                        "n_inner_folds_with_trades": len(fold_mppms),
                     })
                     if mppm_val > best_mppm:
                         best_mppm = mppm_val
@@ -581,6 +649,11 @@ def _select_best_cell_inner_cv(
         "best": best_cell,
         "best_mppm_train": float(best_mppm) if best_cell else float("nan"),
         "cell_records": cell_records,
+        "inner_cv_structure": {
+            "n_folds": len(inner_folds),
+            "n_train_sessions": n_train_sessions,
+            "embargo_sessions": inner_embargo_sessions,
+        },
     }
 
 
@@ -861,12 +934,21 @@ def main(argv: list[str] | None = None) -> int:
                         passive_sess_logret.append(float(lr))
                 bench_per_sess = np.array(passive_sess_logret, dtype=float)
 
-                # MPPM on OOS arm.
+                # MPPM on OOS arm. Convert log-returns to arithmetic via
+                # np.expm1 (clamped at -0.999) before the MPPM primitive
+                # per Q-1 critical fix from 2026-05-18 Phase O.2-O.9 merge
+                # audit. mppm_rho_1 expects arithmetic returns r > -1; the
+                # log-return convention internal to the orchestrator differs.
                 try:
-                    mppm_oos_val = (
-                        float(mppm_rho_1(arm_per_sess, delta_t=delta_t))
-                        if arm_per_sess.size > 1 else float("nan")
-                    )
+                    if arm_per_sess.size > 1:
+                        arm_per_sess_arith = np.expm1(
+                            np.clip(arm_per_sess, a_min=-6.9, a_max=None)
+                        )
+                        mppm_oos_val = float(
+                            mppm_rho_1(arm_per_sess_arith, delta_t=delta_t)
+                        )
+                    else:
+                        mppm_oos_val = float("nan")
                 except (ValueError, FloatingPointError):
                     mppm_oos_val = float("nan")
                 fold_mppm_oos.append(mppm_oos_val)
@@ -911,12 +993,17 @@ def main(argv: list[str] | None = None) -> int:
         )
 
         # === Primary metric: MPPM(rho=1) with CI ===
+        # Q-1 critical fix from 2026-05-18 Phase O.2-O.9 merge audit:
+        # convert oos_arm log-returns to arithmetic via np.expm1 (clamp
+        # -0.999) before mppm_with_ci. The MPPM primitive expects
+        # arithmetic returns r > -1 per GISW 2007 §2 + mppm.py docstring.
+        oos_arm_arith = np.expm1(np.clip(oos_arm, a_min=-6.9, a_max=None))
         mppm_ci_result: dict[str, Any] = {}
         mppm_annot = "mppm-rho1-underpowered"
         if n_oos >= 30:
             try:
                 mppm_res = mppm_with_ci(
-                    oos_arm,
+                    oos_arm_arith,
                     rho=1.0,
                     delta_t=delta_t,
                     n_bootstrap=mppm_n_bootstrap,
@@ -1116,12 +1203,21 @@ def main(argv: list[str] | None = None) -> int:
                 l_skew_annot = "payoff-shape-error"
 
         # === BOCD signal-decay monitor ===
+        # P1-H062-BOCD-NAN-POSTERIOR-INVESTIGATE fix 2026-05-18: filter NaN
+        # folds (NQ structural 0-trade folds + any other zero-trade folds)
+        # before passing to detect_decay. The BOCD primitive's bocd_run +
+        # changepoint_posterior pipeline propagates NaN through logsumexp →
+        # max_posterior=NaN; with NaN filtered the posterior series is
+        # well-defined.
         bocd_result: dict[str, Any] = {}
         bocd_annot = "bocd-not-applicable"
-        if len(fold_mppm_oos) >= 3:
+        fold_mppm_clean = np.array(
+            [m for m in fold_mppm_oos if np.isfinite(m)], dtype=float
+        )
+        if fold_mppm_clean.size >= 3:
             try:
                 bocd = detect_decay(
-                    np.array(fold_mppm_oos),
+                    fold_mppm_clean,
                     hazard_rate=float(cfg["bocd"]["hazard_rate"]),
                     window=int(cfg["bocd"]["window"]),
                     threshold=float(cfg["bocd"]["threshold"]),
@@ -1134,6 +1230,10 @@ def main(argv: list[str] | None = None) -> int:
                         else None
                     ),
                     "max_posterior": float(bocd.get("max_posterior", 0.0)),
+                    "n_folds_clean": int(fold_mppm_clean.size),
+                    "n_folds_filtered_nan": int(
+                        len(fold_mppm_oos) - fold_mppm_clean.size
+                    ),
                 }
                 bocd_annot = (
                     "bocd-decay-flag-raised"
@@ -1306,4 +1406,33 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    # ADR-0009 BLAS thread-pinning carry-forward (canonical block from
+    # scripts/run_h052a_walk_forward.py:915-942). Required for byte-deterministic
+    # numpy/scipy results across machines; without this, bootstrap CIs +
+    # MPPM/SPA/Calmar/PF/R-multiple primitives may produce non-reproducible
+    # output, breaking the ReproLog contract. Closes the Phase O.2-O.9 Round-1
+    # code-reviewer audit finding (BLAS pinning missing at 7 orchestrator
+    # __main__ entries).
+    import os as _os
+    _required_thread_pinning = (
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+    )
+    _missing_pinning = [
+        k for k in _required_thread_pinning if _os.environ.get(k) != "1"
+    ]
+    if _missing_pinning:
+        raise RuntimeError(
+            f"BLAS thread-pinning env vars {_missing_pinning!r} must be "
+            "set to '1' per ADR-0009. The canonical launch path prefixes "
+            "the orchestrator invocation with: "
+            "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1"
+        )
+    try:
+        from threadpoolctl import threadpool_limits as _threadpool_limits
+    except ImportError:
+        _threadpool_limits = None
+    if _threadpool_limits is not None:
+        _threadpool_limits(limits=1)
     sys.exit(main())

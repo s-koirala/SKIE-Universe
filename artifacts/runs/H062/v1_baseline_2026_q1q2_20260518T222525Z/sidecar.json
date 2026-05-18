@@ -1,0 +1,121 @@
+{
+  "basket": {
+    "end_equity_subwin": 40802.58210437633,
+    "n_symbols_active": 1,
+    "n_symbols_universe": 4,
+    "starting_equity_total": 40000.0,
+    "subwin_roi_pct": 2.0064552609408093
+  },
+  "descoped_kpis": {
+    "authorized_by": "operator 2026-05-16",
+    "missing": [
+      "mppm_rho1_ci",
+      "calmar_differential_ci",
+      "profit_factor_ci",
+      "r_multiple_mean_ci",
+      "terminal_wealth_q05",
+      "probability_of_ruin",
+      "l_skewness_tau3",
+      "forward_projection_252_session"
+    ],
+    "reason": "sub-window N~21 sessions / ~37 trades below Politis-White 2004 minimum-block-length threshold for stationary-bootstrap CI",
+    "refs": [
+      "ADR-0013",
+      "ADR-0017",
+      "ADR-0018"
+    ]
+  },
+  "experiment": "h062_v1_baseline_2026_q1q2_subwindow",
+  "feature_cell": {
+    "atr_n": 14,
+    "channel_n": 120,
+    "h_dwell": 5,
+    "k_atr": 2.0,
+    "kelly_multiplier": 0.25,
+    "trend_id": "a_ts_mom",
+    "trend_id_lookback_l": 60,
+    "trend_id_threshold": 1.0
+  },
+  "kpi_report_card": false,
+  "per_symbol": [
+    {
+      "full_window_max_dd_pct": 23.119039372557516,
+      "full_window_n_trades": 56,
+      "full_window_roi_pct": 2.599603219149982,
+      "gated_out_reason": "no_subwin_trades_full_window_present",
+      "n_sessions_subwin": 0,
+      "subwin_end_equity": 10000.0,
+      "subwin_losses": 0,
+      "subwin_max_dd_pct": 0.0,
+      "subwin_n_trades": 0,
+      "subwin_roi_pct": 0.0,
+      "subwin_wins": 0,
+      "subwin_zeros": 0,
+      "symbol": "ES"
+    },
+    {
+      "full_window_max_dd_pct": 0.0,
+      "full_window_n_trades": 0,
+      "full_window_roi_pct": 0.0,
+      "gated_out_reason": "no_eligible_breakouts_full_window_or_kelly_size_floored",
+      "n_sessions_subwin": 0,
+      "subwin_end_equity": 10000.0,
+      "subwin_losses": 0,
+      "subwin_max_dd_pct": 0.0,
+      "subwin_n_trades": 0,
+      "subwin_roi_pct": 0.0,
+      "subwin_wins": 0,
+      "subwin_zeros": 0,
+      "symbol": "NQ"
+    },
+    {
+      "full_window_max_dd_pct": 61.44891627265401,
+      "full_window_n_trades": 1651,
+      "full_window_roi_pct": 324.4629311038485,
+      "gated_out_reason": null,
+      "n_sessions_subwin": 21,
+      "subwin_end_equity": 10802.582104376326,
+      "subwin_losses": 26,
+      "subwin_max_dd_pct": 7.196484444760773,
+      "subwin_n_trades": 37,
+      "subwin_roi_pct": 8.025821043763258,
+      "subwin_wins": 11,
+      "subwin_zeros": 0,
+      "symbol": "MGC"
+    },
+    {
+      "full_window_max_dd_pct": 47.19715557683553,
+      "full_window_n_trades": 1242,
+      "full_window_roi_pct": 90.05937998050608,
+      "gated_out_reason": "no_subwin_trades_full_window_present",
+      "n_sessions_subwin": 0,
+      "subwin_end_equity": 10000.0,
+      "subwin_losses": 0,
+      "subwin_max_dd_pct": 0.0,
+      "subwin_n_trades": 0,
+      "subwin_roi_pct": 0.0,
+      "subwin_wins": 0,
+      "subwin_zeros": 0,
+      "symbol": "SIL"
+    }
+  ],
+  "provenance": {
+    "git_head": "a5766fdba9193c46a1815a96ab10817f19a0f854",
+    "producing_script_path": "scripts\\run_h062_v1_2026_q1q2.py",
+    "producing_script_sha256": "34b6ff8fce50344a4503b8fadc32f78dc3fb9a5c071ea03ba43bd00b8ae04d32",
+    "rng_seed": 20260516,
+    "substrate_dataset_checksum": "317429e49ad636746d15bf6310fd8f24bc45611ef03e50abefdc25fc6ba12dc7",
+    "substrate_provenance_path": "data\\processed\\_provenance\\vendor_legacy_1min_roll_adjusted_20260516.json",
+    "uses_production_primitive": "scripts/run_h062_walk_forward.py:_run_per_trade_simulation"
+  },
+  "scope": "subwindow_diagnostic",
+  "subwin_end_per_symbol": {
+    "ES": "2026-06-30 00:00:00+00:00",
+    "MGC": "2026-06-30 00:00:00+00:00",
+    "NQ": "2026-06-30 00:00:00+00:00",
+    "SIL": "2026-06-30 00:00:00+00:00"
+  },
+  "subwin_start": "2026-04-01 00:00:00+00:00",
+  "warm_up_start": "2024-01-01 00:00:00+00:00",
+  "written_at_utc": "2026-05-18T22:25:34.308345+00:00"
+}

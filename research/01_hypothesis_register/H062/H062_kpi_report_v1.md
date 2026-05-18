@@ -122,7 +122,7 @@ H062 forward distribution is **wider-tailed in both directions** than passive �
 | T_SPA statistic | 0.0 |
 | p-value | 1.000 |
 | n_bootstrap | 1000 |
-| n_strategies | 1 (M=1 degenerate per [ADR-0008](../../../docs/decisions/ADR-0008-spa-omega-and-m1-degenerate.md)) |
+| n_strategies | 1 (M=1 degenerate per [ADR-0008](../../../docs/decisions/ADR-0008-spa-omega-method.md)) |
 | variant | consistent |
 
 Per design.md §1 + ADR-0008, the H062 SPA family at the basket level has M=1 (the basket arm vs passive); SPA p is uninformative beyond the LW2008 CI in §3 above (KPI annotation only). Annotation: `spa-marginal-m1-degenerate`. Per-symbol M=4 SPA family + Romano-Wolf stepwise FWER per design.md §1 are tracked under `P1-H062-FAMILY-SPA-RW2005-COMPUTE` (open follow-up; v1 v reports basket-level SPA only).

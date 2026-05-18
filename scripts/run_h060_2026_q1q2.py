@@ -164,8 +164,8 @@ def main() -> int:
 
     warmup_start = pd.Timestamp("2020-01-01", tz="UTC")
     subwin_start = pd.Timestamp("2026-04-01", tz="UTC")
-    subwin_end = pd.Timestamp("2026-05-15", tz="UTC")
-    full_end = pd.Timestamp("2026-05-15", tz="UTC")
+    subwin_end = pd.Timestamp("2026-06-30", tz="UTC")
+    full_end = pd.Timestamp("2026-06-30", tz="UTC")
 
     results: list[dict[str, Any]] = []
     basket_log_rets: list[pd.Series] = []

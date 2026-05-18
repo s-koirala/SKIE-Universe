@@ -62,31 +62,31 @@ _log = logging.getLogger("mpv1")
 DEFAULT_ARMS: list[dict[str, str]] = [
     {
         "arm_id": "H060",
-        "source_sidecar": "artifacts/runs/H060/71b00710a17148868b6a5ab610c07ef6/sidecar.json",
+        "source_sidecar": "artifacts/runs/H060/cbddc3c9dd6d47c7b0ac4f9cfdd5a3d9/sidecar.json",
         "filter_symbol": None,  # basket-level
         "description": "H060 cross-futures TSMOM daily-cadence basket",
     },
     {
         "arm_id": "H062-ES",
-        "source_sidecar": "artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json",
+        "source_sidecar": "artifacts/runs/H062/eb729b201595484594ce4c9ddde72d05/sidecar.json",
         "filter_symbol": "ES",
         "description": "H062 intraday Donchian ES leg",
     },
     {
         "arm_id": "H062-NQ",
-        "source_sidecar": "artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json",
+        "source_sidecar": "artifacts/runs/H062/eb729b201595484594ce4c9ddde72d05/sidecar.json",
         "filter_symbol": "NQ",
         "description": "H062 intraday Donchian NQ leg",
     },
     {
         "arm_id": "H062-MGC",
-        "source_sidecar": "artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json",
+        "source_sidecar": "artifacts/runs/H062/eb729b201595484594ce4c9ddde72d05/sidecar.json",
         "filter_symbol": "MGC",
         "description": "H062 intraday Donchian MGC leg",
     },
     {
         "arm_id": "H062-SIL",
-        "source_sidecar": "artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json",
+        "source_sidecar": "artifacts/runs/H062/eb729b201595484594ce4c9ddde72d05/sidecar.json",
         "filter_symbol": "SIL",
         "description": "H062 intraday Donchian SIL leg",
     },
@@ -428,4 +428,33 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    # ADR-0009 BLAS thread-pinning carry-forward (canonical block from
+    # scripts/run_h052a_walk_forward.py:915-942). Required for byte-deterministic
+    # numpy/scipy results across machines; without this, bootstrap CIs +
+    # MPPM/SPA/Calmar/PF/R-multiple primitives may produce non-reproducible
+    # output, breaking the ReproLog contract. Closes the Phase O.2-O.9 Round-1
+    # code-reviewer audit finding (BLAS pinning missing at 7 orchestrator
+    # __main__ entries).
+    import os as _os
+    _required_thread_pinning = (
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+    )
+    _missing_pinning = [
+        k for k in _required_thread_pinning if _os.environ.get(k) != "1"
+    ]
+    if _missing_pinning:
+        raise RuntimeError(
+            f"BLAS thread-pinning env vars {_missing_pinning!r} must be "
+            "set to '1' per ADR-0009. The canonical launch path prefixes "
+            "the orchestrator invocation with: "
+            "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1"
+        )
+    try:
+        from threadpoolctl import threadpool_limits as _threadpool_limits
+    except ImportError:
+        _threadpool_limits = None
+    if _threadpool_limits is not None:
+        _threadpool_limits(limits=1)
     sys.exit(main())

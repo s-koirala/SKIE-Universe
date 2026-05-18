@@ -101,6 +101,30 @@ _N_BOOTSTRAP_CI = 1000
 _ANNUALIZATION_FACTOR = 252.0  # sessions/yr for Calmar + Sharpe ann
 
 
+def _resolve_substrate_dataset_checksum() -> str:
+    """Read the most recent vendor_legacy_1min_roll_adjusted provenance JSON
+    to resolve the canonical substrate `output_frame_sha256` at runtime.
+
+    P1-H065-SWEEP-SUBSTRATE-SHA-RUNTIME-READ fix (2026-05-18): prior code
+    hardcoded `b93e544...` (the H065 v1 sibling-worktree substrate), so v2
+    re-runs on the canonical post-Phase-O.8 substrate `317429e4...` would
+    still record the stale v1 SHA in the sidecar. Reading the provenance
+    JSON at runtime ensures the sidecar's `substrate_dataset_checksum`
+    always matches the substrate the sweep actually consumed.
+    """
+    prov_dir = _REPO_ROOT / "data" / "processed" / "_provenance"
+    candidates = sorted(prov_dir.glob("vendor_legacy_1min_roll_adjusted_*.json"))
+    if not candidates:
+        return "UNKNOWN_PROVENANCE_NOT_FOUND"
+    latest = candidates[-1]
+    try:
+        with latest.open(encoding="utf-8") as fh:
+            prov = json.load(fh)
+        return str(prov.get("output_frame_sha256", "UNKNOWN_FIELD_MISSING"))
+    except (OSError, json.JSONDecodeError, KeyError):
+        return "UNKNOWN_PROVENANCE_READ_FAILED"
+
+
 @dataclass(frozen=True)
 class TPOverlayConfig:
     """H065 TP-overlay configuration cell.
@@ -1073,7 +1097,7 @@ def main(argv: list[str] | None = None) -> int:
         "annualization_factor": _ANNUALIZATION_FACTOR,
         "rng_seed": _RNG_SEED,
         "n_bootstrap_ci": _N_BOOTSTRAP_CI,
-        "substrate_dataset_checksum": "b93e54487b9315133f32adb650c01b0c1094b7c5c958e88a9a5b3d1ca40327ce",
+        "substrate_dataset_checksum": _resolve_substrate_dataset_checksum(),
         "configurations": [
             {
                 "name": c.name,
@@ -1107,4 +1131,33 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    # ADR-0009 BLAS thread-pinning carry-forward (canonical block from
+    # scripts/run_h052a_walk_forward.py:915-942). Required for byte-deterministic
+    # numpy/scipy results across machines; without this, bootstrap CIs +
+    # MPPM/SPA/Calmar/PF/R-multiple primitives may produce non-reproducible
+    # output, breaking the ReproLog contract. Closes the Phase O.2-O.9 Round-1
+    # code-reviewer audit finding (BLAS pinning missing at 7 orchestrator
+    # __main__ entries).
+    import os as _os
+    _required_thread_pinning = (
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+    )
+    _missing_pinning = [
+        k for k in _required_thread_pinning if _os.environ.get(k) != "1"
+    ]
+    if _missing_pinning:
+        raise RuntimeError(
+            f"BLAS thread-pinning env vars {_missing_pinning!r} must be "
+            "set to '1' per ADR-0009. The canonical launch path prefixes "
+            "the orchestrator invocation with: "
+            "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1"
+        )
+    try:
+        from threadpoolctl import threadpool_limits as _threadpool_limits
+    except ImportError:
+        _threadpool_limits = None
+    if _threadpool_limits is not None:
+        _threadpool_limits(limits=1)
     sys.exit(main())

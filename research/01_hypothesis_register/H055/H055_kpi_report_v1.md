@@ -12,7 +12,7 @@ predecessor_versions: []
 
 # H055 KPI Report Card v1 — Aggressive-sizing sweep on wick-rejection mean-reversion scalping
 
-Per [ADR-0017](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) + [ADR-0018](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) + [ADR-0024](../../../docs/decisions/ADR-0024-regime-conditional-aggressive-growth-canonical.md), this report card emits H055 KPIs under the survival-constrained / regime-conditional aggressive-growth paradigm. The sweep evaluates 5 sizing configurations (v1 / C2 / C3 / C9 / C5) on the H055 design.md §3 wick-rejection setup family (swing-pivot + wick-reversal-non-swing) across the 4-symbol cross-futures basket {ES, NQ, MGC, SIL}.
+Per [ADR-0017](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) + [ADR-0018](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) + [ADR-0024](../../../docs/decisions/ADR-0024-paradigm-resolution-h062-aggressive-growth-canonical.md), this report card emits H055 KPIs under the survival-constrained / regime-conditional aggressive-growth paradigm. The sweep evaluates 5 sizing configurations (v1 / C2 / C3 / C9 / C5) on the H055 design.md §3 wick-rejection setup family (swing-pivot + wick-reversal-non-swing) across the 4-symbol cross-futures basket {ES, NQ, MGC, SIL}.
 
 **This is research-only** — H055 design.md is frozen at `status: designed` 2026-05-06. Per [ADR-0013](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §1, the stage transition `exploration-in-progress` → `kpi-report-emitted` is operator-discretionary upon canonical-format presentation. Per the operator's 2026-05-04 standing directive, the subsequent `kpi-report-emitted` → `ninjascript-implemented` transition is also operator-discretionary.
 
@@ -24,7 +24,7 @@ Per [ADR-0017](../../../docs/decisions/ADR-0017-survival-constrained-optimizatio
 
 ## §2 End-of-simulation results summary
 
-Per [ADR-0014 §3.2](../../../docs/decisions/ADR-0014-canonical-end-of-simulation-results-summary-tables.md), the 9 mandatory tables + bottom-line. Per [ADR-0018](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) §3 amendment + [ADR-0024](../../../docs/decisions/ADR-0024-regime-conditional-aggressive-growth-canonical.md), **MPPM(ρ=1)** replaces Sharpe-differential as the primary inferential metric. Sharpe-family CIs are reported as secondary KPI annotations per ADR-0017 §1.2.
+Per [ADR-0014 §3.2](../../../docs/decisions/ADR-0014-canonical-end-of-simulation-results-summary-tables.md), the 9 mandatory tables + bottom-line. Per [ADR-0018](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) §3 amendment + [ADR-0024](../../../docs/decisions/ADR-0024-paradigm-resolution-h062-aggressive-growth-canonical.md), **MPPM(ρ=1)** replaces Sharpe-differential as the primary inferential metric. Sharpe-family CIs are reported as secondary KPI annotations per ADR-0017 §1.2.
 
 ### Table 1 — P/L (realized OOS, $10,000 starting capital)
 
@@ -170,11 +170,11 @@ DEFERRED — forward projection per [ADR-0017 §1](../../../docs/decisions/ADR-0
 
 ### Table 7 — Hansen SPA family p (per [ADR-0017 §1.2](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) secondary KPI demotion)
 
-DEFERRED at v1 — the v1 sweep is a 5-cell sizing variant comparison, NOT a hyperparameter-grid TPE-search per design.md §5.6. SPA family is empty at this scope (M=1 degenerate per [ADR-0008](../../../docs/decisions/ADR-0008-spa-family-omega-correction.md)). Reported as `spa-n/a-m1-degenerate`. Full SPA family entry deferred to follow-up `P1-H055-POWER-SIMULATION-EXECUTE` + `P1-H055-OPTUNA-INNER-CV-IMPL` (the production-grade walk-forward).
+DEFERRED at v1 — the v1 sweep is a 5-cell sizing variant comparison, NOT a hyperparameter-grid TPE-search per design.md §5.6. SPA family is empty at this scope (M=1 degenerate per [ADR-0008](../../../docs/decisions/ADR-0008-spa-omega-method.md)). Reported as `spa-n/a-m1-degenerate`. Full SPA family entry deferred to follow-up `P1-H055-POWER-SIMULATION-EXECUTE` + `P1-H055-OPTUNA-INNER-CV-IMPL` (the production-grade walk-forward).
 
 | Config | Hansen SPA p | Notes |
 |---|---|---|
-| All | n/a (M=1 degenerate) | `spa-n/a-m1-degenerate` per [ADR-0008](../../../docs/decisions/ADR-0008-spa-family-omega-correction.md) |
+| All | n/a (M=1 degenerate) | `spa-n/a-m1-degenerate` per [ADR-0008](../../../docs/decisions/ADR-0008-spa-omega-method.md) |
 
 ### Table 8 — Other KPIs
 
