@@ -1,0 +1,21 @@
+{
+  "config_resolved_sha256": "0a06659c8f6fa4de2dfdee13971eca7ddca98e8529c2854b22cd037aecdfda05",
+  "dataset_checksums": {
+    "vendor_legacy_1min_roll_adjusted": "317429e49ad636746d15bf6310fd8f24bc45611ef03e50abefdc25fc6ba12dc7"
+  },
+  "env_id": "be80f7deb0f0c666d78e06d0e7917780f64f567b730e064d0515fc4142ec9d55",
+  "git_head": "525bad069e2808d6d5d01527ab2be63550735467",
+  "host": {
+    "cpu": "AMD64",
+    "os": "Windows 10",
+    "python": "3.11.15"
+  },
+  "hypothesis_id": "H067",
+  "model_hash": "90539e711f30c98a73de24317a42af5f213178a423dfd9ed0689fb1292848931",
+  "phase": "walk_forward_h067_n_lot_sweep",
+  "pip_freeze_path": "logs/reproducibility/env/237467fa3b319c2c458a14c156ce939f0ec70b63e1e36d8b7612e2b8f502c08e.txt",
+  "pip_freeze_sha256": "237467fa3b319c2c458a14c156ce939f0ec70b63e1e36d8b7612e2b8f502c08e",
+  "rng_seed": 20260519,
+  "run_id": "ade85c4b74dd4c64aecba3b30821caed",
+  "timestamp_utc": "2026-05-19T22:51:14.500012+00:00"
+}

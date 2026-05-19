@@ -1,0 +1,50 @@
+{
+  "year=2015/part-0000.parquet": {
+    "sha256": "a9f84476b3f5556664a3aa5ad08d02e1cb77ce269849eded637a7ff861af2eaa",
+    "row_count": 30302
+  },
+  "year=2016/part-0000.parquet": {
+    "sha256": "ea0ccd58aaa9dcd12d02a02b4d2420f86cfce1ce73aa40c4f852339b0700a326",
+    "row_count": 34714
+  },
+  "year=2017/part-0000.parquet": {
+    "sha256": "6dd5c378c75d548b9f6fd7db6983bae991ca3967e575822127a010ce6939717b",
+    "row_count": 26451
+  },
+  "year=2018/part-0000.parquet": {
+    "sha256": "ee6157ef04cf06a00bd41f22b12174b28e41c0c5e36426c557e0c549e1d0318b",
+    "row_count": 34706
+  },
+  "year=2019/part-0000.parquet": {
+    "sha256": "50a290f552d7f9fcb2a305ba04594021e874cf7a375caaa08ac01784b8082484",
+    "row_count": 76897
+  },
+  "year=2020/part-0000.parquet": {
+    "sha256": "cc6d8920a5cd183c8c3288f030724eb6ca0a716c9d75d55042a0ee511b26751c",
+    "row_count": 225436
+  },
+  "year=2021/part-0000.parquet": {
+    "sha256": "e0407affbbbdd525e50a85cc42ed218807b44a253a0682ff0f951457cecd5e5b",
+    "row_count": 257015
+  },
+  "year=2022/part-0000.parquet": {
+    "sha256": "aeda851924a2a507fbcaffd59786749650b9f8c6af2ddddd844bcb8087d53d76",
+    "row_count": 263086
+  },
+  "year=2023/part-0000.parquet": {
+    "sha256": "a0fd964b882e2b9125336f53e2d056f764b746581d555519572f9c6f63c622aa",
+    "row_count": 273218
+  },
+  "year=2024/part-0000.parquet": {
+    "sha256": "3565fb26aefc03b88994d2d840d1f1670bdf13dfaa542ff4a86981833b369ae0",
+    "row_count": 312084
+  },
+  "year=2025/part-0000.parquet": {
+    "sha256": "cd6b5061fffc8eb66cf483cf91dfccfeb0fdf4787abbaa20e91c44e87d3fa68c",
+    "row_count": 334125
+  },
+  "year=2026/part-0000.parquet": {
+    "sha256": "918f2a757ef675aa6f6c5cc710dd3289c0072de77a887de3943836136c557214",
+    "row_count": 129186
+  }
+}

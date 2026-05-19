@@ -17,8 +17,8 @@ Categories:
 
 | entry_id | timestamp_ct | category | run_id_or_commit | finding_id_or_diagnosis_link | resolution_commit_or_followup | superseded_by | notes |
 |---|---|---|---|---|---|---|---|
-
-(empty at pre-registration freeze 2026-05-19; first row appends at first H067 v1 production walk-forward launch)
+| 1 | 2026-05-19 17:39 CT | build-defect | pre-launch attempt-1 (no run_id; aborted at __main__ gate) | BLAS env-var transmission via Windows `set` did not carry to subprocess invocation; first launch raised RuntimeError at the ADR-0009 BLAS-pinning gate | inline-fixed by switching to POSIX-style `OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1` env prefix per Bash tool convention | null | no artifacts written; orchestrator exited at gate before RunContext entered |
+| 2 | 2026-05-19 17:50 CT | build-defect | bba003j97 (background task; first 7 cells completed before kill) | MPPMResult attribute access defect — `mppm_ci_result.point_estimate` does not exist on the dataclass; correct field is `theta_hat` per src/skie_ninja/inference/mppm.py:111. Defect inherited from H065 sweep script (the H065 fork base also has the wrong attribute reference; only the H065 exception fallback path masked it). MPPM CI bounds reported as NaN in first 7 cells. | inline-fixed in scripts/run_h067_n_lot_sweep.py before second launch; defect logged as new cross-hypothesis follow-up `P1-H065-SWEEP-MPPM-ATTRIBUTE-FIX` (BLOCKING-BEFORE-NEXT-H065-V3-RUN) | null | run aborted at cell 7/60 to avoid emitting NaN-MPPM-CI KPI; full sweep relaunched after fix |
 
 ## Cross-references
 
