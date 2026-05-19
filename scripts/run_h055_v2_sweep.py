@@ -1756,6 +1756,17 @@ def main(argv: list[str] | None = None) -> int:
             "K8_trend_filter_gate": "side × trend_side_at_confirmation must be > 0 for entry",
         },
         "results": full_results,
+        # P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST closure: aggregate
+        # per-session log-returns across all cells × symbols for downstream
+        # BOCD prior calibration per scripts/calibrate_bocd_live_priors.py.
+        # justify: per-cell arrays are stripped from sidecar at line ~1780
+        # for size; the aggregate is the calibration's preferred source.
+        "per_session_logret_aggregate": [
+            float(v)
+            for res in full_results
+            for v in res.get("per_session_log_returns", [])
+            if v is not None
+        ],
         "rho_star_at_run": float(args.rho_star),
         "smoke_mode": bool(args.smoke),
         # ADR-0025 Phase O.13 abandonment-trigger infrastructure block.

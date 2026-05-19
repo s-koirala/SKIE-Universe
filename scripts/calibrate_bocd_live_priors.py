@@ -97,10 +97,26 @@ def _extract_h062_per_session_logrets(
     with proper per-session data once per_session_logret_aggregate is
     persisted in sidecar (tracked under follow-up).
     """
-    per_fold = sidecar_data.get("per_fold", [])
     all_logrets: list[float] = []
     used_degenerate_fallback = False
-    # Path 1: direct per_session_logret arrays (preferred; absent in existing v2).
+    # Path 0: top-level `per_session_logret_aggregate` field per the
+    # P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST closure (preferred
+    # source; canonical from Phase O.13+ sidecars).
+    top_level_aggregate = sidecar_data.get("per_session_logret_aggregate", [])
+    if top_level_aggregate:
+        for v in top_level_aggregate:
+            try:
+                fv = float(v)
+                if np.isfinite(fv):
+                    all_logrets.append(fv)
+            except (TypeError, ValueError):
+                continue
+        if all_logrets:
+            return all_logrets, used_degenerate_fallback
+
+    per_fold = sidecar_data.get("per_fold", [])
+    # Path 1: per-fold per_session_logret arrays (preferred when top-level
+    # aggregate absent; absent in pre-Phase-O.13 v2 sidecars).
     for fold in per_fold:
         fold_logrets = fold.get("per_session_logret", [])
         if fold_logrets:
@@ -162,10 +178,24 @@ def _extract_h055_per_session_logrets(
     the H062 fold-level fallback. justify: same MPPM(ρ=1) = annualized
     log-wealth growth semantic per GISW 2007 §2.
     """
-    results = sweep_data.get("results", [])
     all_logrets: list[float] = []
     used_degenerate_fallback = False
-    # Path 1: direct per_session_log_returns arrays (preferred; absent in v2).
+    # Path 0: top-level per_session_logret_aggregate per P1-PHASE-O13-
+    # SIDECAR-PER-SESSION-LOGRET-PERSIST closure (preferred source).
+    top_level_aggregate = sweep_data.get("per_session_logret_aggregate", [])
+    if top_level_aggregate:
+        for v in top_level_aggregate:
+            try:
+                fv = float(v)
+                if np.isfinite(fv):
+                    all_logrets.append(fv)
+            except (TypeError, ValueError):
+                continue
+        if all_logrets:
+            return all_logrets, used_degenerate_fallback
+
+    results = sweep_data.get("results", [])
+    # Path 1: per-cell per_session_log_returns arrays.
     for res in results:
         cell_logrets = res.get("per_session_log_returns", [])
         if cell_logrets:

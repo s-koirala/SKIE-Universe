@@ -184,6 +184,41 @@ class TestSidecarExtraction:
         assert len(logrets) == 160  # 100 + 60 copies
         assert used_fallback is True  # degenerate path
 
+    def test_extract_h062_top_level_aggregate_preferred(self):
+        """P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST closure: top-level
+        per_session_logret_aggregate is the preferred source over per-fold
+        per_session_logret arrays."""
+        from scripts.calibrate_bocd_live_priors import (
+            _extract_h062_per_session_logrets,
+        )
+
+        synthetic_sidecar = {
+            "per_session_logret_aggregate": [0.001, 0.002, -0.001],
+            "per_fold": [
+                {"per_session_logret": [99.0]},  # would conflict if used
+            ],
+        }
+        logrets, used_fallback = _extract_h062_per_session_logrets(synthetic_sidecar)
+        assert len(logrets) == 3  # top-level preferred
+        assert 99.0 not in logrets
+        assert used_fallback is False
+
+    def test_extract_h055_top_level_aggregate_preferred(self):
+        """Same for H055 sweep sidecar."""
+        from scripts.calibrate_bocd_live_priors import (
+            _extract_h055_per_session_logrets,
+        )
+
+        synthetic_sweep = {
+            "per_session_logret_aggregate": [0.001, 0.002],
+            "results": [
+                {"per_session_log_returns": [99.0]},  # would conflict if used
+            ],
+        }
+        logrets, used_fallback = _extract_h055_per_session_logrets(synthetic_sweep)
+        assert len(logrets) == 2
+        assert 99.0 not in logrets
+
     def test_extract_h055_per_session_log_returns(self):
         from scripts.calibrate_bocd_live_priors import (
             _extract_h055_per_session_logrets,

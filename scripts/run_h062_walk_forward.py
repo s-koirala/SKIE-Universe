@@ -1774,6 +1774,14 @@ def main(argv: list[str] | None = None) -> int:
             "per_symbol_n_trades": per_symbol_n_trades,
             "n_oos_sessions_aggregate": int(n_oos),
             "n_oos_trades_aggregate": int(oos_r.size),
+            # P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST closure: persist
+            # the basket-aggregate per-session log-return array for downstream
+            # BOCD prior calibration per scripts/calibrate_bocd_live_priors.py.
+            # justify: this is the direct-path data the calibration script
+            # prefers (vs the degenerate mppm_oos/252 fallback). Persisting
+            # at basket-level (concatenated across folds × symbols) matches
+            # the calibration's aggregation pattern.
+            "per_session_logret_aggregate": oos_basket_logret_per_session,
             "primary_inference": {
                 "mppm_rho1_with_ci": mppm_ci_result,
                 "calmar_differential_ci": calmar_result,

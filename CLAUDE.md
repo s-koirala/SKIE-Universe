@@ -1846,3 +1846,22 @@ Note: V3 launch WITHOUT `--enable-bocd-live` is unblocked — only the cost-norm
 - `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT` (BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE).
 
 V3 launch WITHOUT `--enable-bocd-live` is **FULLY UNBLOCKED** — all Phase O.13 deep-wire + sidecar capture + cost-norm + H055 inline-replace closures landed. Operator may launch H062 v3 + H055 v3 walk-forward at any time with `--enable-kill-switch-runtime --enable-equity-rebase-current --cost-model conservative_prior` (NOT `--enable-bocd-live` until the per-session-logret-persist + pre-OOS-holdout calibration follow-ups land).
+
+### Phase O.13 sidecar per-session-logret persistence closure (2026-05-18)
+
+`P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST` BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE CLOSED. Both orchestrators now emit a top-level `per_session_logret_aggregate: list[float]` field in their sidecars; calibration script updated to prefer this field over the degenerate fallback.
+
+**Changes**:
+- [scripts/run_h062_walk_forward.py](scripts/run_h062_walk_forward.py): payload gains `per_session_logret_aggregate` = `oos_basket_logret_per_session` (concatenated basket-aggregate across folds × symbols; already computed in main loop at line ~1294).
+- [scripts/run_h055_v2_sweep.py](scripts/run_h055_v2_sweep.py): payload gains `per_session_logret_aggregate` = concatenated `per_session_log_returns` across all `full_results` cells × symbols.
+- [scripts/calibrate_bocd_live_priors.py](scripts/calibrate_bocd_live_priors.py): both extraction functions now check top-level `per_session_logret_aggregate` FIRST (preferred); fall back to per-fold/per-cell arrays; final fallback to the degenerate `mppm_oos/252` proxy (which still requires explicit `--allow-degenerate-fallback`).
+- [tests/unit/test_calibrate_bocd_live_priors.py](tests/unit/test_calibrate_bocd_live_priors.py): 2 new tests verify top-level-aggregate precedence over per-fold paths.
+
+143/143 targeted tests passing post-changes (2 new + 141 prior).
+
+**Closes**: `P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST` (mechanism + persistence schema landed; actual proper-calibration emission requires a v3 walk-forward run with the new orchestrator code so the new field gets populated in produced sidecars).
+
+**Remaining BLOCKING follow-ups before V3 KPI emission WITH `--enable-bocd-live`**:
+- `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT` (use pre-OOS holdout window e.g. 2015-2019 for calibration to prevent within-OOS information leak per Step calibration R1 F-1-3).
+
+V3 launch WITH `--enable-bocd-live` is still BLOCKED until: (a) v3 walk-forward run with the new orchestrator code produces a sidecar carrying `per_session_logret_aggregate`; (b) operator runs the calibration script on that sidecar restricted to a pre-OOS holdout window per `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT`. V3 launch WITHOUT `--enable-bocd-live` remains FULLY UNBLOCKED (kill-switch + equity-rebase + cost-model primitives are production-ready).
