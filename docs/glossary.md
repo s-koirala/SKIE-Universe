@@ -38,6 +38,9 @@ Annotations are dot-separated tags appended to KPI report card §9. Format: `<kp
 | `r-multiple-mean-{positive,marginal,negative}` | R-multiple mean CI excludes/covers zero (ADR-0017 primary). |
 | `stress-test-FM-N-fail` | Synthetic failure-mode FM-N stress test failed (FM-1..FM-5 per ADR-0017 §6; recorded, not gating). |
 | `paper-trade-live-{aligned,divergent}` | 60-session-day paper-trade Sharpe within/outside backtest CI (ADR-0013 §6 KPI; not gating). |
+| `kill-switch-active` / `kill-switch-inactive` | ADR-0025 §D-1 runtime-intervention disclosure — TRUE if any K-N constraint (K-3 / K-4 / K-6 / K-7) fired during simulation. Distinct from the ADR-0024 `kill-switch-{K-N-enabled, K-N-disabled}` design-time declaration; both annotations co-exist on the same KPI report card. |
+| `bocd-live-pause` / `bocd-live-active` | ADR-0025 §D-4 live-state-machine disclosure — TRUE if at least one BOCD pause event fired during the live state machine integration over the sim. Distinct from the ADR-0018 §D-3 `decay-detected-{yes, no}` one-shot batch verdict. |
+| `cost-empirical-calibrated` / `cost-conservative-prior` / `cost-zero` | ADR-0025 §D-3 cost-model-provenance disclosure. ORTHOGONAL to the legacy ADR-0012/0013-era `cost-{robust, conditional, flat}` sensitivity-regime annotations; both annotation families co-exist on the same KPI report card. Provenance answers "where did the fee schedule come from"; sensitivity answers "how robust is the result to fee-schedule perturbation". |
 
 ## Primary metrics (ADR-0017 §1)
 

@@ -134,12 +134,15 @@ Supplementary thresholds (Tharp 1998 *practitioner*; ISBN-13 978-0070647626): PF
 | n_folds (realized/expected) | {n/exp} → `power-margin-{adequate,marginal,low}` | ... | ... |
 | max-DD annotation | `max-dd-{favorable,comparable,adverse}` | ... | ... |
 | Sharpe-vs-{benchmark} annotation | `sharpe-vs-{benchmark}-{positive,marginal,flat,negative}` | ... | ... |
-| Cost model | `{cost_model_id}` ({applied/not applied}, {prior_status}) | ... | ... |
+| Cost model | `{cost_model_id}` ({applied/not applied}, {prior_status}) → `cost-{empirical-calibrated,conservative-prior,zero}` per ADR-0025 §D-5 | ... | ... |
 | Sortino / turnover / capacity | {computed_or_deferred} | ... | ... |
+| Kill-switch runtime (ADR-0025 §D-1) | `kill-switch-{active,inactive}` ({trigger_counts}) | ... | ... |
+| BOCD live-pause (ADR-0025 §D-4) | `bocd-live-{pause,active}` (n_pause_events={N}) | ... | ... |
+| Equity rebase (ADR-0025 §D-2) | mode={fixed,current,min_of_current_and_starting} (floor={F}) | ... | ... |
 
 ### 9. Methodological-correctness annotations (one-line per ADR-0013 §2 + §2.1)
 
-`leakage-canary-{pass,fail}` · `bss-{positive,flat,negative,n/a}` · `reliability-{in-band,out-of-band,n/a}` · `repro-log-{complete,incomplete}` · `dsr-{positive,marginal,negative,n/a}` · `post-run-audit-{pass,fail}`
+`leakage-canary-{pass,fail}` · `bss-{positive,flat,negative,n/a}` · `reliability-{in-band,out-of-band,n/a}` · `repro-log-{complete,incomplete}` · `dsr-{positive,marginal,negative,n/a}` · `post-run-audit-{pass,fail}` · `kill-switch-{active,inactive}` · `bocd-live-{pause,active}` · `cost-{empirical-calibrated,conservative-prior,zero}`
 
 {If any annotation is `fail` or `incomplete`: insert the §2.1 visible callout banner.}
 

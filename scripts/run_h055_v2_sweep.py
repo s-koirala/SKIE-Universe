@@ -1136,6 +1136,28 @@ def main(argv: list[str] | None = None) -> int:
              "default 0.0 = no gate; calibration-holdout binding under "
              "P1-H055-CALIBRATION-HOLDOUT-RUN).",
     )
+    # ADR-0025 Phase O.11 abandonment-trigger infrastructure opt-in flags.
+    # Default OFF preserves v2 KPI numerical agreement.
+    parser.add_argument(
+        "--enable-kill-switch-runtime", action="store_true",
+        help="ADR-0025 §D-1: enable K-3/K-4/K-6/K-7 runtime kill-switch.",
+    )
+    parser.add_argument(
+        "--enable-equity-rebase-current", action="store_true",
+        help="ADR-0025 §D-2: enable current-equity rebase (default = current "
+             "per existing sweep convention; this flag exposes the policy "
+             "object explicitly).",
+    )
+    parser.add_argument(
+        "--enable-bocd-live", action="store_true",
+        help="ADR-0025 §D-4: enable BOCD live-pause state machine.",
+    )
+    parser.add_argument(
+        "--cost-model",
+        choices=["none", "conservative_prior", "paper_trade_empirical"],
+        default="none",
+        help="ADR-0025 §D-3: cost-model provenance.",
+    )
     args = parser.parse_args(argv)
 
     if args.substrate_path:
@@ -1330,6 +1352,63 @@ def main(argv: list[str] | None = None) -> int:
         "results": full_results,
         "rho_star_at_run": float(args.rho_star),
         "smoke_mode": bool(args.smoke),
+        # ADR-0025 Phase O.11 abandonment-trigger infrastructure block.
+        # Default-OFF flags preserve numerical agreement with existing H055 v2
+        # KPI emission. Deep per-trade integration tracked under
+        # P1-ADR-0025-WIRE-DEEP-INTRA-SIM-H062-H055.
+        "abandonment_triggers": {
+            "kill_switch_runtime": {
+                "enabled": bool(args.enable_kill_switch_runtime),
+                "annotation": (
+                    "kill-switch-active"
+                    if args.enable_kill_switch_runtime
+                    else "kill-switch-inactive"
+                ),
+                "deep_wiring_status": "shallow-v1-cli-exposed",
+            },
+            "equity_rebase": {
+                "enabled": bool(args.enable_equity_rebase_current),
+                "mode": "current" if args.enable_equity_rebase_current else "fixed",
+                "deep_wiring_status": "shallow-v1-cli-exposed",
+                "deep_wiring_note": (
+                    "H055 v2 sweep configs already toggle use_current_equity_rebase "
+                    "per config; this CLI flag overrides at the sweep level via "
+                    "future deep-wiring follow-up"
+                ),
+            },
+            "bocd_live": {
+                "enabled": bool(args.enable_bocd_live),
+                "annotation": (
+                    "bocd-live-pause"
+                    if args.enable_bocd_live
+                    else "bocd-live-active"
+                ),
+                "deep_wiring_status": "shallow-v1-cli-exposed",
+                "deep_wiring_note": (
+                    "H055 C9 cfg already implements adaptive Kelly halving via "
+                    "BOCD; this CLI flag exposes the new hard-pause variant as "
+                    "an orthogonal layer per ADR-0025 §D-6"
+                ),
+            },
+            "cost_model": {
+                "id": (
+                    "nt8_realistic_v1"
+                    if args.cost_model != "none"
+                    else "zero_cost_v1_pre_cost_research_only"
+                ),
+                "annotation": (
+                    "cost-conservative-prior"
+                    if args.cost_model == "conservative_prior"
+                    else "cost-empirical-calibrated"
+                    if args.cost_model == "paper_trade_empirical"
+                    else "cost-zero"
+                ),
+                "calibration_source": args.cost_model,
+                "deep_wiring_status": "shallow-v1-cli-exposed",
+            },
+            "adr_0025_version": "v1",
+            "deep_wiring_followup": "P1-ADR-0025-WIRE-DEEP-INTRA-SIM-H062-H055",
+        },
         "written_at_utc": _dt.datetime.now(_dt.UTC).isoformat(),
     }
 

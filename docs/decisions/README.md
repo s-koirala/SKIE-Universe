@@ -33,6 +33,8 @@ Grouped by domain. Click an ADR ID for the full text.
 | [ADR-0019](ADR-0019-barbell-payoff-shape-screening.md) | Barbell payoff-shape screening — L-skewness annotation in every KPI report card | proposed | 2026-05-12 |
 | [ADR-0020](ADR-0020-meta-portfolio-orchestrator.md) | Meta-portfolio orchestrator across emitted hypothesis arms (IR = IC·√breadth) | proposed | 2026-05-12 |
 | [ADR-0022](ADR-0022-causal-mechanism-vs-correlation-only-annotation.md) | Mandatory causal-mechanism vs correlation-only annotation in every design.md | proposed | 2026-05-12 |
+| [ADR-0024](ADR-0024-paradigm-resolution-h062-aggressive-growth-canonical.md) | Paradigm resolution — H062 aggressive-growth canonical; ADR-0018 promoted; ADR-0017 §4.2/§5/§6 demoted to opt-in | accepted | 2026-05-15 |
+| [ADR-0025](ADR-0025-abandonment-trigger-infrastructure.md) | **Abandonment-trigger infrastructure** — runtime kill switches, current-equity-rebase primitive, NT8-realistic multi-instrument cost model, BOCD live-pause | accepted | 2026-05-18 |
 
 ### Modeling
 

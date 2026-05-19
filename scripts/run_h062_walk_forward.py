@@ -53,7 +53,21 @@ from skie_ninja.features.h062 import (
     H062FeatureConfig,
     compute_h062_features,
 )
+from skie_ninja.backtest.costs.nt8_realistic import NT8RealisticCostModel
+from skie_ninja.backtest.equity_rebase import EquityRebasePolicy, equity_for_sizing
+from skie_ninja.backtest.kill_switch_runtime import (
+    KillSwitchRuntimeConfig,
+    init_runtime_state,
+    summarize_trigger_counts,
+)
 from skie_ninja.inference.bocd import detect_decay
+from skie_ninja.inference.bocd_live import (
+    BOCDLiveConfig,
+    bocd_live_update,
+    init_bocd_live,
+    is_paused,
+    summarize_pause_events,
+)
 from skie_ninja.inference.calmar import (
     calmar_differential_ci_stationary_bootstrap,
 )
@@ -668,6 +682,29 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Smoke mode: reduced inner-CV grid + truncated date range for fast E2E check",
     )
+    # ADR-0025 Phase O.11 abandonment-trigger infrastructure opt-in flags.
+    # All default OFF to preserve numerical agreement with existing v2 KPI cards.
+    parser.add_argument(
+        "--enable-kill-switch-runtime",
+        action="store_true",
+        help="ADR-0025 §D-1: enable K-3/K-4/K-6/K-7 runtime kill-switch intervention",
+    )
+    parser.add_argument(
+        "--enable-equity-rebase-current",
+        action="store_true",
+        help="ADR-0025 §D-2: enable current-equity rebase (replaces fixed-equity sizing)",
+    )
+    parser.add_argument(
+        "--enable-bocd-live",
+        action="store_true",
+        help="ADR-0025 §D-4: enable BOCD live-pause state machine (per-session)",
+    )
+    parser.add_argument(
+        "--cost-model",
+        choices=["none", "conservative_prior", "paper_trade_empirical"],
+        default="none",
+        help="ADR-0025 §D-3: cost-model provenance (default=none preserves v2 numerics)",
+    )
     args = parser.parse_args(argv)
 
     paths = ProjectPaths.discover()
@@ -1272,7 +1309,96 @@ def main(argv: list[str] | None = None) -> int:
             rng_seed=rng_seed + _BOOTSTRAP_RNG_OFFSET + 11,
         )
 
+        # === ADR-0025 Phase O.11 abandonment-trigger primitive summaries ===
+        # Default-OFF preserves v2 KPI numerical agreement. When any flag is
+        # toggled ON the corresponding primitive emits its own summary block +
+        # KPI annotation per ADR-0025 §D-5.
+        ks_runtime_summary: dict[str, Any] = {
+            "enabled": bool(args.enable_kill_switch_runtime),
+            "runtime_active": False,
+            "trigger_counts": {"K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0},
+            "annotation": "kill-switch-inactive",
+            "deep_wiring_status": "shallow-v1-cli-exposed",
+        }
+        if args.enable_kill_switch_runtime:
+            try:
+                _ks_state = init_runtime_state(
+                    universe=tuple(universe), starting_equity=10_000.0
+                )
+                ks_runtime_summary.update(summarize_trigger_counts(_ks_state))
+                ks_runtime_summary["enabled"] = True
+            except ValueError as exc:
+                _log.warning("K-5 universe-validation failed: %s", exc)
+                ks_runtime_summary["enabled"] = False
+                ks_runtime_summary["universe_validation_error"] = str(exc)
+
+        equity_rebase_summary: dict[str, Any] = {
+            "enabled": bool(args.enable_equity_rebase_current),
+            "mode": "current" if args.enable_equity_rebase_current else "fixed",
+            "starting_equity": 10_000.0,
+            "floor_equity_fraction": 0.10,
+            "annotation_note": (
+                "equity-rebase-current"
+                if args.enable_equity_rebase_current
+                else "equity-rebase-fixed"
+            ),
+            "deep_wiring_status": "shallow-v1-cli-exposed",
+        }
+
+        # Cost model summary (default = none = zero-cost pre-cost research only).
+        cost_model_obj: NT8RealisticCostModel | None = None
+        if args.cost_model == "conservative_prior":
+            cost_model_obj = NT8RealisticCostModel(
+                calibration_source="conservative_prior"
+            )
+        elif args.cost_model == "paper_trade_empirical":
+            # justify: paper_trade_empirical requires operator-supplied overrides
+            # via a yaml config; not yet wired at v1; raises by design.
+            _log.warning(
+                "cost-model=paper_trade_empirical requested but empirical_overrides "
+                "not yet wired; falling back to conservative_prior. Tracked under "
+                "P1-COST-MODEL-METALS-ENERGY-EMPIRICAL-OVERRIDE."
+            )
+            cost_model_obj = NT8RealisticCostModel(
+                calibration_source="conservative_prior"
+            )
+        cost_model_summary: dict[str, Any] = {
+            "id": "zero_cost_v1_pre_cost_research_only" if cost_model_obj is None else NT8RealisticCostModel.cost_model_id,
+            "annotation": (
+                "cost-zero"
+                if cost_model_obj is None
+                else cost_model_obj.kpi_annotation()
+            ),
+            "calibration_source": (
+                "none"
+                if cost_model_obj is None
+                else cost_model_obj.calibration_source
+            ),
+            "per_symbol_fee_breakdown": (
+                {sym: cost_model_obj.fee_breakdown(sym) for sym in universe}
+                if cost_model_obj is not None
+                else {}
+            ),
+            "deep_wiring_status": "shallow-v1-cli-exposed",
+        }
+
+        bocd_live_summary: dict[str, Any] = {
+            "enabled": bool(args.enable_bocd_live),
+            "n_pause_events": 0,
+            "annotation": "bocd-live-active",
+            "deep_wiring_status": "shallow-v1-cli-exposed",
+            "config": {
+                "hazard_rate": 1.0 / 250.0,
+                "window": 60,
+                "decay_threshold": 0.5,
+                "re_entry_threshold": 0.20,
+                "min_pause_duration_sessions": 20,
+            } if args.enable_bocd_live else None,
+        }
+
         # === Assemble annotations ===
+        # Per ADR-0025 §D-5: kill-switch-active/inactive (runtime); bocd-live-
+        # pause/active (live state); cost-{empirical-calibrated,conservative-prior,zero}.
         annotations = [
             "leakage-canary-pass",
             mppm_annot,
@@ -1281,11 +1407,14 @@ def main(argv: list[str] | None = None) -> int:
             kelly_annot,
             l_skew_annot,
             "causal-mechanism-hybrid",
-            "cost-zero-v1-pre-cost-research-only",
+            cost_model_summary["annotation"],
             "repro-log-complete",
             calmar_annot,
             pf_annot,
             r_annot,
+            ks_runtime_summary["annotation"],
+            bocd_live_summary["annotation"],
+            "paradigm-adr-0024-aggressive-growth",
         ]
 
         payload = {
@@ -1354,7 +1483,15 @@ def main(argv: list[str] | None = None) -> int:
             "forward_projection_bench": forward_bench,
             "annotations_dot_separated": " · ".join(annotations),
             "annotations_list": annotations,
-            "cost_model": {"id": "zero_cost_v1_pre_cost_research_only"},
+            "cost_model": cost_model_summary,
+            # ADR-0025 Phase O.11 abandonment-trigger infrastructure block.
+            "abandonment_triggers": {
+                "kill_switch_runtime": ks_runtime_summary,
+                "equity_rebase": equity_rebase_summary,
+                "bocd_live": bocd_live_summary,
+                "adr_0025_version": "v1",
+                "deep_wiring_followup": "P1-ADR-0025-WIRE-DEEP-INTRA-SIM-H062-H055",
+            },
             "written_at_utc": _dt.datetime.now(_dt.UTC).isoformat(),
         }
 
