@@ -1,5 +1,6 @@
 {
   "schema_version": "cost_friction_breakeven_v1",
+  "fee_vintage": "pre_phase_o16",
   "round_trip_cost_usd": {
     "ES": 29.1,
     "NQ": 14.1,

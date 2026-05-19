@@ -23,9 +23,17 @@ Classification per task spec §3-4:
   - ratio < 1 AND zero-cost OOS <= 0%             --> edge-absent
   - 1 <= ratio < 2 AND zero-cost OOS > 0%         --> marginal (under-strict-cost-bound)
   - no A0 zero-cost reference                     --> likely-* (pending-A0-verification)
+
+CLI flag --fee-vintage:
+  - "pre_phase_o16" (default for original 2026-05-19 task #14 run; preserves the
+    canonical raw artifact at artifacts/runs/cost_realism_investigation/cost_friction_breakeven.json)
+  - "post_phase_o16" (Phase O.16 recalibration: MGC $0.45 -> $0.60 exchange fee;
+    SIL $0.45 -> $1.00 exchange fee; MCL unchanged; closes P1-METALS-ENERGY-CME-FEE-VERIFY
+    per commit 31e7f69). Output JSON path uses suffix "_post_phase_o16.json".
 """
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 from pathlib import Path
 import json
@@ -36,7 +44,9 @@ import json
 # Per src/skie_ninja/backtest/costs/nt8_es_nq_rth_v1.py + nt8_realistic.py
 # at sensitivity_mult=1.0 (default 1-tick prior):
 
-ROUND_TRIP_COST_USD = {
+# Pre-Phase-O.16 placeholder fees (preserved per ADR-0013 §4.1 non-loss for
+# canonical task #14 artifact reproduction).
+ROUND_TRIP_COST_USD_PRE_PHASE_O16 = {
     # ES/NQ: 2 * (2.05 fixed + 1.0 * tick_slip)
     "ES": 2 * (2.05 + 12.50),       # = $29.10 / 1 contract / round trip
     "NQ": 2 * (2.05 + 5.00),        # = $14.10
@@ -46,6 +56,26 @@ ROUND_TRIP_COST_USD = {
     "SIL": 2 * (1.32 + 5.00),       # = $12.64 (placeholder)
     "MCL": 2 * (1.37 + 1.00),       # = $4.74 (placeholder)
 }
+
+# Post-Phase-O.16 verified fees (canonical per Phase O.16 commit 31e7f69 +
+# independent re-verification commit 9a3a512; closes P1-METALS-ENERGY-CME-FEE-VERIFY).
+# fixed_per_side = commission $0.85 + exchange (verified) + NFA $0.02.
+# MGC exchange $0.45 -> $0.60 (CME 2025-02-01 schedule; +$0.15/side = +33%).
+# SIL exchange $0.45 -> $1.00 (under-stated by $0.55/side = +122%; MATERIAL).
+# MCL exchange $0.50 (MATCH; no change).
+ROUND_TRIP_COST_USD_POST_PHASE_O16 = {
+    "ES": 2 * (2.05 + 12.50),       # = $29.10 (unchanged; not in Phase O.16 scope)
+    "NQ": 2 * (2.05 + 5.00),        # = $14.10 (unchanged)
+    "MES": 2 * (0.72 + 1.25),       # = $3.94 (unchanged)
+    "MNQ": 2 * (0.72 + 0.50),       # = $2.44 (unchanged)
+    "MGC": 2 * (1.47 + 1.00),       # = $4.94 (1.47 = 0.85 + 0.60 + 0.02)
+    "SIL": 2 * (1.87 + 5.00),       # = $13.74 (1.87 = 0.85 + 1.00 + 0.02)
+    "MCL": 2 * (1.37 + 1.00),       # = $4.74 (unchanged; 1.37 = 0.85 + 0.50 + 0.02)
+}
+
+# Module-level binding (default = pre-Phase-O.16 for backward-compatible
+# task #14 raw-artifact reproduction; overridden via main() --fee-vintage flag).
+ROUND_TRIP_COST_USD = ROUND_TRIP_COST_USD_PRE_PHASE_O16
 
 # Approximate notional at typical OOS-window-mid prices (per config/instruments.yaml
 # multiplier × representative price; used for cost-as-bps-of-notional).
@@ -286,9 +316,29 @@ CELLS = [
 # ---------------------------------------------------------------------------
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--fee-vintage",
+        choices=["pre_phase_o16", "post_phase_o16"],
+        default="pre_phase_o16",
+        help="Which fee-schedule vintage to use. pre_phase_o16 (default) reproduces the canonical task #14 artifact bit-identically. post_phase_o16 applies the verified MGC/SIL fee recalibration (Phase O.16 commit 31e7f69; closes P1-METALS-ENERGY-CME-FEE-VERIFY).",
+    )
+    args = parser.parse_args()
+
+    # Switch the module-level binding per --fee-vintage flag.
+    global ROUND_TRIP_COST_USD
+    if args.fee_vintage == "post_phase_o16":
+        ROUND_TRIP_COST_USD = ROUND_TRIP_COST_USD_POST_PHASE_O16
+        out_filename = "cost_friction_breakeven_post_phase_o16.json"
+        vintage_label = "POST-Phase-O.16 (verified CME 2025-02-01 fee schedule)"
+    else:
+        ROUND_TRIP_COST_USD = ROUND_TRIP_COST_USD_PRE_PHASE_O16
+        out_filename = "cost_friction_breakeven.json"
+        vintage_label = "PRE-Phase-O.16 (placeholder fees; canonical task #14 artifact)"
+
     print("=" * 130)
     print("Cost-realism investigation per ADR-0027 §D-1")
-    print("Per-cell cost-friction-breakeven analysis using conservative_prior cost models")
+    print(f"Per-cell cost-friction-breakeven analysis — fee vintage: {vintage_label}")
     print("=" * 130)
     print()
     print("Cost-per-round-trip (USD per 1 contract) under conservative_prior:")
@@ -357,12 +407,15 @@ def main():
         print(f"  {i:2d}. {r['hypothesis']:<42s} {r['symbol']:<6s} ratio={r['cost_friction_breakeven_ratio']:7.2f}  oos={r['realized_oos_pct']:+7.2f}%  n_tr={r['n_trades']:>6d}  {r['classification']}")
     print()
 
-    # Dump JSON for reproducibility
-    out_path = Path("artifacts/runs/cost_realism_investigation/cost_friction_breakeven.json")
+    # Dump JSON for reproducibility (per ADR-0013 §4.1 non-loss: pre-Phase-O.16 default
+    # output filename preserved bit-identically; post-Phase-O.16 emits to suffixed
+    # filename so neither overwrites the other).
+    out_path = Path("artifacts/runs/cost_realism_investigation") / out_filename
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
         json.dump({
             "schema_version": "cost_friction_breakeven_v1",
+            "fee_vintage": args.fee_vintage,
             "round_trip_cost_usd": ROUND_TRIP_COST_USD,
             "representative_price": REPRESENTATIVE_PRICE,
             "multiplier": MULTIPLIER,
