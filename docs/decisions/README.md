@@ -37,6 +37,7 @@ Grouped by domain. Click an ADR ID for the full text.
 | [ADR-0024](ADR-0024-paradigm-resolution-h062-aggressive-growth-canonical.md) | Paradigm resolution — H062 aggressive-growth canonical; ADR-0018 promoted; ADR-0017 §4.2/§5/§6 demoted to opt-in | accepted | 2026-05-15 |
 | [ADR-0025](ADR-0025-abandonment-trigger-infrastructure.md) | **Abandonment-trigger infrastructure** — runtime kill switches, current-equity-rebase primitive, NT8-realistic multi-instrument cost model, BOCD live-pause | accepted | 2026-05-18 |
 | [ADR-0026](ADR-0026-paradigm-and-reporting-refinements.md) | **Paradigm + reporting refinements** — §0 3-component KPI summary header (Full-OOS + 2026-onward + Forward bootstrap); succinct-communication carveout; promising-strategy (KPI-vector, cost-model, substrate-vintage) triple annotation | accepted | 2026-05-19 |
+| [ADR-0028](ADR-0028-k6-k7-size-down-cost-friction-edge.md) | **K-6/K-7 size-down + cost-friction-dominated-edge annotation** — opt-in `size_down` enforcement mode for runtime kill-switch K-6/K-7; new `cost-friction-dominated-edge-{present, absent, n/a}` KPI annotation; empirical follow-through of H062 v3 ablation per ADR-0027 §D-3 | accepted | 2026-05-19 |
 
 ### Modeling
 

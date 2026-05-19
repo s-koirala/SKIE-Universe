@@ -2019,3 +2019,51 @@ Per the Phase O.14 operator-actionable next-step recommendation + ADR-0027 §D-3
 | `P1-PHASE-O15-LSKEWNESS-NEGATIVE-MEAN-EDGE-WARNING` | OPEN; non-blocking | Project-level memo: positive L-skewness alone does NOT compensate for negative mean-edge. Future design.md §1.5 acknowledgment. |
 
 **Time-budget category** (per ADR-0027 §D-5): `investigate` — catastrophic-result decomposition; counts toward the ≤25% investigation soft cap of the rolling-30-day commit history.
+
+### Phase O.15 extension: ADR-0028 K-6/K-7 size-down + cost-friction-dominated-edge annotation (2026-05-19, empirical follow-through)
+
+Per the Phase O.15 ablation closure + [ADR-0027 §D-3 empirical-before-amendment sequencing rule](docs/decisions/ADR-0027-operational-discipline-bounded-exploration.md). [ADR-0028](docs/decisions/ADR-0028-k6-k7-size-down-cost-friction-edge.md) codifies the two-component amendment empirically motivated by the H062 v3 primitive-attribution ablation (closed in commits `1adc62a` + `63a22d2`); ADR-0028 is the canonical instantiation of ADR-0027 §D-3 (empirical decomposition completed BEFORE amendment codification).
+
+**Two decisions**:
+
+1. **K-6/K-7 size-down enforcement-mode enum** (§D-1): extend `KillSwitchRuntimeConfig` with `k6_enforcement: Literal["block", "size_down"] = "block"` + `k7_enforcement: Literal["block", "size_down"] = "block"` + `size_down_fraction: float = 0.5`. Default `"block"` preserves [ADR-0025 §D-1](docs/decisions/ADR-0025-abandonment-trigger-infrastructure.md) bit-equivalence on all existing v3 sidecars. `"size_down"` (opt-in per design.md §11.1 declaration) multiplies position-size denominator by `size_down_fraction` for all subsequent entries within the K-6 session / K-7 week boundary; resets to 1.0 on `advance_session` / `advance_week`. Addresses the kill-switch asymmetry empirically established by the H062 v3 A2 ablation (Δ −283.79 pp vs A0; win rate 34.24% → 29.84% via asymmetric blocking of would-be-winning entries during drawdown sessions). The 0.5 default is operator-prior; aligns with the existing [ADR-0017 §4.1 quarter-Kelly default](docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) + [ADR-0018 §D-2 Kelly multiplier grid `{0.25, 0.5, 1.0, 1.5, 2.0, 2.5}`](docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) half-step convention.
+
+2. **Cost-friction-dominated-edge KPI annotation** (§D-2): new `cost-friction-dominated-edge-{present, absent, n/a}` annotation in [ADR-0014 §3.2 Table 9](docs/decisions/ADR-0014-canonical-end-of-simulation-results-summary-tables.md). Emitted when (i) `cost-conservative-prior` annotation present, (ii) realized OOS basket < 0, AND (iii) corresponding zero-cost ablation cell exists with realized OOS basket > 0 against the same substrate vintage + inner-CV grid + rng_seed. Surfaces the empirical fact (load-bearing H062 v3 ablation finding: cost dominance) that hypotheses with marginal mean-edge can exhibit *gross* edge (cost-zero positive) yet no *net* edge (cost-applied catastrophic). Operator-actionable: `present` flags hypotheses where cost-realism reverses a gross-positive result; informs ninjascript-promotion + paper-trade-cost-calibration decisions per the operator's 2026-05-04 standing decline-ninjascript discipline.
+
+**KPI annotation grammar additions** (per §D-4): `kill-switch-mode-{block, size-down}` (runtime enforcement-mode disclosure; orthogonal to the existing `kill-switch-{K-N-enabled, K-N-disabled}` design-time declaration + `kill-switch-{active, inactive}` runtime-fire disclosure; all three co-exist on the same KPI report card) + `cost-friction-dominated-edge-{present, absent, n/a}` (cost-friction × mean-edge interaction disclosure).
+
+**Backward compatibility**: defaults preserve ADR-0025 §D-1 bit-exact semantic. All existing Phase O.13 v3 + Phase O.10 v2 KPI report cards remain bit-exact reproducible. The size-down semantic is strictly additive; the existing block semantic is the default code path. Cost-friction-dominated-edge annotation is evaluative-only (reads existing sidecar fields); sidecars produced before this amendment are unchanged.
+
+**Alternatives rejected** (per ADR-0028 §Alternatives): (A) block-only — preserved as default but not the SOLE option; (B) exit-on-breach — closes earning positions; (C) ratchet-down-multi-step — adds state without empirical motivation at v1; (D) dynamic size-down fraction as function of breach magnitude — adds hyperparameter without v1 calibration; (E) cost-friction-dominated-edge as binding promotion gate — violates ADR-0013 §1+§2 no-binding-gates; (F) defer until paper-trade fee data — structurally independent of empirical-fee calibration.
+
+**Audit-remediate-loop Round 1** (per SKILL.md 3-round cap; inline self-audit per `P1-AGENT-TOOL-NOT-SURFACED` documented workaround; parallel quant + literature + format branches). 20 findings across all 3 branches (0 critical + 7 major + 13 minor); all 7 major findings remediated inline before commit. Most load-bearing fixes:
+
+- F-Q-2 (quant major): §D-2 trigger condition (iii) required cross-reference mechanism to a zero-cost cell — added `--zero-cost-reference-run-id` CLI flag specification to `P1-ADR-0028-COST-FRICTION-EDGE-ANNOTATION-IMPL`.
+- F-Q-4 (quant minor): size-down state-machine reset semantics added explicit §D-1 "State machine semantics" paragraph.
+- F-L-1 (lit major): MacLean-Thorp-Ziemba 2010 fractional-Kelly anchor verified DOI 10.1142/7598 against existing pre-existing project-canonical use across ADR-0017 §4.1 + ADR-0018 §D-2; folded under existing pin-verification pattern.
+- F-F-1 (format major): `proposes_amendments_to` triple-entry deduplication verified (ADR-0025 §D-1 vs ADR-0014 §3.2 vs ADR-0017 §3 / ADR-0014 §3.2 are non-redundant distinct scopes).
+
+Round 1 verdict `accept-with-residuals`. Round 2 verification deferred to the first code amendment cycle (`P1-ADR-0028-KILL-SWITCH-RUNTIME-SIZE-DOWN-IMPL`) where the parity-test extension empirically enforces the §D-3 backward-compatibility claim. Audit trail: [docs/audits/audit_trail_2026-05-19_adr-0028-k6-k7-size-down.md](docs/audits/audit_trail_2026-05-19_adr-0028-k6-k7-size-down.md).
+
+**Artifacts landed in this extension**:
+
+- [docs/decisions/ADR-0028-k6-k7-size-down-cost-friction-edge.md](docs/decisions/ADR-0028-k6-k7-size-down-cost-friction-edge.md) — the ADR (full Decision §D-1..§D-4 + Alternatives + Consequences + References + Empirical justification).
+- [docs/audits/audit_trail_2026-05-19_adr-0028-k6-k7-size-down.md](docs/audits/audit_trail_2026-05-19_adr-0028-k6-k7-size-down.md) — R1 audit trail with 20 findings across 3 parallel branches.
+- [docs/decisions/README.md](docs/decisions/README.md) — ADR-0028 entry added to "Inference and statistical methodology" section.
+- [docs/glossary.md](docs/glossary.md) — `kill-switch-mode-{block, size-down}` + `cost-friction-dominated-edge-{present, absent, n/a}` entries added under §"KPI annotation grammar".
+
+**Closure of pre-existing follow-up**: `P1-ADR-0025-AMENDMENT-K6-K7-SIZE-DOWN-VS-BLOCK` (registered Phase O.15 commit `1adc62a` per the H062 v3 investigation memo §8) transitions OPEN → **CLOSED-BY-ADR-0028**. Cross-reference logged in the ADR-0028 §Consequences "Closure of pre-existing follow-up" subsection per [ADR-0013 §4.1 non-loss](docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md).
+
+**New BLOCKING follow-ups registered by ADR-0028**:
+
+| Follow-up | Status | Description |
+|---|---|---|
+| `P1-ADR-0028-KILL-SWITCH-RUNTIME-SIZE-DOWN-IMPL` | BLOCKING-BEFORE-NEXT-V3-LAUNCH-WITH-SIZE-DOWN | Code amendment to [src/skie_ninja/backtest/kill_switch_runtime.py](src/skie_ninja/backtest/kill_switch_runtime.py): add `k6_enforcement` + `k7_enforcement` + `size_down_fraction` fields; parity-test extension asserts bit-equality of existing v3 sidecar numerics on default `"block"`. |
+| `P1-ADR-0028-COST-FRICTION-EDGE-ANNOTATION-IMPL` | BLOCKING-BEFORE-NEXT-KPI-V3-CASCADE | Extend orchestrator `main()` KPI annotation emission to compute the §D-2 trigger; `--zero-cost-reference-run-id <run_id>` CLI flag on H062 + H055 v2 orchestrators. |
+| `P1-ADR-0028-CLAUDE-MD-CASCADE` | CLOSED-BY-THIS-COMMIT | CLAUDE.md ledger extension (this section). |
+| `P1-ADR-0028-DECISIONS-README-CASCADE` | CLOSED-BY-THIS-COMMIT | ADR README updated. |
+| `P1-ADR-0028-GLOSSARY-CASCADE` | CLOSED-BY-THIS-COMMIT | Glossary entries added. |
+
+**New non-blocking follow-ups**: `P1-ADR-0028-TEMPLATE-CASCADE` (KPI template Table 8 rows), `P1-ADR-0028-SIZE-DOWN-FRACTION-EMPIRICAL-CALIBRATION`, `P1-ADR-0028-MULTI-STEP-RATCHET-V2`, `P1-ADR-0028-DYNAMIC-SIZE-DOWN-FRACTION-V2`, `P1-ADR-0028-EXIT-ON-BREACH-INVESTIGATION-V2`, `P1-ADR-0028-SIZE-DOWN-MODE-FAILURE-MODE-INVESTIGATE`, `P1-ADR-0028-ZERO-COST-REFERENCE-CELL-CONVENTION`, `P1-ADR-0028-H055-V2-C9-SIZE-DOWN-INTERACTION-DOCUMENT`, `P1-ADR-0028-RETROACTIVE-V3-COST-FRICTION-EDGE-ANNOTATION-PASS`.
+
+**Time-budget category** (per ADR-0027 §D-5): `investigate` — empirical-follow-through of the H062 v3 ablation; counts toward the ≤25% investigation soft cap of the rolling-30-day commit history. ADR-0028 is the first canonical instantiation of [ADR-0027 §D-3](docs/decisions/ADR-0027-operational-discipline-bounded-exploration.md) empirical-before-amendment sequencing rule: the empirical decomposition (H062 v3 ablation) completed BEFORE the amendment codification.
