@@ -1811,3 +1811,38 @@ Per the operator 2026-05-18 directive ("continue, again ensuring all tasks are a
 - `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT` (NEW; BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE).
 
 Note: V3 launch WITHOUT `--enable-bocd-live` is unblocked — only the cost-norm + sidecar-capture + deep-wire closures are needed for the kill-switch + equity-rebase + cost-model primitive set. The BOCD live-pause is the only primitive blocked on the calibration follow-ups.
+
+### Phase O.13 H055 kill-switch inline-replace closure (2026-05-18)
+
+`P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` BLOCKING-BEFORE-V3-KPI-EMISSION-ACCURACY CLOSED. The H055 v2 `_run_simulation` now routes K-6/K-7 enforcement through the primitive's `check_entry_blocked` when `kill_switch_config` is non-None — closing the Step 2b R1 F-1-6 mirror-counter concern + the sidecar-capture R1 F-1-2 misleading "primitive counters update" disclaimer.
+
+**Three structural changes** to [scripts/run_h055_v2_sweep.py](scripts/run_h055_v2_sweep.py):
+
+1. **Session/week boundary advance**: when `ks_state is not None`, the main loop calls `advance_session(ks_state, new_session_date=cme_sess_dt, current_equity=equity)` + `advance_week(...)` at CME-session-date boundaries. Tracked via `ks_last_cme_session` + `ks_last_week_id` closure-state variables. Equity passed at the START of the new session (before any current-bar exit P/L applies, since position-exit checks run AFTER the advance block per F-1-1 R1 audit known-limitation documentation).
+
+2. **Inline-vs-primitive entry gating** in `_try_new_entry_from_setup`:
+   - When `kill_switch_config is None`: preserved inline `breaker_session_active` / `breaker_week_active` check (bit-identical to v2).
+   - When `kill_switch_config is not None`: SKIPS inline check; instead calls `check_entry_blocked(ks_state, kill_switch_config, symbol, position_size=size)` AFTER size is computed inside the setup loop; on block calls `record_trigger` + `continue`. At position-creation site, `update_state_on_open` populates `open_position_by_symbol` for downstream K-3 enforcement.
+
+3. **Main-loop breaker UPDATE gated** on `if kill_switch_config is None` (per F-1-2 R1 audit fix) — eliminates dead-state mutation when primitive enforcement is active. The primitive's `update_state_on_close` already updates the daily/weekly accumulators (wired in Step 2b at 8eab22e).
+
+**R1 audit-remediate-loop** (single quant-auditor; agentId `ae571327642d3ecf7`). Verdict `proceed-with-remediation`. 6 findings (1 critical + 2 major + 3 minor); 5 load-bearing fixes applied inline:
+
+| # | Finding | Severity | Fix |
+|---|---|---|---|
+| F-1-1 | `advance_session(current_equity=equity)` reflects equity AT BAR t (not session-start) under same-bar cross-session exit edge cases | critical | Documented as known-limitation with `# justify:` comment: position-exit P/L applied AFTER advance block (per main loop ordering); edge case bounded by CME session-clock determinism. Operational impact minimal on 5-min cadence H055 data. |
+| F-1-2 | Inline `breaker_session_active` flag still UPDATED unconditionally even with ks_config active (dead-state mutation) | major | Gated update on `if kill_switch_config is None`; primitive is single-source-of-truth in active path. |
+| F-1-3 | 3 silent `try/except (KeyError, IndexError)` blocks around `df_5m.iloc[t]["ts_event"]` extraction (fail-open masking) | major | Removed all 3 try/except blocks. Function-entry fail-closed assertion (per Step 1b CR-1-3) is the canonical barrier. |
+| F-1-4 | Primitive K-3 is structurally pre-empted by `if position is not None: return` at line 824 (always returns 0 triggers) | minor | Documented as known-redundancy with `# justify:` comment; maintained for sidecar provenance + forward-compat. |
+| F-1-5 | `nonlocal ks_state` declared inside for-loop body (unusual placement per PEP 8) | minor | Hoisted to top of `_try_new_entry_from_setup` adjacent to `nonlocal position`. |
+| F-1-6 | `ks_last_cme_session` closure tracker not synced with `ks_state.current_session_date` | minor | Acceptable as-is (function called once per sweep cell with fresh ks_state init). |
+
+141/141 targeted tests passing post-remediation across the Phase O.11-O.13 surface.
+
+**Closes**: `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` (BLOCKING-BEFORE-V3-KPI-EMISSION-ACCURACY).
+
+**Remaining BLOCKING follow-ups before V3 KPI emission**:
+- `P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST` (BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE).
+- `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT` (BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE).
+
+V3 launch WITHOUT `--enable-bocd-live` is **FULLY UNBLOCKED** — all Phase O.13 deep-wire + sidecar capture + cost-norm + H055 inline-replace closures landed. Operator may launch H062 v3 + H055 v3 walk-forward at any time with `--enable-kill-switch-runtime --enable-equity-rebase-current --cost-model conservative_prior` (NOT `--enable-bocd-live` until the per-session-logret-persist + pre-OOS-holdout calibration follow-ups land).

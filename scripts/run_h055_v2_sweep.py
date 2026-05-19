@@ -145,9 +145,17 @@ from skie_ninja.backtest.equity_rebase import (
     apply_pnl_to_equity,
     equity_for_sizing,
 )
+from skie_ninja.backtest.kill_switch_constants import (
+    iso_week_id_from_session_date,
+    session_date_from_timestamp,
+)
 from skie_ninja.backtest.kill_switch_runtime import (
     KillSwitchRuntimeConfig,
+    advance_session,
+    advance_week,
+    check_entry_blocked,
     init_runtime_state,
+    record_trigger,
     summarize_trigger_counts,
     update_state_on_close,
     update_state_on_open,
@@ -802,27 +810,41 @@ def _run_simulation(
         })
 
     def _try_new_entry_from_setup(t: int) -> None:
-        """Try to open a flat→position entry on any setup confirmed at bar t."""
-        nonlocal position
+        """Try to open a flat→position entry on any setup confirmed at bar t.
+
+        P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE closure: K-6/K-7
+        enforcement now routes through the primitive's check_entry_blocked
+        when ks_config non-None (primitive's daily/weekly accumulators are
+        the canonical source of truth + use ADR-0017 §4.1 session-start-
+        equity-ratcheting via advance_session/advance_week called at
+        boundaries in the main loop). Inline path preserved verbatim for
+        default-OFF (ks_config is None) → bit-identical to v2.
+        """
+        # F-1-5 R1 audit fix: hoisted nonlocal declarations to function top
+        # (PEP 8 / readability convention).
+        nonlocal position, ks_state
         if position is not None:
             return
         bar_session = session_dates[t]
 
-        # K-6 daily breaker
-        nonlocal breaker_state_session, breaker_session_active
-        if breaker_state_session != bar_session:
-            breaker_state_session = bar_session
-            breaker_session_active = False
-        if breaker_session_active:
-            return
-        # K-7 weekly breaker
-        nonlocal breaker_state_week, breaker_week_active
-        wk = _iso_week(bar_session)
-        if breaker_state_week != wk:
-            breaker_state_week = wk
-            breaker_week_active = False
-        if breaker_week_active:
-            return
+        # Inline K-6/K-7 breaker path (preserved verbatim for default-OFF
+        # bit-identity; SKIPPED when ks_config non-None per inline-replace).
+        if kill_switch_config is None:
+            # K-6 daily breaker
+            nonlocal breaker_state_session, breaker_session_active
+            if breaker_state_session != bar_session:
+                breaker_state_session = bar_session
+                breaker_session_active = False
+            if breaker_session_active:
+                return
+            # K-7 weekly breaker
+            nonlocal breaker_state_week, breaker_week_active
+            wk = _iso_week(bar_session)
+            if breaker_state_week != wk:
+                breaker_state_week = wk
+                breaker_week_active = False
+            if breaker_week_active:
+                return
 
         # ADR-0025 Phase O.13 Step 2b deep-wire W1 equity-rebase (entry path).
         eq_for_size = (
@@ -861,8 +883,24 @@ def _run_simulation(
             size = int(np.floor(min(size_from_risk, cap)))
             if size < 1:
                 continue
+            # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE closure: primitive
+            # K-3/K-4/K-6/K-7 enforcement when ks_config non-None. Inline
+            # K-6/K-7 path above is SKIPPED in this case; the primitive's
+            # check_entry_blocked is the canonical entry-gate. K-3 prevents
+            # add-to-loser (no overlapping same-symbol positions); K-4
+            # capacity cap; K-6/K-7 daily/weekly breakers with current-equity
+            # ratcheting per ADR-0017 §4.1.
+            if kill_switch_config is not None and ks_state is not None:
+                blocked, reason = check_entry_blocked(
+                    ks_state, kill_switch_config,
+                    symbol=symbol, position_size=size,
+                )
+                if blocked and reason is not None:
+                    ks_state = record_trigger(ks_state, reason)
+                    continue
             stop_price = entry_price - s.side * (beta_sl_mult * atr_t)
             tp_price = entry_price + s.side * (alpha_tp_mult * atr_t)
+            r_dollar = beta_dollars_per_contract * size
             position = _Position(
                 side=s.side,
                 units=[{
@@ -876,7 +914,34 @@ def _run_simulation(
                 entry_session_date=bar_session,
                 km_at_entry=current_km,
             )
+            # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE closure: update
+            # primitive's open_position_by_symbol for K-3 enforcement on
+            # subsequent entries. F-1-4 R1 audit note: K-3 is STRUCTURALLY
+            # pre-empted by the position-check at line 824 (`if position is
+            # not None: return`); the primitive's K-3 fires on a code path
+            # that cannot be reached in H055 v2 today (any second-entry
+            # attempt is blocked by the position-check before reaching
+            # check_entry_blocked). Maintained for sidecar provenance +
+            # forward-compat with hypotheses that may relax the position-
+            # check. F-1-3 R1 audit fix: removed silent try/except.
+            if ks_state is not None:
+                entry_ts = pd.Timestamp(df_5m.iloc[entry_idx]["ts_event"])
+                ks_state = update_state_on_open(
+                    ks_state,
+                    symbol=symbol, side=int(s.side),
+                    entry_ts=entry_ts, entry_price=float(entry_price),
+                    position_size=int(size),
+                    stop_price=float(stop_price),
+                    r_dollar=float(r_dollar),
+                )
             return  # only one position at a time
+
+    # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE closure: track
+    # CME-session-clock-derived session_date + iso_week per Phase O.12
+    # validator parity migration. The primitive's advance_session +
+    # advance_week refresh the K-6/K-7 thresholds against current equity.
+    ks_last_cme_session = None
+    ks_last_week_id = None
 
     # ── Main loop ──
     for t in range(n_bars - 1):
@@ -896,15 +961,53 @@ def _run_simulation(
             sm.on_session_close(sess_arith_ret, last_session)
         last_session = bar_session
 
-        # Update breakers based on cumulative P/L
-        wk = _iso_week(bar_session)
-        sess_pnl = per_session_pnl.get(bar_session, 0.0)
-        wk_pnl = per_week_pnl.get(wk, 0.0)
-        denom_for_pct = equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc
-        if not breaker_session_active and (sess_pnl / denom_for_pct) <= daily_loss_breaker_pct:
-            breaker_session_active = True
-        if not breaker_week_active and (wk_pnl / denom_for_pct) <= weekly_loss_breaker_pct:
-            breaker_week_active = True
+        # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE closure: when ks_config
+        # non-None, advance the primitive's session + week state at boundaries
+        # so K-6/K-7 thresholds refresh against current equity per ADR-0017
+        # §4.1 session-start-equity-ratcheting + Phase O.12 validator parity.
+        # F-1-3 R1 audit fix: removed silent try/except; ts_event presence
+        # is asserted at function entry per fail-closed discipline.
+        # F-1-1 R1 audit known limitation: `current_equity=equity` reflects
+        # equity at the START of bar t (= equity at END of bar t-1 = correct
+        # session-start equity for the new session, because position-exit
+        # P/L on bar t hasn't been applied yet — _check_position_exits runs
+        # AFTER the advance block). Edge case: if a position is open across
+        # the CME session boundary, the exit at bar t is attributed to the
+        # NEW session's PnL, not the prior session. Verified by sequential
+        # ordering of advance (line 956) BEFORE position-exit checks (line
+        # ~995).
+        if ks_state is not None:
+            cme_sess_dt = session_date_from_timestamp(
+                pd.Timestamp(df_5m.iloc[t]["ts_event"])
+            )
+            if cme_sess_dt != ks_last_cme_session:
+                ks_state = advance_session(
+                    ks_state, new_session_date=cme_sess_dt,
+                    current_equity=equity,
+                )
+                ks_last_cme_session = cme_sess_dt
+            new_week_id = iso_week_id_from_session_date(cme_sess_dt)
+            if new_week_id != ks_last_week_id:
+                ks_state = advance_week(
+                    ks_state, new_week_id=new_week_id,
+                    current_equity=equity,
+                )
+                ks_last_week_id = new_week_id
+
+        # Update inline breakers based on cumulative P/L. F-1-2 R1 audit fix:
+        # gated on `kill_switch_config is None` so dead-state mutation is
+        # avoided when primitive enforcement is active (primitive's
+        # daily/weekly accumulators are the canonical source of truth in
+        # that path).
+        if kill_switch_config is None:
+            wk = _iso_week(bar_session)
+            sess_pnl = per_session_pnl.get(bar_session, 0.0)
+            wk_pnl = per_week_pnl.get(wk, 0.0)
+            denom_for_pct = equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc
+            if not breaker_session_active and (sess_pnl / denom_for_pct) <= daily_loss_breaker_pct:
+                breaker_session_active = True
+            if not breaker_week_active and (wk_pnl / denom_for_pct) <= weekly_loss_breaker_pct:
+                breaker_week_active = True
 
         if position is not None:
             closed = _check_position_exits(t)
@@ -1170,16 +1273,13 @@ def _aggregate_h055_abandonment_blocks(
                 else "kill-switch-inactive"
             ),
             "deep_wiring_status": (
-                # F-1-2 R1 audit fix: corrected misleading "primitive counters
-                # update" claim. H055 v2 inline K-6/K-7 path does NOT mirror
-                # trigger events into the primitive's record_trigger() —
-                # primitive trigger_counts will stay at 0 even when inline
-                # K-6/K-7 fires. Counter-mirroring deferred to
-                # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE.
-                "deep-wired-via-sim-call (DESCRIPTIVE-ONLY: H055 inline K-6/K-7 "
-                "path enforces entry-gating; primitive counters do NOT mirror "
-                "inline trigger events until P1-PHASE-O13-H055-KILL-SWITCH-"
-                "INLINE-REPLACE lands)"
+                # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE CLOSED 2026-05-18:
+                # primitive's check_entry_blocked is now the canonical entry-gate
+                # when kill_switch_config non-None; inline breaker_session_active
+                # path is SKIPPED (preserved verbatim for default-OFF bit-
+                # identity). Primitive counters now reflect actual enforcement.
+                "deep-wired-via-sim-call (primitive enforces K-3/K-4/K-6/K-7 "
+                "via check_entry_blocked; inline breaker path skipped)"
                 if args.enable_kill_switch_runtime
                 else "default-off-no-engagement"
             ),
