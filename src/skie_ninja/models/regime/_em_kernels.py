@@ -474,11 +474,24 @@ def _forward_log_numpy_reference(
 ) -> tuple[np.ndarray, float]:
     t_len, n_states = log_B.shape
     log_alpha = np.empty((t_len, n_states), dtype=np.float64)
-    log_alpha[0] = log_pi + log_B[0]
+    # F-1-1: -inf prior + +inf emission produces NaN under naive addition;
+    # structurally zero-mass state (log_pi == -inf) stays at -inf regardless
+    # of the emission density. Mirrors the numba ``_forward_log_njit`` guard
+    # at line 158-161 (Phase O.18 symmetric-guard remediation; see
+    # docs/audits/audit_trail_2026-05-19_test-em-kernels-triage.md).
+    # ``np.errstate`` suppresses the harmless intermediate RuntimeWarning
+    # on the masked-away ``+inf + -inf`` cell; the result is overwritten.
+    forbidden_t0 = np.isneginf(log_pi)
+    with np.errstate(invalid="ignore"):
+        log_alpha[0] = np.where(forbidden_t0, -np.inf, log_pi + log_B[0])
     for t in range(1, t_len):
-        log_alpha[t] = log_B[t] + _scipy_logsumexp(
-            log_alpha[t - 1][:, None] + log_transmat, axis=0
-        )
+        # F-1-1 (continuation): rows where all predecessors are -inf produce
+        # ``-inf`` from logsumexp, but ``log_B[t,j] + (-inf)`` is NaN when
+        # log_B[t,j] is +inf. Compute the logsumexp first, then mask.
+        prop = _scipy_logsumexp(log_alpha[t - 1][:, None] + log_transmat, axis=0)
+        forbidden_t = np.isneginf(prop)
+        with np.errstate(invalid="ignore"):
+            log_alpha[t] = np.where(forbidden_t, -np.inf, log_B[t] + prop)
     log_likelihood = float(_scipy_logsumexp(log_alpha[-1]))
     return log_alpha, log_likelihood
 
@@ -491,10 +504,18 @@ def _backward_log_numpy_reference(
     log_beta = np.empty((t_len, n_states), dtype=np.float64)
     log_beta[-1] = 0.0
     for t in range(t_len - 2, -1, -1):
-        log_beta[t] = _scipy_logsumexp(
-            log_transmat + log_B[t + 1][None, :] + log_beta[t + 1][None, :],
-            axis=1,
-        )
+        # F-1-1 symmetric (Phase O.18): ``log_B[t+1,j] + log_beta[t+1,j]``
+        # can be ``+inf + (-inf) = NaN`` when state j is forbidden by the
+        # backward recursion (log_beta[t+1,j] == -inf) and its emission
+        # density at t+1 is +inf. Masking forbidden states to -inf before
+        # the logsumexp eliminates the NaN. Mirrors the numba
+        # ``_backward_log_njit`` early-return guard at line 211-213.
+        with np.errstate(invalid="ignore"):
+            rhs = log_transmat + log_B[t + 1][None, :] + log_beta[t + 1][None, :]
+        forbidden = np.isneginf(log_beta[t + 1])[None, :] & np.isposinf(log_B[t + 1])[None, :]
+        if np.any(forbidden):
+            rhs = np.where(forbidden, -np.inf, rhs)
+        log_beta[t] = _scipy_logsumexp(rhs, axis=1)
     return log_beta
 
 
@@ -511,11 +532,19 @@ def _forward_log_from_prior_numpy_reference(
         )
     t_len, n_states = log_B.shape
     log_alpha = np.empty((t_len, n_states), dtype=np.float64)
-    log_alpha[0] = log_B[0] + log_alpha_prop
+    # F-1-1: avoid +inf + (-inf) = NaN when propagated prior is -inf;
+    # structurally zero-mass state stays at -inf regardless of emission
+    # density. Mirrors the numba ``_forward_log_from_prior_njit`` guard at
+    # line 261-264 (Phase O.18 symmetric-guard remediation; see
+    # docs/audits/audit_trail_2026-05-19_test-em-kernels-triage.md).
+    forbidden_t0 = np.isneginf(log_alpha_prop)
+    with np.errstate(invalid="ignore"):
+        log_alpha[0] = np.where(forbidden_t0, -np.inf, log_B[0] + log_alpha_prop)
     for t in range(1, t_len):
-        log_alpha[t] = log_B[t] + _scipy_logsumexp(
-            log_alpha[t - 1][:, None] + log_transmat, axis=0
-        )
+        prop = _scipy_logsumexp(log_alpha[t - 1][:, None] + log_transmat, axis=0)
+        forbidden_t = np.isneginf(prop)
+        with np.errstate(invalid="ignore"):
+            log_alpha[t] = np.where(forbidden_t, -np.inf, log_B[t] + prop)
     log_likelihood = float(_scipy_logsumexp(log_alpha[-1]))
     return log_alpha, log_likelihood
 
