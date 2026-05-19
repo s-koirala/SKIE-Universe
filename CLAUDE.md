@@ -1748,3 +1748,27 @@ Per the operator 2026-05-18 directive ("proceed in execution"), Phase O.13 Step 
 - `P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR` (Step 1b R1 F-1-2 deferred concern).
 - `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` (replace inline K-6/K-7 with primitive enforcement).
 - `P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3` + `P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3` (NIG priors must be calibrated before `--enable-bocd-live` fires productively).
+
+### Phase O.13 sidecar primitive capture closure (2026-05-18)
+
+Per the operator 2026-05-18 directive ("proceed"), `P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE` BLOCKING-BEFORE-V3-KPI-EMISSION CLOSED. The orchestrator `main()` in both H062 walk-forward + H055 v2 sweep now captures the per-fold/per-cell `abandonment_trigger_runtime` block + aggregates into the sidecar `abandonment_triggers` payload.
+
+**Implementation**:
+- [scripts/run_h062_walk_forward.py](scripts/run_h062_walk_forward.py): primitive configs built once before symbol loop; threaded into per-fold OOS sim call; per-fold blocks captured into `per_symbol_abandonment_runtime` accumulator; basket-level aggregation sums K-3/K-4/K-6/K-7 trigger counts across folds × symbols + reconstructs per-symbol terminal equity from `per_symbol_oos_logret` via `10000 × exp(sum(log_returns))` per ADR-0013 §3.1 (per F-1-1 R1 audit fix).
+- [scripts/run_h055_v2_sweep.py](scripts/run_h055_v2_sweep.py): same 3 deep-wire configs built per-symbol + threaded into the inner cfg loop sim call. New helper `_aggregate_h055_abandonment_blocks(full_results, args)` walks per-cell results + aggregates basket-level summaries.
+
+**R1 audit** (single quant-auditor extended-scope per context constraints; agentId `a680a4c92ec903e49`). Verdict `proceed-with-remediation`. 7 findings; 3 load-bearing fixes applied inline:
+- F-1-1 critical: H062 per_symbol_final_equity used misleading last-fold-final semantic → fixed via concatenated-log-return reconstruction per ADR-0013 §3.1.
+- F-1-2 major: H055 comment claimed primitive counters mirror inline K-6/K-7 events but they don't → comment corrected with explicit "does NOT mirror" pin + cross-reference to `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE`.
+- F-1-3 major: H055 `bocd_live` annotation returned `bocd-live-active` on both branches → default-off corrected to `bocd-live-inactive` per ADR-0025 §D-5 grammar.
+- F-1-4 major (downgraded after verification): two NT8RealisticCostModel instances safe (frozen=True + pure function).
+- F-1-5/F-1-6/F-1-7 minor: tracked under new follow-ups `P1-CONFIG-CONSTRUCTION-DUPLICATION-CLEANUP` + existing `P1-PHASE-O13-JUSTIFY-ANNOTATIONS` + `P1-DEEP-WIRING-STATUS-VOCABULARY-CONSOLIDATE`.
+
+126/126 targeted tests passing.
+
+**Closes**: `P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE`.
+
+**Remaining BLOCKING follow-ups before V3 KPI emission**:
+- `P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR` (Step 1b R1 F-1-2).
+- `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` (Step 2b R1 F-1-6 + sidecar R1 F-1-2).
+- `P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3` + `P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3`.

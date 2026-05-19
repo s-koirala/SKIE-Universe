@@ -1111,6 +1111,132 @@ def _run_simulation(
 # ────────────────────────────────────────────────────────────────────────────
 
 
+def _aggregate_h055_abandonment_blocks(
+    full_results: list[dict[str, Any]],
+    args: Any,
+) -> dict[str, Any]:
+    """Aggregate per-(symbol × cfg) abandonment_trigger_runtime → sidecar block.
+
+    Closes P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE per ADR-0025 §D-2.
+
+    Consumes the per-cell ``abandonment_trigger_runtime`` block emitted by
+    each ``_run_simulation`` call and aggregates basket-level summaries.
+    When primitives default to None, the per-cell blocks have None
+    sub-fields → aggregation produces empty/zero summaries (bit-identical
+    to v2 KPI behavior).
+    """
+    # justify: aggregation across (symbol × cfg) is the natural basket-level
+    # disclosure surface per ADR-0025 §D-7 sidecar provenance binding.
+    n_results = len(full_results)
+    total_ks_triggers = {"K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0}
+    n_with_ks = 0
+    n_with_rebase = 0
+    n_with_cost = 0
+    total_cost_usd = 0.0
+    final_equity_by_cell: dict[str, float] = {}
+
+    for res in full_results:
+        atr_block = res.get("abandonment_trigger_runtime", {})
+        cell_key = f"{res.get('symbol', '?')}/{res.get('cfg_name', '?')}"
+
+        ks = atr_block.get("kill_switch_runtime")
+        if ks is not None:
+            n_with_ks += 1
+            counts = ks.get("trigger_counts", {})
+            for k_id in total_ks_triggers:
+                total_ks_triggers[k_id] += int(counts.get(k_id, 0))
+
+        rebase = atr_block.get("equity_rebase")
+        if rebase is not None:
+            n_with_rebase += 1
+            final_eq = rebase.get("final_equity")
+            if final_eq is not None:
+                final_equity_by_cell[cell_key] = float(final_eq)
+
+        cost = atr_block.get("cost_model")
+        if cost is not None:
+            n_with_cost += 1
+            total_cost_usd += float(cost.get("cumulative_cost_usd", 0.0))
+
+    total_triggers = sum(total_ks_triggers.values())
+    return {
+        "kill_switch_runtime": {
+            "enabled": bool(args.enable_kill_switch_runtime),
+            "n_cells_with_ks_engaged": n_with_ks,
+            "trigger_counts_aggregate": total_ks_triggers,
+            "total_triggers": total_triggers,
+            "annotation": (
+                "kill-switch-active" if total_triggers > 0
+                else "kill-switch-inactive"
+            ),
+            "deep_wiring_status": (
+                # F-1-2 R1 audit fix: corrected misleading "primitive counters
+                # update" claim. H055 v2 inline K-6/K-7 path does NOT mirror
+                # trigger events into the primitive's record_trigger() —
+                # primitive trigger_counts will stay at 0 even when inline
+                # K-6/K-7 fires. Counter-mirroring deferred to
+                # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE.
+                "deep-wired-via-sim-call (DESCRIPTIVE-ONLY: H055 inline K-6/K-7 "
+                "path enforces entry-gating; primitive counters do NOT mirror "
+                "inline trigger events until P1-PHASE-O13-H055-KILL-SWITCH-"
+                "INLINE-REPLACE lands)"
+                if args.enable_kill_switch_runtime
+                else "default-off-no-engagement"
+            ),
+        },
+        "equity_rebase": {
+            "enabled": bool(args.enable_equity_rebase_current),
+            "mode": "current" if args.enable_equity_rebase_current else "fixed",
+            "n_cells_with_rebase_engaged": n_with_rebase,
+            "final_equity_by_cell": final_equity_by_cell,
+            "deep_wiring_status": (
+                "deep-wired-via-sim-call"
+                if args.enable_equity_rebase_current
+                else "default-off-no-engagement"
+            ),
+        },
+        "bocd_live": {
+            "enabled": bool(args.enable_bocd_live),
+            "annotation": (
+                # F-1-3 R1 audit fix: distinguish enabled-but-deferred
+                # ("bocd-live-active" placeholder pending calibration follow-up)
+                # vs default-off ("bocd-live-inactive").
+                "bocd-live-active"  # deferred per BLOCKING follow-up
+                if args.enable_bocd_live
+                else "bocd-live-inactive"
+            ),
+            "deep_wiring_status": (
+                "deferred-pending-P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3"
+                if args.enable_bocd_live
+                else "default-off-no-engagement"
+            ),
+        },
+        "cost_model": {
+            "id": (
+                "nt8_realistic_v1" if args.cost_model != "none"
+                else "zero_cost_v1_pre_cost_research_only"
+            ),
+            "annotation": (
+                "cost-conservative-prior"
+                if args.cost_model == "conservative_prior"
+                else "cost-empirical-calibrated"
+                if args.cost_model == "paper_trade_empirical"
+                else "cost-zero"
+            ),
+            "calibration_source": args.cost_model,
+            "n_cells_with_cost_engaged": n_with_cost,
+            "cumulative_cost_usd_aggregate": total_cost_usd,
+            "deep_wiring_status": (
+                "deep-wired-via-sim-call"
+                if args.cost_model in ("conservative_prior", "paper_trade_empirical")
+                else "default-off-no-engagement"
+            ),
+        },
+        "adr_0025_version": "v1",
+        "p1_sidecar_capture": "closed (Phase O.13)",
+    }
+
+
 def _subwindow_metrics(
     result: dict[str, Any],
     *,
@@ -1389,6 +1515,28 @@ def main(argv: list[str] | None = None) -> int:
         for s in setups:
             setup_idx_by_bar.setdefault(s.confirmation_bar, []).append(s)
 
+        # ADR-0025 Phase O.13 P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE closure.
+        # Build the 3 deep-wire primitive configs once per symbol (operator-
+        # level decisions; symbol-independent values). BOCD live-pause kept
+        # None pending P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3 BLOCKING.
+        deep_wire_ks_config: KillSwitchRuntimeConfig | None = None
+        if args.enable_kill_switch_runtime:
+            deep_wire_ks_config = KillSwitchRuntimeConfig(
+                enable_k3=True, enable_k4=True, enable_k6=True, enable_k7=True,
+                capacity_caps=_CAPACITY_CAPS,
+            )
+        deep_wire_rebase_policy: EquityRebasePolicy | None = None
+        if args.enable_equity_rebase_current:
+            deep_wire_rebase_policy = EquityRebasePolicy(
+                mode="current", starting_equity=10_000.0,
+                floor_equity_fraction=0.10,
+            )
+        deep_wire_cost_model: NT8RealisticCostModel | None = None
+        if args.cost_model in ("conservative_prior", "paper_trade_empirical"):
+            deep_wire_cost_model = NT8RealisticCostModel(
+                calibration_source="conservative_prior",
+            )
+
         for cfg in SWEEP_CONFIGS:
             res = _run_simulation(
                 symbol=sym,
@@ -1399,6 +1547,11 @@ def main(argv: list[str] | None = None) -> int:
                 cfg=cfg,
                 bocd_cfg=bocd_cfg,
                 rho_star=args.rho_star,
+                # ADR-0025 Phase O.13 Step 2b deep-wire kwargs.
+                kill_switch_config=deep_wire_ks_config,
+                equity_rebase_policy=deep_wire_rebase_policy,
+                bocd_live_state=None,  # deferred per P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3
+                cost_model=deep_wire_cost_model,
             )
             sub = _subwindow_metrics(
                 res, sub_start_iso=sub_start_iso, sub_end_iso=sub_end_iso,
@@ -1505,63 +1658,15 @@ def main(argv: list[str] | None = None) -> int:
         "results": full_results,
         "rho_star_at_run": float(args.rho_star),
         "smoke_mode": bool(args.smoke),
-        # ADR-0025 Phase O.11 abandonment-trigger infrastructure block.
-        # Default-OFF flags preserve numerical agreement with existing H055 v2
-        # KPI emission. Deep per-trade integration tracked under
-        # P1-ADR-0025-WIRE-DEEP-INTRA-SIM-H062-H055.
-        "abandonment_triggers": {
-            "kill_switch_runtime": {
-                "enabled": bool(args.enable_kill_switch_runtime),
-                "annotation": (
-                    "kill-switch-active"
-                    if args.enable_kill_switch_runtime
-                    else "kill-switch-inactive"
-                ),
-                "deep_wiring_status": "shallow-v1-cli-exposed",
-            },
-            "equity_rebase": {
-                "enabled": bool(args.enable_equity_rebase_current),
-                "mode": "current" if args.enable_equity_rebase_current else "fixed",
-                "deep_wiring_status": "shallow-v1-cli-exposed",
-                "deep_wiring_note": (
-                    "H055 v2 sweep configs already toggle use_current_equity_rebase "
-                    "per config; this CLI flag overrides at the sweep level via "
-                    "future deep-wiring follow-up"
-                ),
-            },
-            "bocd_live": {
-                "enabled": bool(args.enable_bocd_live),
-                "annotation": (
-                    "bocd-live-pause"
-                    if args.enable_bocd_live
-                    else "bocd-live-active"
-                ),
-                "deep_wiring_status": "shallow-v1-cli-exposed",
-                "deep_wiring_note": (
-                    "H055 C9 cfg already implements adaptive Kelly halving via "
-                    "BOCD; this CLI flag exposes the new hard-pause variant as "
-                    "an orthogonal layer per ADR-0025 §D-6"
-                ),
-            },
-            "cost_model": {
-                "id": (
-                    "nt8_realistic_v1"
-                    if args.cost_model != "none"
-                    else "zero_cost_v1_pre_cost_research_only"
-                ),
-                "annotation": (
-                    "cost-conservative-prior"
-                    if args.cost_model == "conservative_prior"
-                    else "cost-empirical-calibrated"
-                    if args.cost_model == "paper_trade_empirical"
-                    else "cost-zero"
-                ),
-                "calibration_source": args.cost_model,
-                "deep_wiring_status": "shallow-v1-cli-exposed",
-            },
-            "adr_0025_version": "v1",
-            "deep_wiring_followup": "P1-ADR-0025-WIRE-DEEP-INTRA-SIM-H062-H055",
-        },
+        # ADR-0025 Phase O.13 abandonment-trigger infrastructure block.
+        # P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE closure: aggregate per-cell
+        # abandonment_trigger_runtime blocks from each (symbol × cfg) result.
+        # Default-OFF preserves bit-identical v2 KPI behavior (per-cell blocks
+        # have None sub-fields). Deep-wire integration active when the
+        # corresponding CLI flag is on.
+        "abandonment_triggers": _aggregate_h055_abandonment_blocks(
+            full_results, args,
+        ),
         "written_at_utc": _dt.datetime.now(_dt.UTC).isoformat(),
     }
 

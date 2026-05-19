@@ -1020,6 +1020,43 @@ def main(argv: list[str] | None = None) -> int:
         fold_mppm_oos: list[float] = []
         kelly_modes_per_fold: list[float] = []
 
+        # ADR-0025 Phase O.13 P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE closure.
+        # Build the primitive configs once (operator-level decisions; symbol-
+        # independent) for thread-through into per-fold OOS sim calls. BOCD
+        # live-pause kept None pending P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3
+        # BLOCKING-BEFORE-V3-LAUNCH (NIG priors must be calibrated empirically
+        # against v2 H062 per-session log-return distribution before flag-ON).
+        deep_wire_ks_config: KillSwitchRuntimeConfig | None = None
+        if args.enable_kill_switch_runtime:
+            deep_wire_ks_config = KillSwitchRuntimeConfig(
+                enable_k3=True, enable_k4=True, enable_k6=True, enable_k7=True,
+                capacity_caps=_CAPACITY_CAPS,
+            )
+        deep_wire_rebase_policy: EquityRebasePolicy | None = None
+        if args.enable_equity_rebase_current:
+            deep_wire_rebase_policy = EquityRebasePolicy(
+                mode="current", starting_equity=10_000.0,
+                floor_equity_fraction=0.10,
+            )
+        # Cost model is constructed below in §"Cost model summary" block as
+        # `cost_model_obj` (line ~1638). NT8RealisticCostModel is @dataclass(
+        # frozen=True) per [src/skie_ninja/backtest/costs/nt8_realistic.py](
+        # ../src/skie_ninja/backtest/costs/nt8_realistic.py) → stateless;
+        # `round_trip_cost_usd()` is a pure function. F-1-4 R1 audit confirmed
+        # the two-instance pattern is safe (no internal accumulator); local
+        # rebuild here is idempotent in observable behavior.
+        deep_wire_cost_model: NT8RealisticCostModel | None = None
+        if args.cost_model in ("conservative_prior", "paper_trade_empirical"):
+            deep_wire_cost_model = NT8RealisticCostModel(
+                calibration_source="conservative_prior",
+            )
+
+        # Per-symbol abandonment_trigger_runtime accumulator (fold-level summary
+        # blocks). Aggregated at basket-level after the symbol loop.
+        per_symbol_abandonment_runtime: dict[str, list[dict[str, Any]]] = {
+            s: [] for s in universe
+        }
+
         for sym in universe:
             df_5m = df_5m_per_symbol[sym]
             symbol_oos_end = oos_per_symbol_end.get(sym, oos_end)
@@ -1125,7 +1162,20 @@ def main(argv: list[str] | None = None) -> int:
                     k_atr=best["k_atr"],
                     eod_flatten_minutes_from_open=eod_flatten_minutes_from_open,
                     kelly_multiplier=best["kelly_multiplier"],
+                    # ADR-0025 Phase O.13 deep-wire kwargs (P1-PHASE-O13-SIDECAR-
+                    # PRIMITIVE-CAPTURE closure). All None default preserves
+                    # Phase O.10 v2 numerical agreement bit-identically.
+                    kill_switch_config=deep_wire_ks_config,
+                    equity_rebase_policy=deep_wire_rebase_policy,
+                    bocd_live_state=None,  # deferred per P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3
+                    cost_model=deep_wire_cost_model,
+                    starting_equity=10_000.0,
                 )
+                # Capture per-fold abandonment_trigger_runtime for sidecar
+                # aggregation (closes Step 1b R1 R-1 sidecar provenance gap).
+                _fold_atr_summary = sim_oos.get("abandonment_trigger_runtime", {})
+                if _fold_atr_summary:
+                    per_symbol_abandonment_runtime[sym].append(_fold_atr_summary)
 
                 # Filter trades to the test window strictly.
                 te_start_date = te_start_d.date() if hasattr(te_start_d, "date") else te_start_d
@@ -1509,29 +1559,58 @@ def main(argv: list[str] | None = None) -> int:
             rng_seed=rng_seed + _BOOTSTRAP_RNG_OFFSET + 11,
         )
 
-        # === ADR-0025 Phase O.11 abandonment-trigger primitive summaries ===
-        # Default-OFF preserves v2 KPI numerical agreement. When any flag is
-        # toggled ON the corresponding primitive emits its own summary block +
-        # KPI annotation per ADR-0025 §D-5.
+        # === ADR-0025 Phase O.11+O.13 abandonment-trigger primitive summaries ===
+        # P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE closure: aggregate per-fold
+        # abandonment_trigger_runtime blocks captured during the per-symbol
+        # walk-forward into basket-level summaries.
+        # Default-OFF preserves v2 KPI numerical agreement (all per-fold blocks
+        # have None sub-fields → aggregation produces empty/zero summaries).
+        # When primitive flags are ON the deep-wire engaged at OOS sim time and
+        # the per-fold blocks carry real trigger counts + final equity + cost.
         ks_runtime_summary: dict[str, Any] = {
             "enabled": bool(args.enable_kill_switch_runtime),
             "runtime_active": False,
             "trigger_counts": {"K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0},
+            "total_triggers": 0,
             "annotation": "kill-switch-inactive",
-            "deep_wiring_status": "shallow-v1-cli-exposed",
+            "deep_wiring_status": (
+                "deep-wired-via-sim-call"
+                if args.enable_kill_switch_runtime
+                else "default-off-no-engagement"
+            ),
+            "per_symbol_trigger_counts": {},
+            "n_fold_summaries_captured": 0,
         }
         if args.enable_kill_switch_runtime:
-            try:
-                _ks_state = init_runtime_state(
-                    universe=tuple(universe), starting_equity=10_000.0
-                )
-                ks_runtime_summary.update(summarize_trigger_counts(_ks_state))
-                ks_runtime_summary["enabled"] = True
-            except ValueError as exc:
-                _log.warning("K-5 universe-validation failed: %s", exc)
-                ks_runtime_summary["enabled"] = False
-                ks_runtime_summary["universe_validation_error"] = str(exc)
+            # Aggregate per-fold ks_summary blocks across symbols.
+            for sym in universe:
+                sym_fold_summaries = per_symbol_abandonment_runtime.get(sym, [])
+                sym_total_counts: dict[str, int] = {
+                    "K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0
+                }
+                for fold_atr in sym_fold_summaries:
+                    fold_ks = fold_atr.get("kill_switch_runtime")
+                    if fold_ks is None:
+                        continue
+                    fold_counts = fold_ks.get("trigger_counts", {})
+                    for k_id in sym_total_counts:
+                        sym_total_counts[k_id] += int(fold_counts.get(k_id, 0))
+                ks_runtime_summary["per_symbol_trigger_counts"][sym] = sym_total_counts
+                for k_id in ks_runtime_summary["trigger_counts"]:
+                    ks_runtime_summary["trigger_counts"][k_id] += sym_total_counts[k_id]
+                ks_runtime_summary["n_fold_summaries_captured"] += len(sym_fold_summaries)
+            ks_runtime_summary["total_triggers"] = sum(
+                ks_runtime_summary["trigger_counts"].values()
+            )
+            ks_runtime_summary["runtime_active"] = ks_runtime_summary["total_triggers"] > 0
+            ks_runtime_summary["annotation"] = (
+                "kill-switch-active"
+                if ks_runtime_summary["runtime_active"]
+                else "kill-switch-inactive"
+            )
 
+        # Equity-rebase summary (aggregated from per-fold final_equity values
+        # per the Phase O.13 P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE closure).
         equity_rebase_summary: dict[str, Any] = {
             "enabled": bool(args.enable_equity_rebase_current),
             "mode": "current" if args.enable_equity_rebase_current else "fixed",
@@ -1542,8 +1621,27 @@ def main(argv: list[str] | None = None) -> int:
                 if args.enable_equity_rebase_current
                 else "equity-rebase-fixed"
             ),
-            "deep_wiring_status": "shallow-v1-cli-exposed",
+            "deep_wiring_status": (
+                "deep-wired-via-sim-call"
+                if args.enable_equity_rebase_current
+                else "default-off-no-engagement"
+            ),
+            "per_symbol_final_equity": {},
         }
+        if args.enable_equity_rebase_current:
+            for sym in universe:
+                # F-1-1 R1 audit fix: per-fold sim calls start fresh at
+                # $10K (walk-forward folds are independent). The multi-fold-
+                # concatenated symbol-terminal equity is reconstructed from
+                # per_symbol_oos_logret via exp(sum(log_returns)) per ADR-0013
+                # §3.1 realized-OOS equity-curve binding. The previous "last
+                # fold's final_equity" semantic was misleading per R1 audit.
+                if per_symbol_oos_logret.get(sym):
+                    sum_log_ret = float(np.sum(per_symbol_oos_logret[sym]))
+                    terminal_eq_concatenated = 10_000.0 * float(np.exp(sum_log_ret))
+                    equity_rebase_summary["per_symbol_final_equity"][sym] = (
+                        terminal_eq_concatenated
+                    )
 
         # Cost model summary (default = none = zero-cost pre-cost research only).
         cost_model_obj: NT8RealisticCostModel | None = None
@@ -1582,11 +1680,19 @@ def main(argv: list[str] | None = None) -> int:
             "deep_wiring_status": "shallow-v1-cli-exposed",
         }
 
+        # BOCD live-pause summary. Per the P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3
+        # BLOCKING-BEFORE-V3-LAUNCH follow-up, bocd_live remains None in the
+        # per-fold sim calls until the empirical NIG prior calibration lands.
+        # Until then, this block reports default-OFF semantics only.
         bocd_live_summary: dict[str, Any] = {
             "enabled": bool(args.enable_bocd_live),
             "n_pause_events": 0,
             "annotation": "bocd-live-active",
-            "deep_wiring_status": "shallow-v1-cli-exposed",
+            "deep_wiring_status": (
+                "deferred-pending-P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3"
+                if args.enable_bocd_live
+                else "default-off-no-engagement"
+            ),
             "config": {
                 "hazard_rate": 1.0 / 250.0,
                 "window": 60,
