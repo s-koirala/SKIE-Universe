@@ -54,15 +54,30 @@ from skie_ninja.features.h062 import (
     compute_h062_features,
 )
 from skie_ninja.backtest.costs.nt8_realistic import NT8RealisticCostModel
-from skie_ninja.backtest.equity_rebase import EquityRebasePolicy, equity_for_sizing
+from skie_ninja.backtest.equity_rebase import (
+    EquityRebasePolicy,
+    apply_pnl_to_equity,
+    equity_for_sizing,
+)
+from skie_ninja.backtest.kill_switch_constants import (
+    iso_week_id_from_session_date,
+    session_date_from_timestamp,
+)
 from skie_ninja.backtest.kill_switch_runtime import (
     KillSwitchRuntimeConfig,
+    advance_session,
+    advance_week,
+    check_entry_blocked,
     init_runtime_state,
+    record_trigger,
     summarize_trigger_counts,
+    update_state_on_close,
+    update_state_on_open,
 )
 from skie_ninja.inference.bocd import detect_decay
 from skie_ninja.inference.bocd_live import (
     BOCDLiveConfig,
+    BOCDLiveState,
     bocd_live_update,
     init_bocd_live,
     is_paused,
@@ -209,6 +224,15 @@ def _run_per_trade_simulation(
     eod_flatten_minutes_from_open: int = 360,  # 6hr from 09:30 ET = 15:30 ET ~ 14:30 CT
     risk_budget_pct: float = 0.01,
     kelly_multiplier: float = 0.25,
+    # ADR-0025 Phase O.13 deep-wire kwargs per buildout 7d63795 (R1 remediated).
+    # All default None preserves Phase O.10 v2 numerical agreement bit-identically.
+    # justify: starting_equity default 10000.0 = v2 literal preserved per buildout
+    # R1 F-1-8; the parity test asserts bit-identical-on-default-None.
+    kill_switch_config: KillSwitchRuntimeConfig | None = None,
+    equity_rebase_policy: EquityRebasePolicy | None = None,
+    bocd_live_state: BOCDLiveState | None = None,
+    cost_model: NT8RealisticCostModel | None = None,
+    starting_equity: float = 10000.0,
 ) -> dict[str, Any]:
     """Run per-trade simulation on H062 features.
 
@@ -252,7 +276,25 @@ def _run_per_trade_simulation(
     trade_sides: list[int] = []
 
     multiplier = _MULTIPLIERS.get(symbol, 1.0)
-    cap = _CAPACITY_CAPS.get(symbol, 1)
+    # F-1-1 R1 audit fix: kill_switch_config.capacity_caps takes precedence over
+    # the v2 hardcoded _CAPACITY_CAPS when supplied; otherwise fall back to v2 literal.
+    # justify: per ADR-0025 §D-1 K-4 the runtime kill-switch is the canonical source
+    # of truth for capacity; v2 hardcoded path preserved on None for bit-identity.
+    cap = (
+        kill_switch_config.capacity_caps.get(symbol, _CAPACITY_CAPS.get(symbol, 1))
+        if kill_switch_config is not None
+           and kill_switch_config.enable_k4
+        else _CAPACITY_CAPS.get(symbol, 1)
+    )
+    # CR-1-3 R1 audit fix: fail-closed schema assertion. The wire-site insertions
+    # below depend on `ts_event` column existing. Silent fallback to a hardcoded
+    # date corrupts kill-switch state under malformed input.
+    if (kill_switch_config is not None
+            or bocd_live_state is not None) and "ts_event" not in df_5m.columns:
+        raise ValueError(
+            "H062 deep-wire requires 'ts_event' column in df_5m when "
+            "kill_switch_config or bocd_live_state is supplied"
+        )
     # Effective Kelly fraction per design.md §5.3 formula.
     # For this v1 launch: f_kelly_raw=1.0 implicit (full-Kelly assumption);
     # effective = clamp(kelly_multiplier × 1.0, 0, 2.5).
@@ -266,6 +308,21 @@ def _run_per_trade_simulation(
     r_dollar = np.nan
     entry_session_date = None
     position_size = 0
+
+    # ADR-0025 Phase O.13 deep-wire state init (W2). Default-None preserves v2 path.
+    # justify: per buildout 7d63795 §"Wire-site map — H062"; primitives init only
+    # when their configs are non-None; v2 numerical path is bit-identical otherwise.
+    ks_state = None
+    if kill_switch_config is not None:
+        ks_state = init_runtime_state(
+            universe=(symbol,), starting_equity=starting_equity
+        )
+    current_equity = starting_equity if equity_rebase_policy is not None else None
+    # BOCD per-session log-return accumulator for W8 payload (R1 F-1-3 fix: MPPM(ρ=1)
+    # over single observation = log-return per GISW 2007 §2 reduction).
+    bocd_session_log_ret_accumulator = 0.0
+    bocd_session_idx_counter = 0
+    bocd_last_observed_session = None
 
     # Build session-open index map.
     # Each session starts when session_date_et changes.
@@ -282,6 +339,7 @@ def _run_per_trade_simulation(
     ) -> None:
         nonlocal in_position, position_side, entry_idx, entry_price
         nonlocal stop_price, r_dollar, entry_session_date, position_size
+        nonlocal current_equity, ks_state, bocd_session_log_ret_accumulator
         if not in_position:
             return
         # Realized log-return for this trade (signed).
@@ -292,16 +350,52 @@ def _run_per_trade_simulation(
             position_side * (exit_price - entry_price) * multiplier * position_size
         )
         r_mult = signed_dollar / r_dollar if r_dollar > 0 else 0.0
+
+        # ADR-0025 Phase O.13 deep-wire W7 cost subtraction (R1 F-1-2 unit fix).
+        # justify: cost_per_session_log_return returns NOTIONAL-scale drag; must convert
+        # to EQUITY-FRACTIONAL scale to add to trade_equity_log_return. See buildout
+        # 7d63795 §"Wire-site map — H062" W7 RE-SPEC.
+        cost_drag_equity_fractional = 0.0
+        if cost_model is not None:
+            cost_usd = cost_model.round_trip_cost_usd(
+                symbol=symbol, n_contracts=position_size
+            )
+            equity_for_cost = (
+                current_equity if current_equity is not None else starting_equity
+            )
+            if equity_for_cost > 0:
+                cost_drag_equity_fractional = -cost_usd / equity_for_cost
+
         # The trade's log-return contribution at equity level is approximately
         # log(1 + realized_pnl / equity); approximate per design.md §1 with
         # the per-trade R-multiple × per-trade risk-fraction (1% of equity at
-        # entry; ADR-0017 §4.1 current-equity rebase).
-        trade_equity_log_return = float(np.log(1.0 + r_mult * risk_budget_pct))
+        # entry; ADR-0017 §4.1 current-equity rebase). When cost_model is None
+        # cost_drag_equity_fractional == 0.0 → bit-identical to v2 path.
+        trade_equity_log_return = float(
+            np.log(1.0 + r_mult * risk_budget_pct + cost_drag_equity_fractional)
+        )
 
         r_multiples.append(r_mult)
         trade_log_returns.append(trade_equity_log_return)
         trade_session_dates.append(entry_session_date)
         trade_sides.append(position_side)
+
+        # ADR-0025 Phase O.13 deep-wire W6 update_state_on_close + equity update.
+        # CR-1-3 R1 audit fix: removed silent date fallback; `ts_event` presence
+        # is asserted at function entry when ks_state-bearing kwargs are supplied.
+        if ks_state is not None:
+            exit_ts = pd.Timestamp(df_5m.iloc[exit_idx]["ts_event"])
+            ks_state = update_state_on_close(
+                ks_state,
+                symbol=symbol,
+                realized_pnl_dollar=float(signed_dollar),
+                exit_ts=exit_ts,
+            )
+        if current_equity is not None:
+            current_equity = apply_pnl_to_equity(current_equity, float(signed_dollar))
+        # Accumulate per-session log-return for W8 BOCD payload (R1 F-1-3 pin).
+        if bocd_live_state is not None:
+            bocd_session_log_ret_accumulator += float(trade_equity_log_return)
 
         in_position = False
         position_side = 0
@@ -314,6 +408,44 @@ def _run_per_trade_simulation(
 
     for t in range(n_bars - 1):
         bar_session = session_dates[t]
+        # ADR-0025 Phase O.13 deep-wire W8 session-boundary handler.
+        # Fires when bar_session != prior session. Skip on t=0 (no prior session).
+        if t > 0 and session_dates[t] != session_dates[t - 1]:
+            # CR-1-3 R1 audit fix: ts_event presence asserted at function entry
+            # when ks_state/bocd_live_state non-None; no silent fallback needed.
+            if ks_state is not None:
+                cme_session_date = session_date_from_timestamp(
+                    pd.Timestamp(df_5m.iloc[t]["ts_event"])
+                )
+                eq_for_advance = (
+                    current_equity if current_equity is not None else starting_equity
+                )
+                ks_state = advance_session(
+                    ks_state,
+                    new_session_date=cme_session_date,
+                    current_equity=eq_for_advance,
+                )
+                new_week_id = iso_week_id_from_session_date(cme_session_date)
+                if ks_state.current_week_id != new_week_id:
+                    ks_state = advance_week(
+                        ks_state,
+                        new_week_id=new_week_id,
+                        current_equity=eq_for_advance,
+                    )
+            # BOCD live-pause: feed the just-completed session's accumulated
+            # log-return as the W8 payload per R1 F-1-3 pin.
+            # WARNING: per buildout R1 F-1-3 the NIG prior MUST be calibrated
+            # before this fires productively (P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3).
+            if bocd_live_state is not None:
+                ts_utc_str = pd.Timestamp(df_5m.iloc[t]["ts_event"]).isoformat()
+                bocd_live_state = bocd_live_update(
+                    bocd_live_state,
+                    x_t=float(bocd_session_log_ret_accumulator),
+                    session_idx=bocd_session_idx_counter,
+                    ts_utc=ts_utc_str,
+                )
+                bocd_session_idx_counter += 1
+                bocd_session_log_ret_accumulator = 0.0
         # In-position bar-by-bar exit checks.
         if in_position:
             # Check stop intrabar — gap-through-stop convention per design.md §7.
@@ -368,11 +500,34 @@ def _run_per_trade_simulation(
             # Position size per design.md §5.3 formula (simplified for v1
             # at risk_budget_pct=1% of $10K starting equity = $100; clamped
             # at capacity cap).
-            target_dollar_risk = 10000.0 * risk_budget_pct  # $100 at $10K equity
+            # ADR-0025 Phase O.13 deep-wire W3 equity-rebase sizing.
+            # justify: when equity_rebase_policy is None, falls back to literal
+            # 10000.0 → bit-identical to v2 path per buildout R1 F-1-8.
+            if equity_rebase_policy is not None:
+                eq_for_sizing_val = equity_for_sizing(
+                    equity_rebase_policy,
+                    current_equity if current_equity is not None else starting_equity,
+                )
+            else:
+                eq_for_sizing_val = 10000.0  # v2 literal, bit-identical
+            target_dollar_risk = eq_for_sizing_val * risk_budget_pct
             size_from_risk = target_dollar_risk / dollar_1r_per_contract
             size_capped = min(int(np.floor(size_from_risk)), cap)
             if size_capped < 1:
                 continue  # too coarse — skip the trade (capacity-too-small)
+
+            # ADR-0025 Phase O.13 deep-wire W4 pre-entry guard (R1 F-1-1 fix:
+            # AFTER size_capped is computed and checked).
+            if bocd_live_state is not None and is_paused(bocd_live_state):
+                continue
+            if kill_switch_config is not None and ks_state is not None:
+                blocked, reason = check_entry_blocked(
+                    ks_state, kill_switch_config,
+                    symbol=symbol, position_size=size_capped,
+                )
+                if blocked and reason is not None:
+                    ks_state = record_trigger(ks_state, reason)
+                    continue
 
             in_position = True
             position_side = ev
@@ -383,6 +538,17 @@ def _run_per_trade_simulation(
             r_dollar = dollar_1r_per_contract * size_capped
             entry_session_date = bar_session
             position_size = size_capped
+
+            # ADR-0025 Phase O.13 deep-wire W5 update_state_on_open for K-3 tracking.
+            if ks_state is not None:
+                entry_ts = pd.Timestamp(df_5m.iloc[entry_idx]["ts_event"])
+                ks_state = update_state_on_open(
+                    ks_state,
+                    symbol=symbol, side=int(position_side),
+                    entry_ts=entry_ts, entry_price=float(entry_price),
+                    position_size=int(position_size),
+                    stop_price=float(stop_price), r_dollar=float(r_dollar),
+                )
 
     # Close any open position at last bar.
     if in_position:
@@ -398,6 +564,32 @@ def _run_per_trade_simulation(
         [sess_to_logret[sd] for sd in session_dates_sorted], dtype=float
     )
 
+    # ADR-0025 Phase O.13 deep-wire W9 return-dict primitive summaries.
+    # When primitives None: each summary block is None or default = bit-identical
+    # downstream behavior (sidecar emission already handles missing keys).
+    ks_summary = (
+        summarize_trigger_counts(ks_state) if ks_state is not None else None
+    )
+    equity_summary = None
+    if current_equity is not None:
+        equity_summary = {
+            "mode": equity_rebase_policy.mode if equity_rebase_policy is not None else "fixed",
+            "starting_equity": starting_equity,
+            "final_equity": current_equity,
+        }
+    bocd_summary = (
+        summarize_pause_events(bocd_live_state)
+        if bocd_live_state is not None
+        else None
+    )
+    cost_summary = None
+    if cost_model is not None:
+        cost_summary = {
+            "cost_model_id": cost_model.cost_model_id,
+            "calibration_source": cost_model.calibration_source,
+            "annotation": cost_model.kpi_annotation(),
+        }
+
     return {
         "r_multiples": np.array(r_multiples, dtype=float),
         "trade_log_returns": np.array(trade_log_returns, dtype=float),
@@ -407,6 +599,14 @@ def _run_per_trade_simulation(
         "per_session_dates": session_dates_sorted,
         "n_trades": len(r_multiples),
         "n_eligible_events": int(np.sum(np.abs(feats.eligible_events))),
+        # Phase O.13 deep-wire primitive summaries; None when respective primitive
+        # is None → bit-identical to v2 dict-key absence per caller's dict.get().
+        "abandonment_trigger_runtime": {
+            "kill_switch_runtime": ks_summary,
+            "equity_rebase": equity_summary,
+            "bocd_live": bocd_summary,
+            "cost_model": cost_summary,
+        },
     }
 
 
