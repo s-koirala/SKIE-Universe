@@ -1560,3 +1560,34 @@ Sidecar `abandonment_triggers` block emitted per ADR-0025 §D-7 with the four pr
 **Closed follow-ups by Phase O.11**: `P1-H062-CURRENT-EQUITY-REBASE-IMPL` (via equity_rebase primitive); `P1-H062-COST-EMPIRICAL-CALIBRATION` + `P1-H055-COST-EMPIRICAL-CALIBRATION` (partially — conservative-prior path landed; full empirical calibration awaits paper-trade fill data); BOCD live-pause wiring (via bocd_live primitive).
 
 **Operator-readable summary**: the four primitives are runtime-ready opt-in tooling. The H062 + H055 v2 orchestrators expose the CLI flags but default to OFF to preserve numerical agreement with the Phase O.10 v2 KPI emissions. Operator may enable any subset per design.md §11.1 `# justify:` annotation. Live-promotion-readiness now depends on operator priority: enable the primitives, re-emit v3 KPI report cards with the new annotations, and proceed to NinjaScript implementation per ADR-0013 §5 (operator-discretionary per the 2026-05-04 standing decline-ninjascript directive).
+
+### Phase O.12: validator parity migration (2026-05-18)
+
+Per the two BLOCKING-BEFORE-NEXT-VALIDATOR-INVOCATION follow-ups registered by Phase O.11 (`P1-KILL-SWITCH-VALIDATOR-SESSION-CLOCK-MIGRATE` + `P1-KILL-SWITCH-VALIDATOR-EQUITY-RATCHET-MIGRATE`), Phase O.12 migrates [src/skie_ninja/backtest/kill_switch_validation.py](src/skie_ninja/backtest/kill_switch_validation.py) (the post-hoc validator landed in Phase O.2) to share the canonical CME session-clock + current-equity ratcheting semantics with the Phase O.11 runtime module. Drift between validator + runtime now structurally precluded.
+
+**Three changes**:
+
+1. **K-1 tolerance constant** lifted from the local `1.05` default to the shared-constants module's `K1_STOP_HIT_TOLERANCE_R` (`tolerance_r: float = K1_STOP_HIT_TOLERANCE_R` at the function signature). Identical value; provenance-only change tightening the parity-test invariant.
+
+2. **K-6 daily breaker** migration (Phase O.11 F-1-1 + F-1-7 audit fixes):
+   - **Session grouping** changed from UTC-naive `entry_ts.date()` to `session_date_from_timestamp(entry_ts)` (delegates to [utils.clock.trading_day](src/skie_ninja/utils/clock.py)). ETH bars spanning a UTC date boundary now correctly group into one CME trading day.
+   - **Threshold** changed from static `-0.02 × starting_equity` to ratcheting `-0.02 × equity_at_session_start` where `equity_at_session_start = starting_equity + cumulative_realized_pnl_through_all_prior_CME_sessions`. The validator now walks the trade ledger chronologically (not per-day-grouped) to compute the running equity trajectory.
+   - **Opt-out flag** `equity_ratcheting: bool = True` defaults to the new ratcheting semantic; passing `False` retains the legacy static-equity threshold for backward-compatibility tests.
+
+3. **K-7 weekly breaker** migration parallel to K-6:
+   - **Week grouping** changed from UTC-timestamp `entry_ts.isocalendar()[:2]` to `iso_week_id_from_session_date(session_date_from_timestamp(entry_ts))` — ISO-week of the CME session-date (NOT of the UTC timestamp).
+   - **Threshold** changed from static `-0.05 × starting_equity` to ratcheting `-0.05 × equity_at_week_start`.
+   - **Opt-out flag** identical to K-6.
+
+**Backward compatibility**: the 17 existing tests at [tests/unit/test_kill_switch_validation.py](tests/unit/test_kill_switch_validation.py) all pass without modification — their fixture trade ledgers are single-session / single-week with no prior-equity history, so `equity_at_session_start = equity_at_week_start = starting_equity` and ratcheting + static produce bit-identical verdicts. **Three new tests** added documenting the behavioral divergence in multi-session ledgers:
+- `TestK6EquityRatcheting::test_ratcheting_default_matches_static_when_one_session` — confirms the single-session no-op equivalence.
+- `TestK6EquityRatcheting::test_ratcheting_tightens_threshold_after_drawdown_session` — day-1 -$1500 loss + day-2 -$190 mid-day; ratcheting blocks the day-2 entry at threshold `-2% × $8500 = -$170`; static does NOT block at `-2% × $10K = -$200`. Confirms ratcheting fires earlier in the drawdown.
+- `TestK7EquityRatcheting::test_ratcheting_tightens_threshold_after_drawdown_week` — week-1 -$1000 + week-2 -$480; ratcheting blocks at `-5% × $9000 = -$450`; static at `-5% × $10K = -$500`.
+
+**Closes**: `P1-KILL-SWITCH-VALIDATOR-SESSION-CLOCK-MIGRATE` + `P1-KILL-SWITCH-VALIDATOR-EQUITY-RATCHET-MIGRATE`. Parity invariant: both modules now import session-clock + thresholds from the single source of truth at [src/skie_ninja/backtest/kill_switch_constants.py](src/skie_ninja/backtest/kill_switch_constants.py).
+
+**110/110 targeted tests passing**: 20 validator + 30 runtime + 14 equity_rebase + 28 nt8_realistic + 18 bocd_live.
+
+**Operator implication**: any KPI report card carrying `kill-switch-K-6-pass` or `kill-switch-K-7-pass` annotation from the post-Phase-O.10 validator is comparable to runtime under v3 KPI re-emission. The validator is now drift-free with the runtime; Phase O.13 v3 KPI re-emission can use either path interchangeably to verify the abandonment-suite's net impact.
+
+**Next mandatory transition** (per ADR-0025 §Cascade requirements): Phase O.13 — deep per-trade-loop wiring + H062 v3 + H055 v3 walk-forward re-emission per `P1-ADR-0025-WIRE-DEEP-INTRA-SIM-H062-H055` + `P1-ADR-0025-V3-KPI-RERUN-H062-H055`. Wall-clock estimate per the H062 Phase O.10 precedent ~5-7 hr per symbol. Operator-discretionary launch.

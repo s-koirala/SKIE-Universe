@@ -40,6 +40,14 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from skie_ninja.backtest.kill_switch_constants import (
+    K1_STOP_HIT_TOLERANCE_R,
+    K6_DAILY_DRAWDOWN_THRESHOLD,
+    K7_WEEKLY_DRAWDOWN_THRESHOLD,
+    iso_week_id_from_session_date,
+    session_date_from_timestamp,
+)
+
 __all__ = [
     "TradeRecord",
     "KillSwitchValidationReport",
@@ -112,7 +120,7 @@ class KillSwitchValidationReport:
 def K1_per_trade_dollar_stop_within_1R(
     trades: list[TradeRecord],
     *,
-    tolerance_r: float = 1.05,
+    tolerance_r: float = K1_STOP_HIT_TOLERANCE_R,
 ) -> KillSwitchValidationReport:
     """K-1: per-trade realized dollar loss <= 1.0R (Turtle 2N convention).
 
@@ -216,12 +224,27 @@ def K6_daily_circuit_breaker_2pct(
     trades: list[TradeRecord],
     *,
     starting_equity: float = 10000.0,
+    equity_ratcheting: bool = True,
 ) -> KillSwitchValidationReport:
-    """K-6: -2% of basket equity daily P/L → halt new entries.
+    """K-6: -2% of session-start equity daily P/L → halt new entries.
 
-    Walks the trade ledger session-by-session. If realized cumulative P/L
-    on session s exceeds -2% of starting_equity AND a NEW entry is registered
-    later in that same session, that entry is a K-6 violation.
+    Per ADR-0025 §D-1 + F-1-1 + F-1-7 audit fixes:
+    - Session grouping uses the canonical CME session-clock per
+      [kill_switch_constants.session_date_from_timestamp](kill_switch_constants.py)
+      delegating to [utils.clock.trading_day](../utils/clock.py); NOT UTC-naive
+      ``entry_ts.date()``. This correctly groups ETH bars that span a UTC date
+      boundary into the same CME trading day.
+    - Threshold = ``K6_DAILY_DRAWDOWN_THRESHOLD × equity_at_session_start``
+      (current-equity ratcheting per F-1-7) when ``equity_ratcheting=True``
+      (default); ``equity_at_session_start = starting_equity + cumulative
+      realized P/L through all prior CME sessions``. Threshold tightens as
+      equity falls (survival-constrained discipline per ADR-0017 §4.1).
+    - ``equity_ratcheting=False`` retains the legacy static-starting-equity
+      threshold for backward-compatibility tests.
+
+    Walks the trade ledger session-by-session in chronological order
+    (CME-session-date). For each trade, blocks if the running CME-session-
+    daily-pnl crosses the threshold BEFORE the trade's entry.
     """
     if not trades:
         return KillSwitchValidationReport(
@@ -232,33 +255,60 @@ def K6_daily_circuit_breaker_2pct(
             rationale="No trades to check",
             n_trades_checked=0,
         )
-    # Group by trading day (UTC date of entry).
-    df = pd.DataFrame([
-        {
-            "idx": i,
-            "entry_date": t.entry_ts.date() if hasattr(t.entry_ts, "date") else t.entry_ts,
-            "entry_ts": t.entry_ts,
-            "symbol": t.symbol,
-            "realized_pnl_dollar": t.r_multiple * t.r_dollar,
-        }
-        for i, t in enumerate(trades)
-    ])
+    # Build an enriched dataframe keyed by CME session-date.
+    df = pd.DataFrame(
+        [
+            {
+                "idx": i,
+                "entry_session_date": session_date_from_timestamp(t.entry_ts),
+                "entry_ts": t.entry_ts,
+                "symbol": t.symbol,
+                "realized_pnl_dollar": t.r_multiple * t.r_dollar,
+            }
+            for i, t in enumerate(trades)
+        ]
+    )
+    df = df.sort_values("entry_ts").reset_index(drop=True)
+
+    # Walk chronologically across ALL sessions, tracking the running
+    # equity at session-start for ratcheting.
     violations: list[int] = []
-    for date, day_trades in df.groupby("entry_date"):
-        day_trades_sorted = day_trades.sort_values("entry_ts")
-        cum_pnl = 0.0
-        for _, row in day_trades_sorted.iterrows():
-            if cum_pnl < -0.02 * starting_equity:
-                violations.append(int(row["idx"]))
-            cum_pnl += float(row["realized_pnl_dollar"])
+    running_equity = float(starting_equity)
+    current_session = None
+    equity_at_session_start = running_equity
+    cum_pnl_this_session = 0.0
+    for _, row in df.iterrows():
+        sess = row["entry_session_date"]
+        if sess != current_session:
+            # New session boundary: lock in equity_at_session_start.
+            # Roll prior session's cum_pnl into running_equity.
+            running_equity += cum_pnl_this_session
+            equity_at_session_start = running_equity
+            cum_pnl_this_session = 0.0
+            current_session = sess
+        # Threshold for THIS session: ratcheting or static.
+        threshold_equity = (
+            equity_at_session_start if equity_ratcheting else starting_equity
+        )
+        # Per ADR-0025 §D-1: check threshold BEFORE adding this trade's P/L.
+        if cum_pnl_this_session < K6_DAILY_DRAWDOWN_THRESHOLD * threshold_equity:
+            violations.append(int(row["idx"]))
+        cum_pnl_this_session += float(row["realized_pnl_dollar"])
+
+    rationale_suffix = (
+        "current-equity-ratcheting (equity_at_session_start)"
+        if equity_ratcheting
+        else f"static starting_equity={starting_equity}"
+    )
     return KillSwitchValidationReport(
         constraint_id="K-6",
         passed=len(violations) == 0,
         n_violations=len(violations),
         violation_indices=violations,
         rationale=(
-            f"Daily circuit breaker at -2% of starting_equity={starting_equity}; "
-            "new entries blocked after daily P/L crosses threshold"
+            f"Daily circuit breaker at {K6_DAILY_DRAWDOWN_THRESHOLD * 100:.1f}% × "
+            f"{rationale_suffix}; CME session-clock grouping; new entries blocked "
+            "after daily P/L crosses threshold"
         ),
         n_trades_checked=len(trades),
     )
@@ -268,8 +318,20 @@ def K7_weekly_circuit_breaker_5pct(
     trades: list[TradeRecord],
     *,
     starting_equity: float = 10000.0,
+    equity_ratcheting: bool = True,
 ) -> KillSwitchValidationReport:
-    """K-7: -5% of basket equity weekly P/L → halt new entries through week-end."""
+    """K-7: -5% of week-start equity weekly P/L → halt new entries through week-end.
+
+    Per ADR-0025 §D-1 F-1-1 + F-1-7 audit fixes:
+    - Week grouping uses the ISO-week of the **CME session-date** (NOT the
+      UTC timestamp's ISO-week) per
+      [kill_switch_constants.iso_week_id_from_session_date](kill_switch_constants.py).
+    - Threshold = ``K7_WEEKLY_DRAWDOWN_THRESHOLD × equity_at_week_start``
+      (current-equity ratcheting per F-1-7) when ``equity_ratcheting=True``
+      (default).
+    - ``equity_ratcheting=False`` retains the legacy static-starting-equity
+      threshold for backward-compatibility tests.
+    """
     if not trades:
         return KillSwitchValidationReport(
             constraint_id="K-7",
@@ -279,33 +341,56 @@ def K7_weekly_circuit_breaker_5pct(
             rationale="No trades to check",
             n_trades_checked=0,
         )
-    df = pd.DataFrame([
-        {
-            "idx": i,
-            "entry_week": pd.Timestamp(t.entry_ts).isocalendar()[:2],
-            "entry_ts": t.entry_ts,
-            "symbol": t.symbol,
-            "realized_pnl_dollar": t.r_multiple * t.r_dollar,
-        }
-        for i, t in enumerate(trades)
-    ])
-    df["entry_week"] = df["entry_week"].astype(str)
+    df = pd.DataFrame(
+        [
+            {
+                "idx": i,
+                "entry_session_date": session_date_from_timestamp(t.entry_ts),
+                "entry_week_id": iso_week_id_from_session_date(
+                    session_date_from_timestamp(t.entry_ts)
+                ),
+                "entry_ts": t.entry_ts,
+                "symbol": t.symbol,
+                "realized_pnl_dollar": t.r_multiple * t.r_dollar,
+            }
+            for i, t in enumerate(trades)
+        ]
+    )
+    df = df.sort_values("entry_ts").reset_index(drop=True)
+
     violations: list[int] = []
-    for week, week_trades in df.groupby("entry_week"):
-        week_trades_sorted = week_trades.sort_values("entry_ts")
-        cum_pnl = 0.0
-        for _, row in week_trades_sorted.iterrows():
-            if cum_pnl < -0.05 * starting_equity:
-                violations.append(int(row["idx"]))
-            cum_pnl += float(row["realized_pnl_dollar"])
+    running_equity = float(starting_equity)
+    current_week = None
+    equity_at_week_start = running_equity
+    cum_pnl_this_week = 0.0
+    for _, row in df.iterrows():
+        week = row["entry_week_id"]
+        if week != current_week:
+            running_equity += cum_pnl_this_week
+            equity_at_week_start = running_equity
+            cum_pnl_this_week = 0.0
+            current_week = week
+        threshold_equity = (
+            equity_at_week_start if equity_ratcheting else starting_equity
+        )
+        if cum_pnl_this_week < K7_WEEKLY_DRAWDOWN_THRESHOLD * threshold_equity:
+            violations.append(int(row["idx"]))
+        cum_pnl_this_week += float(row["realized_pnl_dollar"])
+
+    rationale_suffix = (
+        "current-equity-ratcheting (equity_at_week_start)"
+        if equity_ratcheting
+        else f"static starting_equity={starting_equity}"
+    )
     return KillSwitchValidationReport(
         constraint_id="K-7",
         passed=len(violations) == 0,
         n_violations=len(violations),
         violation_indices=violations,
         rationale=(
-            f"Weekly circuit breaker at -5% of starting_equity={starting_equity}; "
-            "new entries blocked after weekly P/L crosses threshold"
+            f"Weekly circuit breaker at {K7_WEEKLY_DRAWDOWN_THRESHOLD * 100:.1f}% × "
+            f"{rationale_suffix}; ISO-week of CME session-date grouping; new "
+            "entries blocked after weekly P/L crosses threshold"
         ),
         n_trades_checked=len(trades),
     )
