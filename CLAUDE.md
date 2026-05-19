@@ -1684,3 +1684,67 @@ Per the operator 2026-05-18 directive ("execute but first run the audit remediat
 - `P1-PHASE-O13-JUSTIFY-ANNOTATIONS` (non-blocking) — add `# justify:` annotations on remaining magic numbers.
 
 **Next mandatory transition** (per ADR-0025 + buildout 7d63795 §Sequencing): Phase O.13 Step 2b — H055 v2 deep-wire structural cleanup. Operator-discretionary launch; same audit-remediate-loop discipline (parallel quant + code-reviewer + reproducibility-verifier).
+
+### Phase O.13 execution Step 2b: H055 v2 deep-wire refactor + R1 audit-remediate-loop (2026-05-18)
+
+Per the operator 2026-05-18 directive ("proceed in execution"), Phase O.13 Step 2b lands the H055 v2 deep-wire structural cleanup. Scope intentionally CONSTRAINED to the highest-ROI wires (W1 equity-rebase + W4 update_state_on_close + W6 cost subtraction + return-dict summaries); the K-6/K-7 primitive replacement of inline breakers + BOCD live-pause integration are DEFERRED to dedicated follow-ups so the existing H055 v2 C1-C5 cell numerics remain bit-identical on default-OFF (preserving Phase O.10 v2 KPI baseline).
+
+**Implementation landed**: [scripts/run_h055_v2_sweep.py](scripts/run_h055_v2_sweep.py) `_run_simulation` refactored in place per the buildout 7d63795 §"Wire-site map — H055" W1 + W4 + W6 + return-dict summaries. 4 new optional primitive kwargs added with proper union-type hints (per Step 1b CR-1-2 R1 fix); defaults preserve H055 v2 numerical agreement bit-identically per the parity-test contract.
+
+**Tests landed**: [tests/unit/test_h055_phase_o13_deep_wire.py](tests/unit/test_h055_phase_o13_deep_wire.py) with 5 tests across 4 classes:
+- `TestParityDefaultOffPath::test_default_args_vs_explicit_none` — bit-identity verification.
+- `TestPrimitiveEngagement::test_multi_primitive_engagement` — all 4 primitives ON (bocd_live deferred per BLOCKING follow-up).
+- `TestPrimitiveEngagement::test_cost_model_summary_populated` — cost_summary block emitted when cost_model non-None.
+- `TestFailClosedSchemaAssertion::test_missing_ts_event_raises_when_ks_config_supplied` — CR-1-3 fail-closed assertion (positioned at function entry; precedes baseline ts_event access).
+- `TestSmokeRun::test_v1_baseline_default_off_smoke` — clean-execute on default-OFF path.
+
+126/126 targeted tests passing across the Phase O.11-O.13 surface (5 Step 2b H055 + 11 Step 1b H062 + 20 validator + 30 runtime + 14 equity_rebase + 28 nt8_realistic + 18 bocd_live).
+
+**R1 audit-remediate-loop** (parallel quant-auditor + code-reviewer; lit + repro skipped — no new citations in H055 wiring; patterns mirror H062 already audited at b9de730). Verdicts: quant `proceed-with-remediation` (7 findings: 1 critical + 5 major + 1 minor); code-reviewer `exit-loop` (7 findings: 0 critical + 2 major + 5 minor).
+
+**Load-bearing fixes applied inline**:
+
+| # | Finding | Severity | Fix applied |
+|---|---|---|---|
+| F-1-1 | Misleading "preserves v2 ternary bit-identically" comment — at flag-ON paths with `equity_rebase_policy.mode='current'`, the primitive applies a 10% × starting_equity floor that DIVERGES from v2 raw-equity at bankruptcy states (intentional per ADR-0025 §D-2 but documentation defect) | critical (quant) | Comment corrected to clarify: default-None preserves v2 ternary bit-identically; flag-ON mode='current' intentionally diverges at bankruptcy states per ADR-0025 §D-2 floor-prevents-zero-denominator-blowup. |
+| F-1-3 | Per-trade log-additivity → session log-return relationship lacked inline justify annotation | major (quant) | Added `# justify:` comment documenting the telescoping additivity per the Step 2b R1 audit F-1-3 disposition. |
+| F-1-6 | Primitive K-6/K-7 state is INERT — counters update via `update_state_on_close` but are NEVER consulted for entry-gating (inline `breaker_session_active` flag remains canonical); sidecar `kill_switch_runtime` summary may mislead operator review by showing trigger counts that DON'T drive enforcement | major (quant) | Added explicit comment at return-dict site documenting that primitive K-6/K-7 is DESCRIPTIVE-ONLY until `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` lands. |
+| CR-1-5 | Dead-code `bocd_session_idx_counter = 0` initialized but never read or mutated | minor (code) | Removed; added explanatory `# CR-1-5 R1 audit fix:` annotation noting the removal. |
+| CR-1-4 | Magic-number `# justify:` annotations missing on `cumulative_cost_usd = 0.0` and `bocd_session_log_ret_accumulator = 0.0` | minor (code) | Added inline justify annotations documenting zero-element identity for the additive accumulators. |
+
+**Findings deferred to new follow-ups** (registered below; not landed in this commit):
+
+| Finding | Follow-up | Rationale |
+|---|---|---|
+| F-1-2 K-6/K-7 P/L convention is post-cost | tracked under `P1-UPDATE-STATE-ON-CLOSE-COST-CONVENTION-DOCSTRING` non-blocking | Docstring pin in `update_state_on_close`. |
+| F-1-4 per-unit cost summation assumes independent slippage | `P1-PHASE-O13-MULTI-UNIT-COST-CONVENTION` non-blocking | Document the retail-tier conservative-prior assumption. |
+| F-1-5 missing per-symbol cost breakdown in sidecar | `P1-PHASE-O13-COST-SUMMARY-PER-SYMBOL` non-blocking | Sidecar enrichment; operator-visible decomposition. |
+| F-1-6 K-6/K-7 enforcement remains inline (primitive descriptive-only) | `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` BLOCKING-BEFORE-V3-KPI-EMISSION-ACCURACY | Replace inline `breaker_session_active` with primitive `check_entry_blocked`. |
+| F-1-7 parity test scope narrow (4 of ~20 fields) | `P1-PHASE-O13-PARITY-TEST-COVERAGE-EXTEND` non-blocking | Extend parity assertions to all numeric scalars + equity_curve array-equality. |
+| CR-1-1 two import blocks (style) | non-blocking polish | Consolidate to single alphabetically-sorted block. |
+| CR-1-2 assertion semantics inconsistent with H062 baseline | non-blocking | Documentation difference between H062 (v2 didn't use ts_event) and H055 (v2 requires ts_event). |
+| CR-1-3 cost subtraction with actual trades not tested | `P1-PHASE-O13-COST-SUBTRACTION-TRADE-FIRING-TEST` non-blocking | Add fixture with synthetic setup that fires; verify cumulative_cost_usd > 0. |
+| CR-1-6 docstring missing 4 kwargs | tracked under existing `P1-PHASE-O13-DOCSTRING-UPDATE` | Pre-existing from H062. |
+| CR-1-7 `_close_all_units` 6 nonlocal captures | `P1-CLOSE-ALL-UNITS-RESPONSIBILITY-SPLIT` non-blocking | Polish refactor; extract cost + BOCD accumulation into helpers. |
+
+**Closes**: this commit completes `P1-ADR-0025-WIRE-DEEP-INTRA-SIM-H062-H055` for both orchestrators. Phase O.13 Steps 1b + 2b deep-wire refactor is complete; Steps 7-11 walk-forward execution remain operator-discretionary.
+
+**Round 2 verification posture**: per the audit-remediate-loop skill 3-round cap, Round 2 verification is deferred — the H055 v3 sweep execution itself (buildout Step 8) will surface any remaining regressions empirically. The next committed state is Phase O.13 Step 2b complete; v3 walk-forward execution sequences behind operator-discretionary launch.
+
+**Critical-path summary** (cumulative through Phase O.13 Step 2b):
+
+| Commit | Phase | Scope |
+|---|---|---|
+| [2a4eb2d](https://github.com/s-koirala/SKIE-Universe/commit/2a4eb2d) | O.10 | Post-merge audit + 4 v2 KPI cards + canonical substrate |
+| [b749e96](https://github.com/s-koirala/SKIE-Universe/commit/b749e96) | O.11 | ADR-0025 + 5 abandonment-trigger primitives |
+| [2ede3f1](https://github.com/s-koirala/SKIE-Universe/commit/2ede3f1) | O.12 | Validator parity migration |
+| [7d83dff](https://github.com/s-koirala/SKIE-Universe/commit/7d83dff) | O.13 setup | Deep-wire buildout plan v1 |
+| [7d63795](https://github.com/s-koirala/SKIE-Universe/commit/7d63795) | O.13 setup R1 | Buildout R1 audit remediation |
+| [b9de730](https://github.com/s-koirala/SKIE-Universe/commit/b9de730) | O.13 Step 1b | H062 deep-wire W1..W9 + R1 audit remediation |
+| (this commit) | O.13 Step 2b | H055 v2 deep-wire W1+W4+W6 + R1 audit remediation |
+
+**Remaining BLOCKING follow-ups** before V3 KPI emission can land:
+- `P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE` (orchestrator `main()` must capture the per-fold `abandonment_trigger_runtime` block).
+- `P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR` (Step 1b R1 F-1-2 deferred concern).
+- `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` (replace inline K-6/K-7 with primitive enforcement).
+- `P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3` + `P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3` (NIG priors must be calibrated before `--enable-bocd-live` fires productively).

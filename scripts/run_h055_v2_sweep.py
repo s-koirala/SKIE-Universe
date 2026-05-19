@@ -137,6 +137,27 @@ from skie_ninja.inference.skewness import (
     l_skewness_tau3,
     payoff_shape_annotation,
 )
+# ADR-0025 Phase O.13 Step 2b deep-wire imports. Per Step 1b R1 audit fix
+# CR-1-1 + F-1-7 + R-2: hoist all primitive imports to module top.
+from skie_ninja.backtest.costs.nt8_realistic import NT8RealisticCostModel
+from skie_ninja.backtest.equity_rebase import (
+    EquityRebasePolicy,
+    apply_pnl_to_equity,
+    equity_for_sizing,
+)
+from skie_ninja.backtest.kill_switch_runtime import (
+    KillSwitchRuntimeConfig,
+    init_runtime_state,
+    summarize_trigger_counts,
+    update_state_on_close,
+    update_state_on_open,
+)
+from skie_ninja.inference.bocd_live import (
+    BOCDLiveState,
+    bocd_live_update,
+    is_paused,
+    summarize_pause_events,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 _log = logging.getLogger("h055_v2_sweep")
@@ -482,6 +503,18 @@ def _run_simulation(
     rho_star: float = 0.0,        # PLACEHOLDER pending P1-H055-CALIBRATION-HOLDOUT-RUN
     daily_loss_breaker_pct: float = -0.02,   # K-6
     weekly_loss_breaker_pct: float = -0.05,  # K-7
+    # ADR-0025 Phase O.13 Step 2b deep-wire kwargs per buildout 7d63795 §W1..W7.
+    # All default None preserves H055 v2 numerical agreement bit-identically on
+    # the C1-C5 sweep cells per the parity-test contract.
+    # Per Step 1b R1 audit fix CR-1-2: proper union types (not Any).
+    # NOTE per buildout R1 F-1-4: when kill_switch_config non-None the inline
+    # K-6/K-7 breakers continue to fire (intended-delta deferred to follow-up
+    # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE); this scoped wire integrates
+    # only W1 equity-rebase + W4 update_state_on_close + W6 cost-subtraction.
+    kill_switch_config: KillSwitchRuntimeConfig | None = None,
+    equity_rebase_policy: EquityRebasePolicy | None = None,
+    bocd_live_state: BOCDLiveState | None = None,
+    cost_model: NT8RealisticCostModel | None = None,
 ) -> dict[str, Any]:
     """Run the per-trade simulator for one (symbol, config) cell.
 
@@ -494,6 +527,15 @@ def _run_simulation(
 
     Returns a dict of realized + projected metrics for the cell.
     """
+    # ADR-0025 Phase O.13 Step 2b deep-wire fail-closed assertion (per Step 1b
+    # R1 audit CR-1-3 fix; same discipline as H062 deep-wire). Moved to function
+    # entry so it fires BEFORE any df_5m column access.
+    if (kill_switch_config is not None or bocd_live_state is not None) \
+            and "ts_event" not in df_5m.columns:
+        raise ValueError(
+            "H055 v2 deep-wire requires 'ts_event' column in df_5m when "
+            "kill_switch_config or bocd_live_state is supplied"
+        )
     high = df_5m["high"].to_numpy()
     low = df_5m["low"].to_numpy()
     close = df_5m["close"].to_numpy()
@@ -535,6 +577,24 @@ def _run_simulation(
     if cfg.enable_bocd:
         sm = C9StateMachine(km_start=cfg.kelly_multiplier, cfg=bocd_cfg)
 
+    # ADR-0025 Phase O.13 Step 2b deep-wire state init.
+    # (fail-closed assertion already at function entry per CR-1-3 R1 fix.)
+    ks_state = None
+    if kill_switch_config is not None:
+        ks_state = init_runtime_state(
+            universe=(symbol,), starting_equity=starting_equity
+        )
+    # Cumulative cost-USD accumulator for sidecar emission (W6 audit trail).
+    # justify: zero-element identity for additive dollar-cost stream.
+    cumulative_cost_usd = 0.0
+    # BOCD per-session log-return accumulator for W8 payload.
+    # justify: zero-element identity for additive log-return stream;
+    # additive across trades within a session by telescoping (F-1-3 R1 fix).
+    # WARNING per buildout R1 F-1-3: NIG prior MUST be calibrated under
+    # P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3 before --enable-bocd-live fires.
+    bocd_session_log_ret_accumulator = 0.0
+    # CR-1-5 R1 audit fix: removed unused `bocd_session_idx_counter` (dead code).
+
     last_session = None
     breaker_state_session: Any = None
     breaker_session_active = False
@@ -547,7 +607,8 @@ def _run_simulation(
         reason: str,
     ) -> None:
         """Close every unit in the current position at `exit_price`."""
-        nonlocal position, equity, n_ruin_events
+        nonlocal position, equity, n_ruin_events, ks_state, cumulative_cost_usd
+        nonlocal bocd_session_log_ret_accumulator
         if position is None:
             return
         total_pnl = 0.0
@@ -556,13 +617,54 @@ def _run_simulation(
             unit_pnl = position.side * (exit_price - u["entry_price"]) * multiplier * u["size"]
             total_pnl += unit_pnl
             total_r_dollar += u["r_dollar"]
+
+        # ADR-0025 Phase O.13 Step 2b deep-wire W6 cost subtraction.
+        # justify: H055 v2 uses dollar-pnl scale (NOT equity-fractional log-return
+        # like H062 W7). Per buildout R1 F-1-2 fix, cost is subtracted on the
+        # dollar-pnl scale here per the H055 sim's equity accounting; default-None
+        # cost_model preserves bit-identity.
+        cost_usd_this_close = 0.0
+        if cost_model is not None:
+            # Sum cost across all units (each unit is a round-trip).
+            for u in position.units:
+                unit_cost = cost_model.round_trip_cost_usd(
+                    symbol=symbol, n_contracts=u["size"]
+                )
+                cost_usd_this_close += unit_cost
+            total_pnl -= cost_usd_this_close
+            cumulative_cost_usd += cost_usd_this_close
+
         r_mult = total_pnl / total_r_dollar if total_r_dollar > 0 else 0.0
         equity += total_pnl
-        # K-6/K-7 P/L accumulation.
+        # K-6/K-7 P/L accumulation (inline path; primitive integration deferred to
+        # P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE).
         sd = position.entry_session_date
         per_session_pnl[sd] = per_session_pnl.get(sd, 0.0) + total_pnl
         wk = _iso_week(sd)
         per_week_pnl[wk] = per_week_pnl.get(wk, 0.0) + total_pnl
+
+        # ADR-0025 Phase O.13 Step 2b deep-wire W4 update_state_on_close.
+        if ks_state is not None:
+            exit_ts = pd.Timestamp(df_5m.iloc[exit_idx]["ts_event"])
+            ks_state = update_state_on_close(
+                ks_state,
+                symbol=symbol,
+                realized_pnl_dollar=float(total_pnl),
+                exit_ts=exit_ts,
+            )
+        # BOCD live-pause: accumulate per-trade dollar-P/L into per-session
+        # log-return for W8 payload (R1 F-1-3 pin).
+        # justify: per-trade log additivity via telescoping —
+        # sum_t log(e_t/e_{t-1}) = log(e_session_end / e_session_start);
+        # session-aggregated payload correct under additivity per Step 2b
+        # R1 audit F-1-3 disposition.
+        if bocd_live_state is not None and equity > 0:
+            # equity_before = equity_old (post-update equity minus total_pnl
+            # returns the pre-update equity value).
+            equity_before = equity - total_pnl
+            if equity_before > 0:
+                trade_log_ret = float(np.log(equity / equity_before)) if equity > 0 else 0.0
+                bocd_session_log_ret_accumulator += trade_log_ret
 
         equity_curve.append(equity)
         equity_curve_dates.append(position.entry_session_date)
@@ -664,7 +766,18 @@ def _run_simulation(
         if beta_dollars_per_contract <= 0:
             return
         # Per Faith 2007 §4: each unit sized at full risk budget.
-        eq_for_sizing = equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc
+        # ADR-0025 Phase O.13 Step 2b deep-wire W1 equity-rebase.
+        # justify: default-None preserves v2 ternary bit-identically. When
+        # equity_rebase_policy non-None at mode='current', the primitive
+        # applies a floor at floor_equity_fraction × starting_equity (10%
+        # default) per R1 F-1-1 audit — at bankruptcy states the primitive
+        # path DIVERGES from the v2 raw-equity ternary; this is intentional
+        # per ADR-0025 §D-2 to prevent zero-denominator sizing-blowup.
+        eq_for_sizing = (
+            equity_for_sizing(equity_rebase_policy, equity)
+            if equity_rebase_policy is not None
+            else (equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc)
+        )
         # K-1: per-trade $-stop = position-side × beta_sl × ATR (1.0R convention)
         # Per ADR-0018 D-2 + ADR-0017 §4.1: effective_risk = kelly_multiplier × risk_budget_pct.
         # For C9 use the state machine's current km; else use the static config value.
@@ -711,7 +824,12 @@ def _run_simulation(
         if breaker_week_active:
             return
 
-        eq_for_size = equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc
+        # ADR-0025 Phase O.13 Step 2b deep-wire W1 equity-rebase (entry path).
+        eq_for_size = (
+            equity_for_sizing(equity_rebase_policy, equity)
+            if equity_rebase_policy is not None
+            else (equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc)
+        )
 
         # Iterate setups confirmed at this bar.
         for s in setup_idx_by_bar.get(t, []):
@@ -950,6 +1068,41 @@ def _run_simulation(
             sum(1 for h in sm.step_history if h["action"] == "halve")
             if sm is not None else 0
         ),
+        # ADR-0025 Phase O.13 Step 2b deep-wire primitive summaries.
+        # When primitives None: each summary block is None (bit-identical
+        # downstream behavior). IMPORTANT per R1 audit F-1-6: at H055 v2
+        # Step 2b scope the inline K-6/K-7 breakers remain canonical
+        # enforcement; the primitive's K-6/K-7 counters update via
+        # update_state_on_close (line ~644) but are NOT consulted for
+        # entry-gating (no check_entry_blocked call in the inline entry
+        # path). The kill_switch_runtime summary below is DESCRIPTIVE-ONLY
+        # until P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE lands.
+        "abandonment_trigger_runtime": {
+            "kill_switch_runtime": (
+                summarize_trigger_counts(ks_state) if ks_state is not None else None
+            ),
+            "equity_rebase": (
+                {
+                    "mode": equity_rebase_policy.mode,
+                    "starting_equity": starting_equity,
+                    "final_equity": equity,
+                }
+                if equity_rebase_policy is not None else None
+            ),
+            "bocd_live": (
+                summarize_pause_events(bocd_live_state)
+                if bocd_live_state is not None else None
+            ),
+            "cost_model": (
+                {
+                    "cost_model_id": cost_model.cost_model_id,
+                    "calibration_source": cost_model.calibration_source,
+                    "annotation": cost_model.kpi_annotation(),
+                    "cumulative_cost_usd": cumulative_cost_usd,
+                }
+                if cost_model is not None else None
+            ),
+        },
     }
 
 
