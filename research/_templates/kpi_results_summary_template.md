@@ -14,6 +14,9 @@ Format-version history:
 - v3.1 (2026-05-15 effective): 13-table format clarified per [ADR-0024](../../docs/decisions/ADR-0024-paradigm-resolution-h062-aggressive-growth-canonical.md);
   MPPM(ρ=1) per [ADR-0018](../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) D-1 may replace Sharpe as Table 3 PRIMARY
   inferential anchor (operator-discretionary; depends on hypothesis pre-registered design.md §1).
+- v3.2 (2026-05-19 effective): Table 8 ("Other KPIs") gains two new rows per [ADR-0028](../../docs/decisions/ADR-0028-k6-k7-size-down-cost-friction-edge.md) §D-2 + §D-4:
+  `kill-switch-mode-{block,size-down}` (runtime enforcement-mode disclosure) and `cost-friction-dominated-edge-{present,absent,n/a}` (cost-vs-edge interaction).
+  Both annotations are also added to §9 methodological-correctness annotations line.
 
 The section is a re-presentation of values already in the report card's
 §"Performance KPIs" mega-table + §3.1 Realized-OOS + Forward-Projection block.
@@ -137,12 +140,14 @@ Supplementary thresholds (Tharp 1998 *practitioner*; ISBN-13 978-0070647626): PF
 | Cost model | `{cost_model_id}` ({applied/not applied}, {prior_status}) → `cost-{empirical-calibrated,conservative-prior,zero}` per ADR-0025 §D-5 | ... | ... |
 | Sortino / turnover / capacity | {computed_or_deferred} | ... | ... |
 | Kill-switch runtime (ADR-0025 §D-1) | `kill-switch-{active,inactive}` ({trigger_counts}) | ... | ... |
+| Kill-switch mode (ADR-0028 §D-1 / §D-4) | `kill-switch-mode-{block,size-down}` (k6={block,size_down}; k7={block,size_down}; size_down_fraction={F}) | ... | ... |
 | BOCD live-pause (ADR-0025 §D-4) | `bocd-live-{pause,active}` (n_pause_events={N}) | ... | ... |
 | Equity rebase (ADR-0025 §D-2) | mode={fixed,current,min_of_current_and_starting} (floor={F}) | ... | ... |
+| Cost-friction-edge (ADR-0028 §D-2) | `cost-friction-dominated-edge-{present,absent,n/a}` (zero-cost ref run_id={R} basket pct={P}%) | ... | ... |
 
 ### 9. Methodological-correctness annotations (one-line per ADR-0013 §2 + §2.1)
 
-`leakage-canary-{pass,fail}` · `bss-{positive,flat,negative,n/a}` · `reliability-{in-band,out-of-band,n/a}` · `repro-log-{complete,incomplete}` · `dsr-{positive,marginal,negative,n/a}` · `post-run-audit-{pass,fail}` · `kill-switch-{active,inactive}` · `bocd-live-{pause,active}` · `cost-{empirical-calibrated,conservative-prior,zero}`
+`leakage-canary-{pass,fail}` · `bss-{positive,flat,negative,n/a}` · `reliability-{in-band,out-of-band,n/a}` · `repro-log-{complete,incomplete}` · `dsr-{positive,marginal,negative,n/a}` · `post-run-audit-{pass,fail}` · `kill-switch-{active,inactive}` · `kill-switch-mode-{block,size-down}` · `bocd-live-{pause,active}` · `cost-{empirical-calibrated,conservative-prior,zero}` · `cost-friction-dominated-edge-{present,absent,n/a}`
 
 {If any annotation is `fail` or `incomplete`: insert the §2.1 visible callout banner.}
 

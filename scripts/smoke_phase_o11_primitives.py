@@ -78,7 +78,8 @@ def smoke_kill_switch_runtime() -> dict:
     )
 
     # K-4 fire: position size 25 > cap 20.
-    blocked, reason = ksr.check_entry_blocked(
+    # ADR-0028 §D-1: check_entry_blocked now returns 4-tuple.
+    blocked, reason, _sizing, state = ksr.check_entry_blocked(
         state, config, symbol="ES", position_size=25
     )
     assert blocked and reason == "K-4"
@@ -90,7 +91,7 @@ def smoke_kill_switch_runtime() -> dict:
         entry_ts=pd.Timestamp("2025-06-16 14:30:00", tz="UTC"),
         entry_price=5000.0, position_size=1, stop_price=4990.0, r_dollar=500.0,
     )
-    blocked, reason = ksr.check_entry_blocked(
+    blocked, reason, _sizing, state = ksr.check_entry_blocked(
         state, config, symbol="ES", position_size=1
     )
     assert blocked and reason == "K-3"
@@ -101,7 +102,7 @@ def smoke_kill_switch_runtime() -> dict:
         state, symbol="ES", realized_pnl_dollar=-300.0,
         exit_ts=pd.Timestamp("2025-06-16 15:00:00", tz="UTC"),
     )
-    blocked, reason = ksr.check_entry_blocked(
+    blocked, reason, _sizing, state = ksr.check_entry_blocked(
         state, config, symbol="NQ", position_size=1
     )
     assert blocked and reason == "K-6"

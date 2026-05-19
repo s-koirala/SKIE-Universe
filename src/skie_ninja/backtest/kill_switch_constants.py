@@ -40,6 +40,16 @@ K6_DAILY_DRAWDOWN_THRESHOLD: float = -0.02
 # justify: ADR-0017 §5 K-7; same current-equity-ratcheting convention as K-6.
 K7_WEEKLY_DRAWDOWN_THRESHOLD: float = -0.05
 
+# ADR-0028 §D-1: default size-down fraction for K-6 / K-7 size_down enforcement mode.
+# justify: 0.5 (half-Kelly halving) per MacLean-Thorp-Ziemba 2010 *Kelly Capital
+# Growth* (DOI 10.1142/7598) *practitioner* fractional-Kelly cascade convention;
+# aligns with ADR-0017 §4.1 quarter-Kelly default + ADR-0018 §D-2 multiplier-grid
+# {0.25, 0.5, 1.0, 1.5, 2.0, 2.5} half-step convention. Empirical re-calibration
+# tracked under P1-ADR-0028-SIZE-DOWN-FRACTION-EMPIRICAL-CALIBRATION (non-blocking;
+# requires paper-trade fill data per the existing P1-RELIABILITY-SLOPE-EMPIRICAL-
+# CALIBRATION convention).
+K_SIZE_DOWN_FRACTION_DEFAULT: float = 0.5
+
 # ADR-0017 §5 K-5 correlated-instrument-pair taxonomy. The runtime SHALL raise
 # a validation error if invoked on a basket containing any pair from this
 # taxonomy (F-1-6 audit fix; tracked under P1-KILL-SWITCH-RUNTIME-K5-CORRELATED-EXTEND
@@ -103,6 +113,7 @@ __all__ = [
     "K1_GAP_THROUGH_TOLERANCE_R",
     "K6_DAILY_DRAWDOWN_THRESHOLD",
     "K7_WEEKLY_DRAWDOWN_THRESHOLD",
+    "K_SIZE_DOWN_FRACTION_DEFAULT",
     "K5_CORRELATED_PAIRS",
     "session_date_from_timestamp",
     "iso_week_id_from_session_date",

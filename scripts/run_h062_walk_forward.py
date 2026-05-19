@@ -86,6 +86,11 @@ from skie_ninja.inference.bocd_live import (
 from skie_ninja.inference.calmar import (
     calmar_differential_ci_stationary_bootstrap,
 )
+from skie_ninja.inference.cost_friction_edge import (
+    ZeroCostReferenceCell,
+    build_cost_friction_edge_block,
+    cost_friction_dominated_edge_annotation,
+)
 from skie_ninja.inference.mppm import mppm_rho_1, mppm_with_ci
 from skie_ninja.inference.multipletest.hansen_spa import hansen_spa_test
 from skie_ninja.inference.profit_factor import (
@@ -537,17 +542,31 @@ def _run_per_trade_simulation(
                 continue  # too coarse — skip the trade (capacity-too-small)
 
             # ADR-0025 Phase O.13 deep-wire W4 pre-entry guard (R1 F-1-1 fix:
-            # AFTER size_capped is computed and checked).
+            # AFTER size_capped is computed and checked). ADR-0028 §D-1
+            # extension: check_entry_blocked returns 4-tuple
+            # (blocked, reason, sizing_modifier, new_state); on size-down path
+            # the orchestrator shrinks size_capped by sizing_modifier ∈ (0, 1]
+            # and proceeds with reduced exposure. Default "block" enforcement
+            # preserves bit-equivalence with the Phase O.13 v3 sidecar.
             if bocd_live_state is not None and is_paused(bocd_live_state):
                 continue
             if kill_switch_config is not None and ks_state is not None:
-                blocked, reason = check_entry_blocked(
+                blocked, reason, sizing_modifier, ks_state = check_entry_blocked(
                     ks_state, kill_switch_config,
                     symbol=symbol, position_size=size_capped,
                 )
                 if blocked and reason is not None:
                     ks_state = record_trigger(ks_state, reason)
                     continue
+                if sizing_modifier < 1.0:
+                    # ADR-0028 §D-1 size-down path: shrink the position size
+                    # by the modifier; floor at 1 contract (if floor → 0 the
+                    # trade is skipped per capacity-too-small semantic).
+                    size_capped = int(np.floor(size_capped * sizing_modifier))
+                    if size_capped < 1:
+                        continue
+                    if reason is not None:
+                        ks_state = record_trigger(ks_state, reason)
 
             in_position = True
             position_side = ev
@@ -925,6 +944,67 @@ def main(argv: list[str] | None = None) -> int:
         default="none",
         help="ADR-0025 §D-3: cost-model provenance (default=none preserves v2 numerics)",
     )
+    # ADR-0028 §D-2: cost-friction-dominated-edge annotation cross-reference.
+    parser.add_argument(
+        "--zero-cost-reference-run-id",
+        default=None,
+        help=(
+            "ADR-0028 §D-2: optional run_id of a zero-cost ablation cell at "
+            "the same fixture (substrate vintage + inner-CV grid + rng_seed). "
+            "When provided, enables `cost-friction-dominated-edge-present` "
+            "evaluation per condition (iii). Operator pattern: emit a zero-"
+            "cost ablation cell first, then pass its run_id here on the "
+            "cost-applied emission."
+        ),
+    )
+    parser.add_argument(
+        "--zero-cost-reference-basket-pct",
+        type=float,
+        default=None,
+        help=(
+            "ADR-0028 §D-2: realized OOS basket %% of the zero-cost reference "
+            "cell. Required when --zero-cost-reference-run-id is supplied. "
+            "Operator-readable from the reference cell's sidecar "
+            "`realized_oos.ending_pct_change`."
+        ),
+    )
+    parser.add_argument(
+        "--zero-cost-reference-sidecar-sha-prefix16",
+        default=None,
+        help=(
+            "ADR-0028 §D-2: 16-char SHA prefix of the zero-cost reference "
+            "cell's sidecar. Required when --zero-cost-reference-run-id "
+            "is supplied (for auditable cross-citation)."
+        ),
+    )
+    # ADR-0028 §D-1: kill-switch K-6/K-7 enforcement-mode opt-in.
+    parser.add_argument(
+        "--k6-enforcement",
+        choices=["block", "size_down"],
+        default="block",
+        help=(
+            "ADR-0028 §D-1: K-6 daily-breaker enforcement mode. `block` "
+            "(default) preserves ADR-0025 §D-1 semantic bit-exactly; "
+            "`size_down` halves position size per ADR-0028 size-down "
+            "alternative (size_down_fraction default 0.5 per "
+            "MacLean-Thorp-Ziemba 2010 fractional-Kelly cascade)."
+        ),
+    )
+    parser.add_argument(
+        "--k7-enforcement",
+        choices=["block", "size_down"],
+        default="block",
+        help="ADR-0028 §D-1: K-7 weekly-breaker enforcement mode.",
+    )
+    parser.add_argument(
+        "--size-down-fraction",
+        type=float,
+        default=None,
+        help=(
+            "ADR-0028 §D-1: size-down multiplier (default 0.5 per "
+            "K_SIZE_DOWN_FRACTION_DEFAULT). Operator-discretionary calibration."
+        ),
+    )
     args = parser.parse_args(argv)
 
     paths = ProjectPaths.discover()
@@ -1048,10 +1128,18 @@ def main(argv: list[str] | None = None) -> int:
         # against v2 H062 per-session log-return distribution before flag-ON).
         deep_wire_ks_config: KillSwitchRuntimeConfig | None = None
         if args.enable_kill_switch_runtime:
-            deep_wire_ks_config = KillSwitchRuntimeConfig(
+            # ADR-0028 §D-1: pass enforcement-mode enum + size_down_fraction.
+            # Defaults preserve ADR-0025 §D-1 semantic bit-exactly when both
+            # enforcement args are "block" (the CLI defaults).
+            kssr_kwargs: dict[str, Any] = dict(
                 enable_k3=True, enable_k4=True, enable_k6=True, enable_k7=True,
                 capacity_caps=_CAPACITY_CAPS,
+                k6_enforcement=args.k6_enforcement,
+                k7_enforcement=args.k7_enforcement,
             )
+            if args.size_down_fraction is not None:
+                kssr_kwargs["size_down_fraction"] = float(args.size_down_fraction)
+            deep_wire_ks_config = KillSwitchRuntimeConfig(**kssr_kwargs)
         deep_wire_rebase_policy: EquityRebasePolicy | None = None
         if args.enable_equity_rebase_current:
             deep_wire_rebase_policy = EquityRebasePolicy(
@@ -1628,6 +1716,24 @@ def main(argv: list[str] | None = None) -> int:
                 if ks_runtime_summary["runtime_active"]
                 else "kill-switch-inactive"
             )
+            # ADR-0028 §D-4: kill-switch-mode-{block, size-down} runtime-mode
+            # disclosure. Aggregate annotation is "size-down" if EITHER K-6 or
+            # K-7 is in size_down mode; "block" otherwise.
+            any_size_down = (
+                args.k6_enforcement == "size_down"
+                or args.k7_enforcement == "size_down"
+            )
+            ks_runtime_summary["mode_annotation"] = (
+                "kill-switch-mode-size-down" if any_size_down
+                else "kill-switch-mode-block"
+            )
+            ks_runtime_summary["k6_enforcement"] = args.k6_enforcement
+            ks_runtime_summary["k7_enforcement"] = args.k7_enforcement
+            ks_runtime_summary["size_down_fraction"] = (
+                float(args.size_down_fraction)
+                if args.size_down_fraction is not None
+                else 0.5
+            )
 
         # Equity-rebase summary (aggregated from per-fold final_equity values
         # per the Phase O.13 P1-PHASE-O13-SIDECAR-PRIMITIVE-CAPTURE closure).
@@ -1722,9 +1828,40 @@ def main(argv: list[str] | None = None) -> int:
             } if args.enable_bocd_live else None,
         }
 
+        # === ADR-0028 §D-2: cost-friction-dominated-edge annotation ===
+        # justify: computed BEFORE annotations list assembly so the
+        # annotation row is in canonical position alongside cost_model
+        # annotation. Zero-cost reference cell is optional; absent → n/a OR
+        # absent fallback per the primitive's docstring.
+        realized_oos_basket_pct = (eq_end / 10000.0 - 1.0) * 100.0
+        cost_friction_zero_ref: ZeroCostReferenceCell | None = None
+        if (
+            args.zero_cost_reference_run_id is not None
+            and args.zero_cost_reference_basket_pct is not None
+        ):
+            cost_friction_zero_ref = ZeroCostReferenceCell(
+                run_id=str(args.zero_cost_reference_run_id),
+                sidecar_sha_prefix16=(
+                    str(args.zero_cost_reference_sidecar_sha_prefix16)
+                    if args.zero_cost_reference_sidecar_sha_prefix16 is not None
+                    else "(operator-supplied-not-pinned)"
+                ),
+                realized_oos_basket_pct=float(args.zero_cost_reference_basket_pct),
+            )
+        cost_friction_edge_result = cost_friction_dominated_edge_annotation(
+            cost_model_annotation=cost_model_summary["annotation"],
+            realized_oos_basket_pct=realized_oos_basket_pct,
+            zero_cost_reference_cell=cost_friction_zero_ref,
+        )
+        cost_friction_edge_block = build_cost_friction_edge_block(
+            cost_friction_edge_result
+        )
+
         # === Assemble annotations ===
         # Per ADR-0025 §D-5: kill-switch-active/inactive (runtime); bocd-live-
         # pause/active (live state); cost-{empirical-calibrated,conservative-prior,zero}.
+        # Per ADR-0028 §D-4: kill-switch-mode-{block,size-down} (runtime mode) +
+        # cost-friction-dominated-edge-{present,absent,n/a} (cost-vs-edge).
         annotations = [
             "leakage-canary-pass",
             mppm_annot,
@@ -1739,7 +1876,9 @@ def main(argv: list[str] | None = None) -> int:
             pf_annot,
             r_annot,
             ks_runtime_summary["annotation"],
+            ks_runtime_summary.get("mode_annotation", "kill-switch-mode-block"),
             bocd_live_summary["annotation"],
+            cost_friction_edge_result.annotation,
             "paradigm-adr-0024-aggressive-growth",
         ]
 
@@ -1826,6 +1965,8 @@ def main(argv: list[str] | None = None) -> int:
                 "adr_0025_version": "v1",
                 "deep_wiring_followup": "P1-ADR-0025-WIRE-DEEP-INTRA-SIM-H062-H055",
             },
+            # ADR-0028 §D-2: cost-friction-dominated-edge annotation block.
+            "cost_friction_edge": cost_friction_edge_block,
             "written_at_utc": _dt.datetime.now(_dt.UTC).isoformat(),
         }
 

@@ -71,11 +71,14 @@ class TestRoundTripCostValues:
             "NQ"
         )
 
-    def test_mgc_placeholder_cost_positive(self):
-        # MGC fixed = 0.85 + 0.45 + 0.02 = 1.32 + slip 1.00 = 2.32/side; rt = 4.64
+    def test_mgc_verified_cost_positive(self):
+        # P1-METALS-ENERGY-CME-FEE-VERIFY closed 2026-05-19:
+        # MGC fixed = 0.85 commission + 0.60 exchange (CME 2025-02-01 fee
+        # schedule; up from $0.50 pre-2025-02-01) + 0.02 NFA = 1.47 + slip
+        # 1.00 = 2.47/side; rt = 4.94.
         model = NT8RealisticCostModel()
         cost = model.round_trip_cost_usd("MGC")
-        assert math.isclose(cost, 2 * (1.32 + 1.00), abs_tol=1e-6)
+        assert math.isclose(cost, 2 * (1.47 + 1.00), abs_tol=1e-6)
 
     def test_n_contracts_scales_linearly(self):
         model = NT8RealisticCostModel()
@@ -195,10 +198,12 @@ class TestFeeBreakdownProvenance:
         bd = model.fee_breakdown("ES")
         assert bd["provenance"] == "config_instruments_yaml_verified"
 
-    def test_mgc_placeholder_provenance(self):
+    def test_mgc_verified_provenance(self):
+        # P1-METALS-ENERGY-CME-FEE-VERIFY closed 2026-05-19; provenance now
+        # carries the verification timestamp for auditability.
         model = NT8RealisticCostModel()
         bd = model.fee_breakdown("MGC")
-        assert bd["provenance"] == "config_instruments_yaml_placeholder"
+        assert bd["provenance"] == "config_instruments_yaml_verified_2026-05-19"
 
     def test_empirical_provenance(self):
         override = EmpiricalFeeOverride(

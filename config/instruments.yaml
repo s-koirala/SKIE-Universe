@@ -145,12 +145,30 @@ instruments:
   # regime splitters MUST detect this and skip the RTH/ETH partition for
   # these symbols (P1-METALS-ENERGY-SESSION-HANDLING).
   #
-  # All fee figures (commission_per_side_usd / exchange_fee_usd /
-  # nfa_fee_usd) are retail placeholders pending
-  # P1-METALS-ENERGY-CME-FEE-VERIFY; the CME Energy/Metals fee schedule
-  # was NOT primary-source-verified in the 2026-05-12 session. Users MUST
-  # override before any live-capital run and set
-  # commission_reviewed_for_broker accordingly.
+  # Fee verification 2026-05-19 (closes P1-METALS-ENERGY-CME-FEE-VERIFY):
+  # exchange_fee_usd primary-source-verified against CME Group 2025-02-01
+  # fee schedule (effective date confirmed via AMP Futures 2025-02-01 fee
+  # change notice + TradeStation + Discount Trading 3-way triangulation;
+  # NinjaTrader 2025-11-13 broker passthrough). Per-symbol verification
+  # memo at docs/research_notes/memo_metals_energy_cme_fee_verification_2026-05-19.md.
+  # commission_per_side_usd remains a NinjaTrader Brokerage Unlimited
+  # retail placeholder; users MUST override to match their actual broker
+  # contract before any live-capital run and set
+  # commission_reviewed_for_broker accordingly. nfa_fee_usd $0.02/side
+  # verified unchanged since 2018-01-01 per NFA per-side futures
+  # assessment fee schedule.
+  #
+  # Historical fee figures (preserved per ADR-0013 §4.1 non-loss):
+  #   Pre-2026-05-19 placeholder MGC exchange_fee_usd: 0.45 (under-stated
+  #     vs verified 2024-02 rate 0.50 by $0.05/side; under-stated vs
+  #     current 2025-02-01 rate 0.60 by $0.15/side = 33%).
+  #   Pre-2026-05-19 placeholder SIL exchange_fee_usd: 0.45 (under-stated
+  #     vs verified 1.00 by $0.55/side = 122%; MATERIAL).
+  #   Pre-2026-05-19 placeholder MCL exchange_fee_usd: 0.50 (MATCH; no
+  #     change to verified figure).
+  # KPI cards emitted pre-2026-05-19 with the placeholder fees: H055 v1+v2,
+  # H060 v1+v2, H062 v1+v2+v3, H065 v0+v1+v2. Cost-realism reframing
+  # implication tracked under P1-METALS-ENERGY-COST-RECALIBRATION-DISCLOSURE.
   MCL:
     exchange: NYMEX                                 # delivered on CME Globex
     description: Micro WTI Light Sweet Crude Oil
@@ -164,9 +182,11 @@ instruments:
       method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD); energy/metals roll cadence calibrated separately under P1-ROLL-METALS-ENERGY-CALIBRATE
       window_days: 3                                # justify: energy rolls typically migrate volume/OI 3-5 sessions before LTD per CME energy rolldates page; provisional, pending P1-ROLL-METALS-ENERGY-CALIBRATE
       reference: "CME Micro WTI contract spec https://www.cmegroup.com/markets/energy/crude-oil/micro-wti-crude-oil-futures.contractSpecs.html (retrieved 2026-05-12); window_days pending calibration"
-    commission_per_side_usd: 0.85                   # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY; NinjaTrader Brokerage Q1-2026 retail rate
-    exchange_fee_usd: 0.50                          # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY; approximate CME Energy fee for micro
-    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    commission_per_side_usd: 0.85                   # NinjaTrader Brokerage Unlimited Q1-2026 retail rate placeholder; broker-specific (closes P1-METALS-ENERGY-COMMISSION-VERIFY-MCL when operator binds real broker)
+    exchange_fee_usd: 0.50                          # CME NYMEX Micro WTI Crude exchange fee per side; verified 2026-05-19 (3-way triangulation: TradeStation $0.50 + NinjaTrader passthrough $0.52-NFA = $0.50 + Discount Trading $0.50). MATCH with placeholder pre-2026-05-19. CME 2025-02-01 fee schedule.
+    exchange_fee_verification_source: "CME 2025-02-01 fee schedule via 3-way broker passthrough triangulation; see docs/research_notes/memo_metals_energy_cme_fee_verification_2026-05-19.md"
+    exchange_fee_verified_date: "2026-05-19"
+    nfa_fee_usd: 0.02                               # NFA per-side futures assessment fee, unchanged since 2018-01-01 per NFA FAQ retrieved 2026-05-19; closes P1-NFA-FEE-VERIFY-2026
     micro_ratio: 0.1                                # 1 MCL = 1/10 CL (full CL is 1000 bbl, MCL is 100 bbl), CME product specs
     data_vendor_symbol_databento: "MCL.FUT"
     commission_reviewed_for_broker: null            # placeholder; pre-live checklist MUST bind to real broker id
@@ -183,9 +203,11 @@ instruments:
       method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD); metals roll cadence under P1-ROLL-METALS-ENERGY-CALIBRATE
       window_days: 3                                # justify: metals roll typically migrates 3-5 sessions before LTD; active months for MGC per CME are G/J/M/Q/V/Z (P1-ROLL-METALS-ENERGY-CALIBRATE)
       reference: "CME Micro Gold contract spec https://www.cmegroup.com/markets/metals/precious/e-micro-gold.contractSpecs.html (retrieved 2026-05-12); window_days pending calibration"
-    commission_per_side_usd: 0.85                   # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY
-    exchange_fee_usd: 0.45                          # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY; approximate CME Metals fee for micro
-    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    commission_per_side_usd: 0.85                   # NinjaTrader Brokerage Unlimited Q1-2026 retail rate placeholder; broker-specific
+    exchange_fee_usd: 0.60                          # CME COMEX Micro Gold exchange fee per side; verified 2026-05-19. Pre-2025-02-01 rate was $0.50; raised to $0.60 effective 2025-02-01 per CME fee schedule (3-way triangulation: TradeStation $0.60 + NinjaTrader passthrough $0.62-NFA = $0.60 + AMP Futures news 2025-02-01 confirms $0.50 -> $0.60 transition). Updated 2026-05-19 from $0.45 placeholder (under-stated by $0.15/side = 33% vs current binding rate).
+    exchange_fee_verification_source: "CME 2025-02-01 fee schedule; AMP Futures 2025-02-01 fee change notice (https://www.ampfutures.com/news/cme-exchange-fee-increase-effective-february-1-2025) + TradeStation + NinjaTrader 2025-11-13 broker passthrough; see docs/research_notes/memo_metals_energy_cme_fee_verification_2026-05-19.md"
+    exchange_fee_verified_date: "2026-05-19"
+    nfa_fee_usd: 0.02                               # NFA per-side futures assessment fee, unchanged since 2018-01-01
     micro_ratio: 0.1                                # 1 MGC = 1/10 GC (full GC is 100 oz, MGC is 10 oz), CME product specs
     data_vendor_symbol_databento: "MGC.FUT"
     commission_reviewed_for_broker: null            # placeholder
@@ -202,9 +224,11 @@ instruments:
       method: volume_crossover                      # justify: see ES (P1-ROLL-METHOD); metals roll cadence under P1-ROLL-METALS-ENERGY-CALIBRATE
       window_days: 3                                # justify: metals roll typically migrates 3-5 sessions before LTD; active months for SIL per CME are H/K/N/U/Z (P1-ROLL-METALS-ENERGY-CALIBRATE)
       reference: "CME 1000 oz Silver contract spec https://www.cmegroup.com/markets/metals/precious/1000-oz-silver.contractSpecs.html (retrieved 2026-05-12); window_days pending calibration"
-    commission_per_side_usd: 0.85                   # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY
-    exchange_fee_usd: 0.45                          # placeholder pending P1-METALS-ENERGY-CME-FEE-VERIFY; approximate CME Metals fee for micro
-    nfa_fee_usd: 0.02                               # NFA Rulebook Section 13, eff. 2024-01-01
+    commission_per_side_usd: 0.85                   # NinjaTrader Brokerage Unlimited Q1-2026 retail rate placeholder; broker-specific
+    exchange_fee_usd: 1.00                          # CME COMEX 1000-oz Silver (Micro Silver) exchange fee per side; verified 2026-05-19 (2-way triangulation: TradeStation $1.00 + Discount Trading $1.00; NOT present in NinjaTrader 2025-11-13 PDF which only enumerates SI/QI). Updated 2026-05-19 from $0.45 placeholder (UNDER-STATED by $0.55/side = 122%; MATERIAL recalibration impact on H055/H062/H065 cells per cost-friction-breakeven memo).
+    exchange_fee_verification_source: "CME COMEX 1000-oz Silver fee schedule via 2-way broker passthrough triangulation (TradeStation https://www.tradestation.com/pricing/exchange-execution-and-clearing-fees/ + Discount Trading https://www.discounttrading.com/commission-rates.html, both retrieved 2026-05-19); see docs/research_notes/memo_metals_energy_cme_fee_verification_2026-05-19.md"
+    exchange_fee_verified_date: "2026-05-19"
+    nfa_fee_usd: 0.02                               # NFA per-side futures assessment fee, unchanged since 2018-01-01
     micro_ratio: 0.2                                # 1 SIL = 1/5 SI (full SI is 5000 oz, SIL is 1000 oz), CME product specs
     data_vendor_symbol_databento: "SIL.FUT"
     commission_reviewed_for_broker: null            # placeholder

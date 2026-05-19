@@ -135,10 +135,11 @@ class TestK3NoAddToLoser:
             universe=("ES",), starting_equity=10_000.0
         )
         config = ksr.KillSwitchRuntimeConfig(enable_k3=True)
-        blocked, reason = ksr.check_entry_blocked(
+        blocked, reason, sizing_modifier, state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=1
         )
         assert not blocked
+        assert sizing_modifier == 1.0
 
     def test_overlapping_entry_blocked_regardless_of_side(self):
         # F-1-2 fix: K-3 fires on same-symbol overlap regardless of side.
@@ -156,11 +157,12 @@ class TestK3NoAddToLoser:
             stop_price=4990.0,
             r_dollar=500.0,
         )
-        blocked, reason = ksr.check_entry_blocked(
+        blocked, reason, sizing_modifier, state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=1
         )
         assert blocked
         assert reason == "K-3"
+        assert sizing_modifier == 1.0
 
     def test_after_close_re_entry_unblocked(self):
         state = ksr.init_runtime_state(
@@ -183,10 +185,11 @@ class TestK3NoAddToLoser:
             realized_pnl_dollar=50.0,
             exit_ts=pd.Timestamp("2025-06-16 14:30:00", tz="UTC"),
         )
-        blocked, reason = ksr.check_entry_blocked(
+        blocked, reason, sizing_modifier, state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=1
         )
         assert not blocked
+        assert sizing_modifier == 1.0
 
     def test_k3_disabled_does_not_block(self):
         state = ksr.init_runtime_state(
@@ -203,10 +206,11 @@ class TestK3NoAddToLoser:
             stop_price=4990.0,
             r_dollar=500.0,
         )
-        blocked, reason = ksr.check_entry_blocked(
+        blocked, reason, sizing_modifier, state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=1
         )
         assert not blocked
+        assert sizing_modifier == 1.0
 
 
 class TestK4CapacityCap:
@@ -217,10 +221,11 @@ class TestK4CapacityCap:
         config = ksr.KillSwitchRuntimeConfig(
             enable_k4=True, capacity_caps={"ES": 20}
         )
-        blocked, _ = ksr.check_entry_blocked(
+        blocked, _, sizing_modifier, _state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=20
         )
         assert not blocked
+        assert sizing_modifier == 1.0
 
     def test_size_above_cap_blocked(self):
         state = ksr.init_runtime_state(
@@ -229,11 +234,13 @@ class TestK4CapacityCap:
         config = ksr.KillSwitchRuntimeConfig(
             enable_k4=True, capacity_caps={"ES": 20}
         )
-        blocked, reason = ksr.check_entry_blocked(
+        blocked, reason, sizing_modifier, _state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=21
         )
         assert blocked
         assert reason == "K-4"
+        # ADR-0028 §D-1: K-4 retains block-only; sizing_modifier is 1.0.
+        assert sizing_modifier == 1.0
 
 
 class TestK6DailyBreaker:
@@ -260,10 +267,11 @@ class TestK6DailyBreaker:
         config = ksr.KillSwitchRuntimeConfig(enable_k6=True)
         # Need to re-set current_session_date since update_on_close also routes by exit ts;
         # in our advance_session above we set 2025-06-16 explicitly, matches exit_ts trading_day.
-        blocked, _ = ksr.check_entry_blocked(
+        blocked, _, sizing_modifier, _state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=1
         )
         assert not blocked
+        assert sizing_modifier == 1.0
 
     def test_over_threshold_blocked(self):
         from datetime import date
@@ -284,11 +292,13 @@ class TestK6DailyBreaker:
             exit_ts=pd.Timestamp("2025-06-16 14:30:00", tz="UTC"),
         )
         config = ksr.KillSwitchRuntimeConfig(enable_k6=True)
-        blocked, reason = ksr.check_entry_blocked(
+        blocked, reason, sizing_modifier, _state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=1
         )
         assert blocked
         assert reason == "K-6"
+        # Default k6_enforcement="block": sizing_modifier is 1.0 even on breach.
+        assert sizing_modifier == 1.0
 
     def test_ratchets_with_session_start_equity(self):
         """F-1-7 fix: -2% of $5K starting-session equity = -$100 threshold."""
@@ -311,7 +321,7 @@ class TestK6DailyBreaker:
             exit_ts=pd.Timestamp("2025-06-16 14:30:00", tz="UTC"),
         )
         config = ksr.KillSwitchRuntimeConfig(enable_k6=True)
-        blocked, reason = ksr.check_entry_blocked(
+        blocked, reason, _sizing, _state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=1
         )
         assert blocked
@@ -346,11 +356,13 @@ class TestK7WeeklyBreaker:
             state, new_session_date=sess_date, current_equity=10_000.0,
         )
         config = ksr.KillSwitchRuntimeConfig(enable_k7=True)
-        blocked, reason = ksr.check_entry_blocked(
+        blocked, reason, sizing_modifier, _state = ksr.check_entry_blocked(
             state, config, symbol="ES", position_size=1
         )
         assert blocked
         assert reason == "K-7"
+        # Default k7_enforcement="block": sizing_modifier is 1.0 even on breach.
+        assert sizing_modifier == 1.0
 
 
 class TestTriggerCounts:
@@ -362,6 +374,8 @@ class TestTriggerCounts:
         assert summary["runtime_active"] is False
         assert summary["total_triggers"] == 0
         assert summary["annotation"] == "kill-switch-inactive"
+        # Backward-compat: when config not supplied, mode_annotation absent.
+        assert "mode_annotation" not in summary
 
     def test_summarize_after_trigger(self):
         state = ksr.init_runtime_state(
@@ -376,6 +390,264 @@ class TestTriggerCounts:
         assert summary["trigger_counts"]["K-3"] == 2
         assert summary["trigger_counts"]["K-6"] == 1
         assert summary["annotation"] == "kill-switch-active"
+
+    def test_summarize_with_config_block_mode_annotation(self):
+        # ADR-0028 §D-4: config-aware summary emits kill-switch-mode-block
+        # when k6_enforcement="block" + k7_enforcement="block" (defaults).
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        config = ksr.KillSwitchRuntimeConfig(enable_k6=True, enable_k7=True)
+        summary = ksr.summarize_trigger_counts(state, config)
+        assert summary["mode_annotation"] == "kill-switch-mode-block"
+        assert summary["k6_enforcement"] == "block"
+        assert summary["k7_enforcement"] == "block"
+        assert summary["size_down_fraction"] == 0.5
+
+    def test_summarize_with_config_size_down_k6(self):
+        # ADR-0028 §D-4: aggregate annotation is "size-down" if EITHER K-6
+        # or K-7 is in size_down mode.
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, enable_k7=True, k6_enforcement="size_down",
+        )
+        summary = ksr.summarize_trigger_counts(state, config)
+        assert summary["mode_annotation"] == "kill-switch-mode-size-down"
+        assert summary["k6_enforcement"] == "size_down"
+        assert summary["k7_enforcement"] == "block"
+
+    def test_summarize_with_config_size_down_both(self):
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, enable_k7=True,
+            k6_enforcement="size_down", k7_enforcement="size_down",
+            size_down_fraction=0.25,
+        )
+        summary = ksr.summarize_trigger_counts(state, config)
+        assert summary["mode_annotation"] == "kill-switch-mode-size-down"
+        assert summary["size_down_fraction"] == 0.25
+
+
+class TestSizeDownEnforcement:
+    """ADR-0028 §D-1: K-6/K-7 size-down enforcement-mode enum."""
+
+    def _build_breached_k6_state(self, current_equity: float = 10_000.0):
+        """Helper: construct state with K-6 daily breach pre-registered."""
+        from datetime import date
+
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=current_equity
+        )
+        state = ksr.advance_session(
+            state,
+            new_session_date=date(2025, 6, 16),
+            current_equity=current_equity,
+        )
+        # Realised -2.5% (over the -2% K-6 daily threshold).
+        state = ksr.update_state_on_close(
+            state, symbol="ES",
+            realized_pnl_dollar=-0.025 * current_equity,
+            exit_ts=pd.Timestamp("2025-06-16 14:30:00", tz="UTC"),
+        )
+        return state
+
+    def _build_breached_k7_state(self, current_equity: float = 10_000.0):
+        from datetime import date
+
+        sess_date = ksc.session_date_from_timestamp(
+            pd.Timestamp("2025-06-16 14:30:00", tz="UTC")
+        )
+        week_id = ksc.iso_week_id_from_session_date(sess_date)
+
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=current_equity
+        )
+        state = ksr.advance_week(
+            state, new_week_id=week_id, current_equity=current_equity
+        )
+        state = ksr.advance_session(
+            state, new_session_date=sess_date, current_equity=current_equity
+        )
+        # Realised -6% weekly (over the -5% K-7 threshold).
+        state = ksr.update_state_on_close(
+            state, symbol="ES",
+            realized_pnl_dollar=-0.06 * current_equity,
+            exit_ts=pd.Timestamp("2025-06-16 14:30:00", tz="UTC"),
+        )
+        return state
+
+    def test_default_block_mode_bit_exact_legacy_behavior(self):
+        """Default `k6_enforcement="block"` must reproduce ADR-0025 §D-1 semantic.
+
+        Construct an explicit K-6 breach scenario; verify the 4-tuple return
+        carries `(True, "K-6", 1.0, state-unchanged-for-block-mode)`. This
+        is the bit-exact equivalence test required by ADR-0028 §D-1 backward-
+        compatibility contract.
+        """
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(enable_k6=True)  # defaults to "block"
+
+        blocked, reason, sizing_modifier, new_state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is True
+        assert reason == "K-6"
+        assert sizing_modifier == 1.0
+        # On "block" mode, size-down flag is NOT toggled (preserves legacy state).
+        assert new_state.size_down_active_session is False
+
+    def test_size_down_k6_returns_modifier(self):
+        """K-6 breach under "size_down" mode returns (False, ..., 0.5)."""
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, k6_enforcement="size_down",
+        )
+        blocked, reason, sizing_modifier, new_state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is False
+        assert reason == "size-down-applied"
+        assert sizing_modifier == 0.5
+        # ADR-0028 §D-1: size-down flag persists for the session.
+        assert new_state.size_down_active_session is True
+        assert new_state.size_down_active_week is False
+
+    def test_size_down_k7_returns_modifier(self):
+        """K-7 breach under "size_down" mode returns (False, ..., 0.5)."""
+        state = self._build_breached_k7_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k7=True, k7_enforcement="size_down",
+        )
+        blocked, reason, sizing_modifier, new_state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is False
+        assert reason == "size-down-applied"
+        assert sizing_modifier == 0.5
+        assert new_state.size_down_active_week is True
+
+    def test_size_down_custom_fraction(self):
+        """Operator-supplied size_down_fraction is honored."""
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, k6_enforcement="size_down",
+            size_down_fraction=0.25,
+        )
+        _, _, sizing_modifier, _ = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert sizing_modifier == 0.25
+
+    def test_advance_session_resets_session_flag(self):
+        """advance_session resets size_down_active_session to False."""
+        from datetime import date
+
+        state = self._build_breached_k6_state()
+        # First trigger size-down to set the flag.
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, k6_enforcement="size_down",
+        )
+        _, _, _, state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert state.size_down_active_session is True
+
+        # Advance to next session → flag resets.
+        state = ksr.advance_session(
+            state, new_session_date=date(2025, 6, 17), current_equity=10_000.0
+        )
+        assert state.size_down_active_session is False
+
+    def test_advance_week_resets_week_flag(self):
+        """advance_week resets size_down_active_week to False."""
+        state = self._build_breached_k7_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k7=True, k7_enforcement="size_down",
+        )
+        _, _, _, state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert state.size_down_active_week is True
+
+        state = ksr.advance_week(
+            state, new_week_id=(2025, 26), current_equity=10_000.0
+        )
+        assert state.size_down_active_week is False
+
+    def test_size_down_sticky_within_session_no_breach(self):
+        """Once size-down fires, all subsequent entries inherit modifier
+        until session boundary even if breach 'resolves' on paper.
+        """
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, k6_enforcement="size_down",
+        )
+        # First call sets the flag.
+        _, _, m1, state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert m1 == 0.5
+        assert state.size_down_active_session is True
+
+        # Simulate a recovering trade that mathematically returns daily
+        # P/L above the K-6 threshold; the size-down flag must remain sticky
+        # for the rest of the session per ADR-0028 §D-1 stickiness semantic.
+        state = ksr.update_state_on_close(
+            state, symbol="ES",
+            realized_pnl_dollar=+500.0,  # net daily P/L now +$250
+            exit_ts=pd.Timestamp("2025-06-16 15:00:00", tz="UTC"),
+        )
+        _, reason, m2, state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert m2 == 0.5  # sticky
+        assert reason == "size-down-applied"
+
+    def test_k3_k4_retain_block_only_under_size_down_k6(self):
+        """ADR-0028 §D-1 Out-of-scope: K-3 / K-4 retain block-only enforcement
+        even when K-6 is in size_down mode.
+        """
+        state = self._build_breached_k6_state()
+        # Open a position on ES so K-3 will block re-entry.
+        state = ksr.update_state_on_open(
+            state, symbol="ES", side=1,
+            entry_ts=pd.Timestamp("2025-06-16 14:00:00", tz="UTC"),
+            entry_price=5000.0, position_size=1,
+            stop_price=4990.0, r_dollar=500.0,
+        )
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k3=True, enable_k6=True, k6_enforcement="size_down",
+        )
+        # K-3 fires FIRST (structural invariant; precedes K-6 in order).
+        blocked, reason, sizing_modifier, _ = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is True
+        assert reason == "K-3"
+        assert sizing_modifier == 1.0  # K-3 retains block-only
+
+    def test_validator_runtime_parity_unaffected_by_size_down(self):
+        """ADR-0028 backward-compatibility: validator is post-hoc observation-
+        only. The size-down mode emits sized-down trades which the validator
+        sees as normal realized trades. No validator-side changes are required
+        per the operator spec; this test asserts the parity invariant remains.
+
+        Specifically: shared-constants module (K1, K6, K7 thresholds + the
+        K-5 taxonomy) are unchanged by ADR-0028. Validator + runtime continue
+        to read from the same source of truth.
+        """
+        from inspect import signature
+
+        sig = signature(ksv.K1_per_trade_dollar_stop_within_1R)
+        assert sig.parameters["tolerance_r"].default == ksc.K1_STOP_HIT_TOLERANCE_R
+        assert ksc.K6_DAILY_DRAWDOWN_THRESHOLD == -0.02
+        assert ksc.K7_WEEKLY_DRAWDOWN_THRESHOLD == -0.05
+        # ADR-0028 §D-1 new constant (default size-down fraction).
+        assert ksc.K_SIZE_DOWN_FRACTION_DEFAULT == 0.5
 
 
 class TestParityWithValidator:

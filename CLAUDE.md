@@ -2067,3 +2067,52 @@ Round 1 verdict `accept-with-residuals`. Round 2 verification deferred to the fi
 **New non-blocking follow-ups**: `P1-ADR-0028-TEMPLATE-CASCADE` (KPI template Table 8 rows), `P1-ADR-0028-SIZE-DOWN-FRACTION-EMPIRICAL-CALIBRATION`, `P1-ADR-0028-MULTI-STEP-RATCHET-V2`, `P1-ADR-0028-DYNAMIC-SIZE-DOWN-FRACTION-V2`, `P1-ADR-0028-EXIT-ON-BREACH-INVESTIGATION-V2`, `P1-ADR-0028-SIZE-DOWN-MODE-FAILURE-MODE-INVESTIGATE`, `P1-ADR-0028-ZERO-COST-REFERENCE-CELL-CONVENTION`, `P1-ADR-0028-H055-V2-C9-SIZE-DOWN-INTERACTION-DOCUMENT`, `P1-ADR-0028-RETROACTIVE-V3-COST-FRICTION-EDGE-ANNOTATION-PASS`.
 
 **Time-budget category** (per ADR-0027 §D-5): `investigate` — empirical-follow-through of the H062 v3 ablation; counts toward the ≤25% investigation soft cap of the rolling-30-day commit history. ADR-0028 is the first canonical instantiation of [ADR-0027 §D-3](docs/decisions/ADR-0027-operational-discipline-bounded-exploration.md) empirical-before-amendment sequencing rule: the empirical decomposition (H062 v3 ablation) completed BEFORE the amendment codification.
+
+### Phase O.16: ADR-0028 code-primitive implementation (2026-05-19)
+
+Per the operator 2026-05-19 directive ("Implement the two BLOCKING code primitives that operationalize ADR-0028"). Phase O.16 lands the empirical-anchored amendments codified in [ADR-0028](docs/decisions/ADR-0028-k6-k7-size-down-cost-friction-edge.md) as production-ready code primitives. The ADR-0028 §Cascade-requirements `P1-ADR-0028-KILL-SWITCH-RUNTIME-SIZE-DOWN-IMPL` + `P1-ADR-0028-COST-FRICTION-EDGE-ANNOTATION-IMPL` BLOCKING-BEFORE-V3-LAUNCH-WITH-SIZE-DOWN follow-ups close in this commit.
+
+**Task A — Kill-switch K-6/K-7 size-down primitive** (closes `P1-ADR-0028-KILL-SWITCH-RUNTIME-SIZE-DOWN-IMPL`):
+
+- **[src/skie_ninja/backtest/kill_switch_constants.py](src/skie_ninja/backtest/kill_switch_constants.py)** — `K_SIZE_DOWN_FRACTION_DEFAULT: float = 0.5` constant added per ADR-0028 §D-1 with `# justify:` annotation citing [MacLean-Thorp-Ziemba 2010 *Kelly Capital Growth* DOI 10.1142/7598](https://doi.org/10.1142/7598) (*practitioner*) fractional-Kelly cascade convention. Aligns with ADR-0017 §4.1 quarter-Kelly default + ADR-0018 §D-2 multiplier-grid half-step convention.
+- **[src/skie_ninja/backtest/kill_switch_runtime.py](src/skie_ninja/backtest/kill_switch_runtime.py)** — three structural changes:
+  - `KillSwitchRuntimeConfig` gains 3 new fields: `k6_enforcement: Literal["block", "size_down"] = "block"`, `k7_enforcement: Literal["block", "size_down"] = "block"`, `size_down_fraction: float = K_SIZE_DOWN_FRACTION_DEFAULT`. Defaults preserve ADR-0025 §D-1 bit-equivalence.
+  - `KillSwitchRuntimeState` gains 2 new sticky flags: `size_down_active_session: bool = False`, `size_down_active_week: bool = False`. Reset on `advance_session` / `advance_week` boundaries per ADR-0028 §D-1.
+  - `check_entry_blocked` signature extended from `(bool, str \| None)` 2-tuple to `(bool, str \| None, float, KillSwitchRuntimeState)` 4-tuple. Caller's contract: on block path `(True, K-N, 1.0, state)`; on size-down path `(False, "size-down-applied", config.size_down_fraction, new_state)` with size-down flag toggled True for stickiness. K-3 / K-4 retain block-only enforcement per ADR-0028 §D-1 Out-of-scope.
+- **[src/skie_ninja/backtest/kill_switch_validation.py](src/skie_ninja/backtest/kill_switch_validation.py)** — NOT changed. Validator is post-hoc observation-only; size-down emits sized-down trades which the validator sees as normal realized trades. Parity invariant per `P1-KILL-SWITCH-VALIDATOR-RUNTIME-PARITY-TEST` preserved.
+
+**Task B — Cost-friction-dominated-edge annotation** (closes `P1-ADR-0028-COST-FRICTION-EDGE-ANNOTATION-IMPL`):
+
+- **[src/skie_ninja/inference/cost_friction_edge.py](src/skie_ninja/inference/cost_friction_edge.py)** (NEW; ~220 lines) — `cost_friction_dominated_edge_annotation(cost_model_annotation, realized_oos_basket_pct, zero_cost_reference_cell)` primitive implementing the 3-condition trigger per ADR-0028 §D-2. Returns `CostFrictionEdgeResult` carrying the annotation + provenance fields (zero-cost reference cell run_id + sidecar SHA prefix-16 + reference basket pct + rationale). `build_cost_friction_edge_block` renders the result as a sidecar-embeddable dict block.
+
+**Orchestrator wiring** (extends both Phase O.13 deep-wire orchestrators):
+
+- **[scripts/run_h062_walk_forward.py](scripts/run_h062_walk_forward.py)** — 5 new CLI flags: `--zero-cost-reference-run-id`, `--zero-cost-reference-basket-pct`, `--zero-cost-reference-sidecar-sha-prefix16`, `--k6-enforcement {block,size_down}` (default `block`), `--k7-enforcement {block,size_down}` (default `block`), `--size-down-fraction <float>` (default 0.5 via constants module). `KillSwitchRuntimeConfig` construction threads the enforcement-mode + size-down-fraction args. Per-trade simulator consumes the 4-tuple return and shrinks `size_capped` by `sizing_modifier` on the size-down path. Sidecar payload gains `cost_friction_edge` block + ks_runtime_summary gains `mode_annotation` + `k6_enforcement` + `k7_enforcement` + `size_down_fraction` fields. Annotations list gains `kill-switch-mode-{block,size-down}` + `cost-friction-dominated-edge-{present,absent,n/a}` per ADR-0028 §D-4.
+- **[scripts/run_h055_v2_sweep.py](scripts/run_h055_v2_sweep.py)** — symmetric 5 new CLI flags. Helper function `_build_h055_cost_friction_edge_blocks` builds per-config cost-friction-edge blocks for the 5-cell sweep (v1 + C2_fullkelly + C3_superkelly + C9_bocd_stepup + C5_super_pyramid). Sidecar payload gains `cost_friction_edge_per_cfg` block.
+- **[scripts/smoke_phase_o11_primitives.py](scripts/smoke_phase_o11_primitives.py)** — 4-tuple unpack migration at 3 call sites.
+
+**Test coverage** (151/151 passing; +25 net vs Phase O.15):
+
+| Test file | Tests | Coverage |
+|---|---:|---|
+| `test_kill_switch_runtime.py` | 42 (+12) | TestSizeDownEnforcement × 9 (default-block-bit-exact; K-6 size-down; K-7 size-down; custom fraction; session-reset; week-reset; stickiness; K-3/K-4 retain block-only; validator-runtime parity); TestTriggerCounts size-down extension × 3 (block-mode annotation; K-6-only-size-down annotation; both-size-down annotation with custom fraction) |
+| `test_cost_friction_edge.py` | 13 (NEW file) | TestNaCase × 3 (cost-zero → n/a; cost-zero positive basket → n/a; unrecognized annotation → n/a); TestAbsentCase × 4 (cost-applied positive → absent; no reference → absent; reference non-positive → absent; cost-applied zero basket → absent); TestPresentCase × 2 (H062 v3 anchor; empirical-calibrated variant); TestSidecarBlockBuilder × 2; TestDataclassImmutability × 2 |
+
+**Audit trail**: [docs/audits/audit_trail_2026-05-19_adr-0028-code-primitives.md](docs/audits/audit_trail_2026-05-19_adr-0028-code-primitives.md). Round 1 verdict `accept-with-residuals`. 8 quant-auditor findings (2 critical + 4 major + 2 minor; all critical/major remediated inline). 10 code-reviewer findings (0 critical + 4 major + 6 minor; 3 major + 5 minor remediated inline; 1 major documented as non-blocking pattern).
+
+**Bit-exact equivalence verified**: `TestSizeDownEnforcement::test_default_block_mode_bit_exact_legacy_behavior` PASS. The block-mode return path produces `(True, K-N, 1.0, state)` (state unchanged) which is numerically + behaviorally identical to the legacy 2-tuple `(True, K-N)` return. The H062 v3 sidecar at `artifacts/runs/H062/154237b365794244974068402b377191/sidecar.json` is reproducible with `--k6-enforcement=block --k7-enforcement=block` (the new CLI defaults) modulo the new annotation fields in the payload (Q-1-7 finding: sidecar SHA changes due to new payload fields; numerical KPI values bit-exact).
+
+**Cascade artifacts**: [research/_templates/kpi_results_summary_template.md](research/_templates/kpi_results_summary_template.md) Table 8 gains 2 new rows (`kill-switch-mode-{block,size-down}` + `cost-friction-dominated-edge-{present,absent,n/a}`); §9 annotation line extended with both new annotations; format-version history updated v3.1 → v3.2 (closes `P1-ADR-0028-TEMPLATE-CASCADE`).
+
+**New non-blocking follow-ups** (documentation patterns + future empirical work):
+- `P1-ADR-0028-SIDECAR-SHA-CHANGE-DOCUMENT` — document the sidecar-SHA-changes-due-to-new-annotation-fields convention.
+- `P1-ADR-0028-SWEEP-EMISSION-PATTERN-DOCUMENT` — document the H055-sweep's per-config cost-friction-edge emission convention vs the H062-single-walk-forward's single-block convention.
+- `P1-ADR-0028-FIRST-SIZE-DOWN-EMPIRICAL-RUN` — first H062 ablation cell with `--k6-enforcement=size_down --k7-enforcement=size_down` to empirically validate the size-down mode mitigates the kill-switch-asymmetry pathology surfaced in the Phase O.15 H062 v3 primitive-attribution ablation (anchor: A2 kill-switch-only cell at `d01ca71b7ee34863b4219003d9a05601`; expected outcome: less catastrophic Δ vs the all-3-on cell, more capital preserved during drawdown sessions).
+- `P1-ADR-0028-FIRST-COST-FRICTION-EDGE-EMPIRICAL-EMISSION` — re-emit H062 v3 KPI card v(N+1) with `--zero-cost-reference-run-id 5e52f0b7ddd94ecea3187566c0e255d0 --zero-cost-reference-basket-pct +261.88` to validate the `cost-friction-dominated-edge-present` annotation lands per the empirical anchor.
+
+**Closed follow-ups by Phase O.16**:
+- `P1-ADR-0028-KILL-SWITCH-RUNTIME-SIZE-DOWN-IMPL` ✓
+- `P1-ADR-0028-COST-FRICTION-EDGE-ANNOTATION-IMPL` ✓
+- `P1-ADR-0028-TEMPLATE-CASCADE` ✓
+
+**Time-budget category** (per ADR-0027 §D-5): `infrastructure` — code-primitive implementation operationalizing an already-empirically-anchored amendment. NOT counted toward the ≤25% investigation soft cap (the empirical anchor is Phase O.15's H062 v3 ablation; Phase O.16 is the canonical empirical-follow-through CODE landing per ADR-0027 §D-3).

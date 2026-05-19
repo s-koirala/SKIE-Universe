@@ -127,6 +127,11 @@ from skie_ninja.features.h055 import (
     emit_h055_setups,
 )
 from skie_ninja.inference.bocd import detect_decay
+from skie_ninja.inference.cost_friction_edge import (
+    ZeroCostReferenceCell,
+    build_cost_friction_edge_block,
+    cost_friction_dominated_edge_annotation,
+)
 from skie_ninja.inference.calmar import (
     calmar_ratio,
     max_drawdown_fraction,
@@ -891,13 +896,23 @@ def _run_simulation(
             # capacity cap; K-6/K-7 daily/weekly breakers with current-equity
             # ratcheting per ADR-0017 §4.1.
             if kill_switch_config is not None and ks_state is not None:
-                blocked, reason = check_entry_blocked(
+                # ADR-0028 §D-1: 4-tuple signature (blocked, reason,
+                # sizing_modifier, new_state). On size-down path the
+                # orchestrator shrinks `size` by the modifier; default "block"
+                # mode preserves bit-equivalence with H055 v2 KPI cards.
+                blocked, reason, sizing_modifier, ks_state = check_entry_blocked(
                     ks_state, kill_switch_config,
                     symbol=symbol, position_size=size,
                 )
                 if blocked and reason is not None:
                     ks_state = record_trigger(ks_state, reason)
                     continue
+                if sizing_modifier < 1.0:
+                    size = int(np.floor(size * sizing_modifier))
+                    if size < 1:
+                        continue
+                    if reason is not None:
+                        ks_state = record_trigger(ks_state, reason)
             stop_price = entry_price - s.side * (beta_sl_mult * atr_t)
             tp_price = entry_price + s.side * (alpha_tp_mult * atr_t)
             r_dollar = beta_dollars_per_contract * size
@@ -1337,6 +1352,65 @@ def _aggregate_h055_abandonment_blocks(
     }
 
 
+def _build_h055_cost_friction_edge_blocks(
+    full_results: list[dict[str, Any]],
+    args: argparse.Namespace,
+) -> dict[str, Any]:
+    """ADR-0028 §D-2: build per-config cost-friction-edge blocks for sidecar.
+
+    Computes a basket-level realized OOS pct for each cfg (sum of per-symbol
+    realized end equities / starting-basket), then invokes the annotation
+    primitive with the operator-supplied zero-cost reference (if any).
+    """
+    cost_model_annotation = (
+        "cost-conservative-prior"
+        if args.cost_model == "conservative_prior"
+        else "cost-empirical-calibrated"
+        if args.cost_model == "paper_trade_empirical"
+        else "cost-zero"
+    )
+    # Group results by cfg_name → list of per-symbol records.
+    by_cfg: dict[str, list[dict[str, Any]]] = {}
+    for res in full_results:
+        cfg_name = res.get("cfg_name", "unknown")
+        by_cfg.setdefault(cfg_name, []).append(res)
+
+    # Build zero-cost reference cell (one for the entire sweep emission;
+    # operator supplies a single reference run_id + basket pct).
+    cost_friction_zero_ref: ZeroCostReferenceCell | None = None
+    if (
+        args.zero_cost_reference_run_id is not None
+        and args.zero_cost_reference_basket_pct is not None
+    ):
+        cost_friction_zero_ref = ZeroCostReferenceCell(
+            run_id=str(args.zero_cost_reference_run_id),
+            sidecar_sha_prefix16=(
+                str(args.zero_cost_reference_sidecar_sha_prefix16)
+                if args.zero_cost_reference_sidecar_sha_prefix16 is not None
+                else "(operator-supplied-not-pinned)"
+            ),
+            realized_oos_basket_pct=float(args.zero_cost_reference_basket_pct),
+        )
+
+    per_cfg_blocks: dict[str, Any] = {}
+    for cfg_name, per_sym in by_cfg.items():
+        n_sym = len(per_sym)
+        starting = 10_000.0 * n_sym
+        basket_end = sum(r["realized_end_equity"] for r in per_sym)
+        basket_pct = (basket_end / starting - 1.0) * 100 if starting > 0 else 0.0
+        result = cost_friction_dominated_edge_annotation(
+            cost_model_annotation=cost_model_annotation,
+            realized_oos_basket_pct=basket_pct,
+            zero_cost_reference_cell=cost_friction_zero_ref,
+        )
+        per_cfg_blocks[cfg_name] = build_cost_friction_edge_block(result)
+    return {
+        "per_cfg": per_cfg_blocks,
+        "cost_model_annotation_aggregate": cost_model_annotation,
+        "spec_reference": "ADR-0028 §D-2",
+    }
+
+
 def _subwindow_metrics(
     result: dict[str, Any],
     *,
@@ -1537,6 +1611,56 @@ def main(argv: list[str] | None = None) -> int:
         default="none",
         help="ADR-0025 §D-3: cost-model provenance.",
     )
+    # ADR-0028 §D-2: cost-friction-dominated-edge cross-reference.
+    parser.add_argument(
+        "--zero-cost-reference-run-id",
+        default=None,
+        help=(
+            "ADR-0028 §D-2: optional run_id of a zero-cost ablation cell at "
+            "the same fixture. Enables `cost-friction-dominated-edge-present` "
+            "evaluation per condition (iii)."
+        ),
+    )
+    parser.add_argument(
+        "--zero-cost-reference-basket-pct",
+        type=float,
+        default=None,
+        help=(
+            "ADR-0028 §D-2: realized OOS basket %% of the zero-cost reference "
+            "cell. Required when --zero-cost-reference-run-id is supplied."
+        ),
+    )
+    parser.add_argument(
+        "--zero-cost-reference-sidecar-sha-prefix16",
+        default=None,
+        help="ADR-0028 §D-2: 16-char SHA prefix of the zero-cost reference sidecar.",
+    )
+    # ADR-0028 §D-1: kill-switch K-6/K-7 enforcement-mode opt-in.
+    parser.add_argument(
+        "--k6-enforcement",
+        choices=["block", "size_down"],
+        default="block",
+        help=(
+            "ADR-0028 §D-1: K-6 enforcement mode. `block` (default) preserves "
+            "ADR-0025 §D-1 semantic bit-exactly; `size_down` halves position "
+            "size per the size-down alternative."
+        ),
+    )
+    parser.add_argument(
+        "--k7-enforcement",
+        choices=["block", "size_down"],
+        default="block",
+        help="ADR-0028 §D-1: K-7 enforcement mode.",
+    )
+    parser.add_argument(
+        "--size-down-fraction",
+        type=float,
+        default=None,
+        help=(
+            "ADR-0028 §D-1: size-down multiplier (default 0.5 per "
+            "K_SIZE_DOWN_FRACTION_DEFAULT)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.substrate_path:
@@ -1621,10 +1745,16 @@ def main(argv: list[str] | None = None) -> int:
         # None pending P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3 BLOCKING.
         deep_wire_ks_config: KillSwitchRuntimeConfig | None = None
         if args.enable_kill_switch_runtime:
-            deep_wire_ks_config = KillSwitchRuntimeConfig(
+            # ADR-0028 §D-1: thread enforcement-mode enum + size_down_fraction.
+            kssr_kwargs: dict[str, Any] = dict(
                 enable_k3=True, enable_k4=True, enable_k6=True, enable_k7=True,
                 capacity_caps=_CAPACITY_CAPS,
+                k6_enforcement=args.k6_enforcement,
+                k7_enforcement=args.k7_enforcement,
             )
+            if args.size_down_fraction is not None:
+                kssr_kwargs["size_down_fraction"] = float(args.size_down_fraction)
+            deep_wire_ks_config = KillSwitchRuntimeConfig(**kssr_kwargs)
         deep_wire_rebase_policy: EquityRebasePolicy | None = None
         if args.enable_equity_rebase_current:
             deep_wire_rebase_policy = EquityRebasePolicy(
@@ -1776,6 +1906,14 @@ def main(argv: list[str] | None = None) -> int:
         # have None sub-fields). Deep-wire integration active when the
         # corresponding CLI flag is on.
         "abandonment_triggers": _aggregate_h055_abandonment_blocks(
+            full_results, args,
+        ),
+        # ADR-0028 §D-2: per-config cost-friction-dominated-edge annotation
+        # block. Each entry computes the annotation against the cell's basket-
+        # level realized OOS pct vs the operator-supplied zero-cost reference.
+        # When `--cost-model none` (default), all cells emit
+        # `cost-friction-dominated-edge-n/a`.
+        "cost_friction_edge_per_cfg": _build_h055_cost_friction_edge_blocks(
             full_results, args,
         ),
         "written_at_utc": _dt.datetime.now(_dt.UTC).isoformat(),

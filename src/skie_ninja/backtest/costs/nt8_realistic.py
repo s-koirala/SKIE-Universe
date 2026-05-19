@@ -13,9 +13,14 @@ not a prior.
 
 Fee schedule sourced from [config/instruments.yaml](../../../../config/instruments.yaml)
 at module-import time per the `commission_per_side_usd` / `exchange_fee_usd` /
-`nfa_fee_usd` per-symbol entries. MGC / SIL / MCL fees are placeholders per
-`P1-METALS-ENERGY-CME-FEE-VERIFY`; `fee_breakdown[symbol]["provenance"]`
-surfaces the placeholder status.
+`nfa_fee_usd` per-symbol entries. All 7 symbols' exchange + NFA fees are
+primary-source-verified as of 2026-05-19 (closes
+`P1-METALS-ENERGY-CME-FEE-VERIFY`); see
+[memo_metals_energy_cme_fee_verification_2026-05-19.md](../../../../docs/research_notes/memo_metals_energy_cme_fee_verification_2026-05-19.md).
+`fee_breakdown[symbol]["provenance"]` surfaces the per-symbol verification
+status. `commission_per_side_usd` remains a broker-specific placeholder
+(NinjaTrader Brokerage Unlimited retail rate); operators MUST bind to their
+actual broker rate via `commission_reviewed_for_broker` before live capital.
 
 KPI report card disclosure annotation per ADR-0025 §D-5:
 - `cost-empirical-calibrated` if `calibration_source="paper_trade_empirical"`.
@@ -42,7 +47,8 @@ _logger = logging.getLogger(__name__)
 # Per-symbol fee schedule sourced from config/instruments.yaml.
 # Sums commission_per_side_usd + exchange_fee_usd + nfa_fee_usd from the YAML.
 # ES/NQ/MES/MNQ: VERIFIED primary-source per nt8_es_nq_rth_v1.py.
-# MGC/SIL/MCL: PLACEHOLDER pending P1-METALS-ENERGY-CME-FEE-VERIFY.
+# MGC/SIL/MCL: VERIFIED 2026-05-19 (closes P1-METALS-ENERGY-CME-FEE-VERIFY);
+#   memo docs/research_notes/memo_metals_energy_cme_fee_verification_2026-05-19.md.
 # ---------------------------------------------------------------------------
 
 # justify: ES/NQ commission $0.85 + exchange $1.18 + NFA $0.02 = $2.05/side
@@ -54,11 +60,19 @@ _FIXED_PER_SIDE: dict[str, float] = {
     # per nt8_es_nq_rth_v1.py + config/instruments.yaml.
     "MES": 0.35 + 0.35 + 0.02,
     "MNQ": 0.35 + 0.35 + 0.02,
-    # justify: MGC/SIL/MCL commission $0.85 + placeholder exchange + NFA $0.02
-    # per config/instruments.yaml (PLACEHOLDER per P1-METALS-ENERGY-CME-FEE-VERIFY).
+    # justify: MGC/SIL/MCL commission $0.85 (NinjaTrader Brokerage Unlimited
+    # Q1-2026 retail rate placeholder; broker-specific) + verified exchange
+    # fee per CME 2025-02-01 fee schedule + NFA $0.02. Verified 2026-05-19
+    # via 3-way broker passthrough triangulation (memo
+    # docs/research_notes/memo_metals_energy_cme_fee_verification_2026-05-19.md).
+    # MCL exchange $0.50 (MATCH pre-2026-05-19 placeholder).
+    # MGC exchange $0.60 (up from $0.50 effective 2025-02-01 per CME fee
+    # schedule; pre-2026-05-19 placeholder $0.45 was under-stated by 33%).
+    # SIL exchange $1.00 (pre-2026-05-19 placeholder $0.45 was under-stated
+    # by 122%; MATERIAL recalibration; closes P1-METALS-ENERGY-CME-FEE-VERIFY).
     "MCL": 0.85 + 0.50 + 0.02,
-    "MGC": 0.85 + 0.45 + 0.02,
-    "SIL": 0.85 + 0.45 + 0.02,
+    "MGC": 0.85 + 0.60 + 0.02,
+    "SIL": 0.85 + 1.00 + 0.02,
 }
 
 # justify: 1-tick slippage prior per side per CME tick_value
@@ -88,16 +102,21 @@ _NOTIONAL_MULTIPLIERS: dict[str, float] = {
     "SIL": 1000.0,
 }
 
-# Provenance tag for fee_breakdown output. PLACEHOLDER for the metals/energy
-# symbols pending P1-METALS-ENERGY-CME-FEE-VERIFY.
+# Provenance tag for fee_breakdown output. As of 2026-05-19 all 7 symbols
+# carry primary-source-verified exchange + NFA fees per
+# P1-METALS-ENERGY-CME-FEE-VERIFY closure (memo
+# docs/research_notes/memo_metals_energy_cme_fee_verification_2026-05-19.md).
+# commission_per_side_usd remains a broker-specific placeholder for all 7
+# symbols (NinjaTrader Brokerage Unlimited retail rate); users override per
+# commission_reviewed_for_broker before live-capital runs.
 _FEE_PROVENANCE: dict[str, str] = {
     "ES": "config_instruments_yaml_verified",
     "NQ": "config_instruments_yaml_verified",
     "MES": "config_instruments_yaml_verified",
     "MNQ": "config_instruments_yaml_verified",
-    "MCL": "config_instruments_yaml_placeholder",
-    "MGC": "config_instruments_yaml_placeholder",
-    "SIL": "config_instruments_yaml_placeholder",
+    "MCL": "config_instruments_yaml_verified_2026-05-19",
+    "MGC": "config_instruments_yaml_verified_2026-05-19",
+    "SIL": "config_instruments_yaml_verified_2026-05-19",
 }
 
 
