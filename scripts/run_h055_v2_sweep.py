@@ -1246,7 +1246,20 @@ def _aggregate_h055_abandonment_blocks(
     # justify: aggregation across (symbol × cfg) is the natural basket-level
     # disclosure surface per ADR-0025 §D-7 sidecar provenance binding.
     n_results = len(full_results)
-    total_ks_triggers = {"K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0}
+    # Phase O.17 `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE`: the
+    # canonical 6-key trigger_counts schema separates block-mode K-6/K-7
+    # (capital-preservation rejection) from size-down-mode K-6/K-7 (admit-
+    # with-shrinkage). Block-mode v2 sidecars carry zero in the two new
+    # `*-size-down` keys → bit-exact reproducibility preserved per
+    # ADR-0028 §D-3.
+    total_ks_triggers = {
+        "K-3": 0,
+        "K-4": 0,
+        "K-6": 0,
+        "K-6-size-down": 0,
+        "K-7": 0,
+        "K-7-size-down": 0,
+    }
     n_with_ks = 0
     n_with_rebase = 0
     n_with_cost = 0
@@ -1277,12 +1290,18 @@ def _aggregate_h055_abandonment_blocks(
             total_cost_usd += float(cost.get("cumulative_cost_usd", 0.0))
 
     total_triggers = sum(total_ks_triggers.values())
+    # Phase O.17: operator-readable size-down convenience aggregate.
+    size_down_event_count = (
+        int(total_ks_triggers.get("K-6-size-down", 0))
+        + int(total_ks_triggers.get("K-7-size-down", 0))
+    )
     return {
         "kill_switch_runtime": {
             "enabled": bool(args.enable_kill_switch_runtime),
             "n_cells_with_ks_engaged": n_with_ks,
             "trigger_counts_aggregate": total_ks_triggers,
             "total_triggers": total_triggers,
+            "size_down_event_count": size_down_event_count,
             "annotation": (
                 "kill-switch-active" if total_triggers > 0
                 else "kill-switch-inactive"

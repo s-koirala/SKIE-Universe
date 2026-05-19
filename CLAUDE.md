@@ -2116,3 +2116,53 @@ Per the operator 2026-05-19 directive ("Implement the two BLOCKING code primitiv
 - `P1-ADR-0028-TEMPLATE-CASCADE` ✓
 
 **Time-budget category** (per ADR-0027 §D-5): `infrastructure` — code-primitive implementation operationalizing an already-empirically-anchored amendment. NOT counted toward the ≤25% investigation soft cap (the empirical anchor is Phase O.15's H062 v3 ablation; Phase O.16 is the canonical empirical-follow-through CODE landing per ADR-0027 §D-3).
+
+### Phase O.17: ADR-0028 size-down sidecar disclosure-defect close (2026-05-19)
+
+Per the H062 v3 size-down first-use empirical run ([artifacts/runs/H062/791cb35b53834e54b98d421fa216aea3/sidecar.json](artifacts/runs/H062/791cb35b53834e54b98d421fa216aea3/sidecar.json)) [§6.4 surfacing](research/01_hypothesis_register/H062/INVESTIGATE-FAILURE-MODE-H062-V3-SIZE-DOWN-FIRST-USE.md) — and per [ADR-0027 §D-3 empirical-before-amendment sequencing](docs/decisions/ADR-0027-operational-discipline-bounded-exploration.md) — the Phase O.17 primitive-layer fix closes the size-down sidecar disclosure defect introduced (latent) by Phase O.16 commit `31e7f69`.
+
+**Defect**: in `--k6-enforcement size_down` / `--k7-enforcement size_down` mode, `check_entry_blocked` returned reason `"size-down-applied"` (generic sentinel). The orchestrator's `record_trigger(state, reason)` call permissively added a `"size-down-applied"` key to `state.trigger_counts`, but the orchestrator's basket-aggregation loop (`scripts/run_h062_walk_forward.py:1696-1708`; `scripts/run_h055_v2_sweep.py:1249+1264`) iterated over a hard-coded 4-key dict `{"K-3", "K-4", "K-6", "K-7"}`, silently dropping the size-down counts at aggregation time. Result: sidecar emitted `trigger_counts = {0, 0, 0, 0}` + `runtime_active = False` + `annotation = "kill-switch-inactive"` despite the size-down primitive having engaged on +2,101 entries vs v3 block-mode (verified by trade-count delta + win-rate restoration from 27.15% → 29.33%).
+
+**Defect close** (this commit): per the [investigation memo §7(d) Option A (preferred)](research/01_hypothesis_register/H062/INVESTIGATE-FAILURE-MODE-H062-V3-SIZE-DOWN-FIRST-USE.md#7-implication) + the operator's `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE` BLOCKING-BEFORE-NEXT-SIZE-DOWN-KPI-EMISSION mandate:
+
+- **Canonical 6-key trigger_counts schema** in [src/skie_ninja/backtest/kill_switch_runtime.py](src/skie_ninja/backtest/kill_switch_runtime.py): `init_runtime_state` now initializes `trigger_counts = {"K-3": 0, "K-4": 0, "K-6": 0, "K-6-size-down": 0, "K-7": 0, "K-7-size-down": 0}`. Semantic shift: "blocked entries" → **"constraint breaches"** (the counter increments whenever a K-N constraint FIRES, regardless of whether enforcement is `block` (entry rejected) or `size_down` (entry admitted with shrunk size)). Documented in `KillSwitchRuntimeState.trigger_counts` docstring + `record_trigger` docstring + `summarize_trigger_counts` docstring.
+- **K-N-size-down reason strings**: `check_entry_blocked` now returns reason `"K-6-size-down"` / `"K-7-size-down"` on FRESH K-6 / K-7 breaches under size_down mode (vs the legacy `"size-down-applied"` generic sentinel). Sticky-inheritance entries (no fresh breach; flag set from prior call) preserve the `"size-down-applied"` sentinel — the orchestrator's `record_trigger` call adds it permissively but the canonical 6-key keyset iteration ignores it (no double-counting; the breach was incremented on the originating call).
+- **size_down_event_count operator-readable convenience field**: `summarize_trigger_counts` emits a top-level `size_down_event_count = trigger_counts["K-6-size-down"] + trigger_counts["K-7-size-down"]` for fast disclosure of size-down activity to sidecar readers.
+- **Orchestrator aggregation widened**: both `scripts/run_h062_walk_forward.py` (basket aggregation lines 1681-1716) and `scripts/run_h055_v2_sweep.py` (sweep aggregation lines 1249-1296) updated to widen the per-symbol / per-cell dict to the canonical 6-key schema + emit `size_down_event_count` in the kill_switch_runtime block.
+
+**Bit-exact backward-compatibility for block-mode** preserved per ADR-0028 §D-3: block-mode return reason strings (`"K-6"`, `"K-7"`) are UNCHANGED; the two new `*-size-down` keys initialize to 0 and only increment in size_down mode. Existing block-mode v3 sidecar at run_id `154237b365794244974068402b377191` carries non-zero counts in `K-6` (4417) + `K-7` (4428) and zero in `K-3` + `K-4` + (post-Phase-O.17) the two new keys. Verified at the primitive layer by new test `TestSizeDownEnforcement::test_block_mode_v3_sidecar_bit_exact_parity_invariant`.
+
+**Tests landed** (5 new tests in [tests/unit/test_kill_switch_runtime.py](tests/unit/test_kill_switch_runtime.py); 46/46 passing in test_kill_switch_runtime.py; 142/142 passing across the Phase O.11-O.13 + Phase O.17 surface):
+- `test_size_down_k6_increments_trigger_counts` — FRESH K-6 size-down breach increments `K-6-size-down` (NOT K-6) and the annotation correctly returns `"kill-switch-active"`.
+- `test_size_down_k7_increments_trigger_counts` — symmetric for K-7.
+- `test_size_down_kill_switch_active_annotation_via_summary` — annotation orthogonality verified: `annotation = "kill-switch-active"` + `mode_annotation = "kill-switch-mode-size-down"` no longer contradict each other.
+- `test_block_mode_v3_sidecar_bit_exact_parity_invariant` — load-bearing regression check: block-mode reason strings unchanged + sizing_modifier = 1.0.
+- Modifications to existing `test_init_state_clean` + `test_summarize_clean_state` + `test_summarize_after_trigger` + `test_size_down_k6_returns_modifier` + `test_size_down_k7_returns_modifier` to align with the new 6-key schema + size_down_event_count field.
+
+**Audit-remediate-loop R1** (parallel quant-auditor + code-reviewer; inline-execution per the audit-remediate-loop skill convention). Verdict `accept-with-residuals`. 8 findings (1 critical + 3 major + 4 minor); all critical/major remediated inline. Audit trail: [docs/audits/audit_trail_2026-05-19_size-down-disclosure-defect-close.md](docs/audits/audit_trail_2026-05-19_size-down-disclosure-defect-close.md).
+
+**Sidecar at `artifacts/runs/H062/791cb35b53834e54b98d421fa216aea3/` preserved verbatim** per [ADR-0013 §4.1 non-loss](docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md). The original sidecar carries the legacy 4-key schema + misleading `kill-switch-inactive` annotation; the H062 v3 size-down memo §8.1 (this commit) documents the disclosure-defect status + the canonical-going-forward semantic. Pre-Phase-O.17 size-down sidecars are NOT regenerated; the canonical-going-forward semantic per the Phase O.17 fix applies to all future size-down-mode emissions.
+
+**Cascade artifacts**:
+- [docs/glossary.md](docs/glossary.md) `kill-switch-{active, inactive}` entry extended with the canonical "constraint breaches" semantic + the size-down disclosure correctness clause.
+- [docs/audits/audit_trail_2026-05-19_size-down-disclosure-defect-close.md](docs/audits/audit_trail_2026-05-19_size-down-disclosure-defect-close.md) audit-remediate-loop trail.
+- [research/01_hypothesis_register/H062/INVESTIGATE-FAILURE-MODE-H062-V3-SIZE-DOWN-FIRST-USE.md](research/01_hypothesis_register/H062/INVESTIGATE-FAILURE-MODE-H062-V3-SIZE-DOWN-FIRST-USE.md) §8.1 Phase O.17 addendum.
+- This Phase O.17 ledger section.
+
+**Closes**: `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE` (BLOCKING-BEFORE-NEXT-SIZE-DOWN-KPI-EMISSION).
+
+**New non-blocking follow-ups registered by Phase O.17**:
+
+| Follow-up | Description |
+|---|---|
+| `P1-ADR-0028-DOUBLE-BREACH-CALL-COUNTING` | Single-call double-fresh-breach edge case (K-6 + K-7 fresh-breach on same call); structurally rare per ADR-0017 §5 K-6/K-7 threshold separation (-2%/-5%) but under-counts K-6 in this edge case. |
+| `P1-KILL-SWITCH-RECORD-TRIGGER-LITERAL-CONSTRAINT` | Type-constrain `record_trigger.constraint_id` parameter to `Literal[...]` type. |
+| `P1-KILL-SWITCH-DOCSTRING-SECTIONING` | Refactor `summarize_trigger_counts` docstring into structured sections. |
+| `P1-ADR-0028-ADMITTED-WITH-SIZE-DOWN-COUNTER` | Optional separate orchestrator-side counter for admitted-with-size-down entries (distinct from breach counts). |
+| `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2` | Optional separate `blocked_entries_count` field if the project wants the original "blocked entries" semantic surfaced alongside the new "constraint breaches" semantic. |
+
+**Sibling work in parallel** (Task #23, per the user's parallel-agent dispatch 2026-05-19): H068 pre-registration as the genetic successor to H062 per ADR-0027 §D-4 genetic-successor discipline. Task #23 landed first as commit `15a569b` ("H068 cost-light H065-ES successor pre-registration"). This Phase O.17 fix commits AFTER H068. Future v(N+1) KPI report card emissions on H068 + H062 that invoke size-down enforcement will use the corrected sidecar disclosure semantic landed here.
+
+**Pre-existing unrelated test failure noted**: `tests/unit/test_em_kernels.py::test_forward_log_handles_minus_inf_prior_with_pos_inf_emission_no_nan` is failing on `main` HEAD (verified via `git stash` baseline check). The HMM forward-pass log-arithmetic edge case in `src/skie_ninja/models/regime/_em_kernels.py:477` is a separate concern; tracked under new non-blocking `P1-EM-KERNELS-FORWARD-LOG-INF-EDGE-CASE` follow-up.
+
+**Time-budget category** (per ADR-0027 §D-5): `infrastructure` — code-defect fix operationalizing the canonical disclosure semantic surfaced by the Phase O.16 size-down first-use investigation. NOT counted toward the ≤25% investigation soft cap (the empirical anchor + investigation are Phase O.16; Phase O.17 is the canonical defect-close per ADR-0027 §D-3).

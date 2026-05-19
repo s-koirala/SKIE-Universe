@@ -228,6 +228,18 @@ H062 remains at `kpi-report-emitted` (v2) per [ADR-0013 §1](../../../docs/decis
   - `P1-ADR-0028-SIZE-DOWN-NON-DECAYED-FACTOR-EMPIRICAL`: empirical run of the size-down primitive on a non-partially-decayed factor (e.g., H067 H065-SIL successor when its KPI report card v1 lands) to extend the §7(c) operator-discretionary recommendation beyond the H062 partially-decayed regime.
   - `P1-ADR-0028-SIZE-DOWN-FRACTION-EMPIRICAL-RECALIBRATION-AT-FIXTURE`: empirical comparison of `size_down_fraction ∈ {0.25, 0.5, 0.75}` on the H062 v3 smoke fixture to test whether the fixed 0.5 default is empirically optimal for this fixture; tracked alongside the pre-existing `P1-ADR-0028-SIZE-DOWN-FRACTION-EMPIRICAL-CALIBRATION` (non-blocking).
 
+### 8.1 Phase O.17 disclosure-defect-close addendum (appended 2026-05-19)
+
+Per [ADR-0013 §4.1](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) non-loss mandate, this §8.1 appends — does NOT modify — the §6.4 + §7(d) disclosure-defect findings.
+
+**Defect closure**: `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE` (registered above as BLOCKING-BEFORE-NEXT-SIZE-DOWN-KPI-EMISSION) was closed in Phase O.17 via a primitive-layer fix landing the canonical 6-key trigger_counts schema (memo §7(d) Option A "preferred"). Fix commit SHA: `<populated-at-commit-time>`; audit trail: [docs/audits/audit_trail_2026-05-19_size-down-disclosure-defect-close.md](../../../docs/audits/audit_trail_2026-05-19_size-down-disclosure-defect-close.md).
+
+**Status of the size-down sidecar at `artifacts/runs/H062/791cb35b53834e54b98d421fa216aea3/sidecar.json`** (per ADR-0013 §4.1 non-loss): the sidecar is preserved verbatim under the original (pre-Phase-O.17) disclosure semantic; `trigger_counts` shows `{"K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0}` and `annotation = "kill-switch-inactive"` despite the +2,101-trade delta vs v3 block-mode that empirically proves size-down engagement. The canonical-going-forward semantic per the Phase O.17 fix commit applies to all future size-down-mode emissions; the existing sidecar is NOT regenerated.
+
+**Operator note for future readers**: when reading this memo against a sidecar produced AFTER the Phase O.17 fix commit, the `trigger_counts` block carries 6 keys (K-3, K-4, K-6, K-6-size-down, K-7, K-7-size-down) and the `annotation` field correctly reflects size-down engagement. Pre-Phase-O.17 sidecars (this run's included) carry the 4-key legacy schema; the empirical proof of size-down engagement is the trade-count delta vs block-mode reference, NOT the disclosure fields.
+
+**Re-runnable verification command** (post-Phase-O.17): re-running the canonical reproduction command (§ "Canonical reproduction command" below) against the post-fix-commit HEAD will produce a NEW sidecar at a different run_id with the corrected 6-key schema, the size_down_event_count field, and `annotation = "kill-switch-active"`. The new sidecar is the canonical-going-forward reference for size-down disclosure semantics; the original sidecar at `791cb35b53834e54b98d421fa216aea3` is the historical anchor for the §6.4 + §7(d) defect finding.
+
 ## Cross-references
 
 - Parent KPI report card: [H062 v2](H062_kpi_report_v2.md) (frontmatter `parent_kpi_report_card`)

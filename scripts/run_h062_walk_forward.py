@@ -1675,11 +1675,25 @@ def main(argv: list[str] | None = None) -> int:
         # have None sub-fields → aggregation produces empty/zero summaries).
         # When primitive flags are ON the deep-wire engaged at OOS sim time and
         # the per-fold blocks carry real trigger counts + final equity + cost.
+        # Phase O.17 `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE`: the
+        # canonical 6-key trigger_counts schema separates block-mode K-6/K-7
+        # (capital-preservation rejection) from size-down-mode K-6/K-7 (admit-
+        # with-shrinkage). Block-mode v3 sidecars carry zero in the two new
+        # `*-size-down` keys → bit-exact reproducibility preserved per
+        # ADR-0028 §D-3.
         ks_runtime_summary: dict[str, Any] = {
             "enabled": bool(args.enable_kill_switch_runtime),
             "runtime_active": False,
-            "trigger_counts": {"K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0},
+            "trigger_counts": {
+                "K-3": 0,
+                "K-4": 0,
+                "K-6": 0,
+                "K-6-size-down": 0,
+                "K-7": 0,
+                "K-7-size-down": 0,
+            },
             "total_triggers": 0,
+            "size_down_event_count": 0,
             "annotation": "kill-switch-inactive",
             "deep_wiring_status": (
                 "deep-wired-via-sim-call"
@@ -1694,7 +1708,12 @@ def main(argv: list[str] | None = None) -> int:
             for sym in universe:
                 sym_fold_summaries = per_symbol_abandonment_runtime.get(sym, [])
                 sym_total_counts: dict[str, int] = {
-                    "K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0
+                    "K-3": 0,
+                    "K-4": 0,
+                    "K-6": 0,
+                    "K-6-size-down": 0,
+                    "K-7": 0,
+                    "K-7-size-down": 0,
                 }
                 for fold_atr in sym_fold_summaries:
                     fold_ks = fold_atr.get("kill_switch_runtime")
@@ -1709,6 +1728,11 @@ def main(argv: list[str] | None = None) -> int:
                 ks_runtime_summary["n_fold_summaries_captured"] += len(sym_fold_summaries)
             ks_runtime_summary["total_triggers"] = sum(
                 ks_runtime_summary["trigger_counts"].values()
+            )
+            # Phase O.17: operator-readable size-down convenience aggregate.
+            ks_runtime_summary["size_down_event_count"] = (
+                ks_runtime_summary["trigger_counts"]["K-6-size-down"]
+                + ks_runtime_summary["trigger_counts"]["K-7-size-down"]
             )
             ks_runtime_summary["runtime_active"] = ks_runtime_summary["total_triggers"] > 0
             ks_runtime_summary["annotation"] = (

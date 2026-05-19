@@ -100,7 +100,18 @@ class TestInitAndAdvance:
         assert state.open_position_by_symbol == {}
         assert state.equity_at_session_start == 10_000.0
         assert state.current_session_date is None
-        assert state.trigger_counts == {"K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0}
+        # Phase O.17 canonical 6-key schema per `P1-ADR-0028-SIZE-DOWN-
+        # DISCLOSURE-DEFECT-CLOSE`: block-mode K-6/K-7 keys preserved
+        # verbatim (block-mode v3 sidecars bit-exact reproducible);
+        # K-6-size-down + K-7-size-down keys added for size-down mode.
+        assert state.trigger_counts == {
+            "K-3": 0,
+            "K-4": 0,
+            "K-6": 0,
+            "K-6-size-down": 0,
+            "K-7": 0,
+            "K-7-size-down": 0,
+        }
 
     def test_advance_session_sets_session_start_equity(self):
         from datetime import date
@@ -373,6 +384,8 @@ class TestTriggerCounts:
         summary = ksr.summarize_trigger_counts(state)
         assert summary["runtime_active"] is False
         assert summary["total_triggers"] == 0
+        # Phase O.17: size_down_event_count field always present.
+        assert summary["size_down_event_count"] == 0
         assert summary["annotation"] == "kill-switch-inactive"
         # Backward-compat: when config not supplied, mode_annotation absent.
         assert "mode_annotation" not in summary
@@ -389,6 +402,8 @@ class TestTriggerCounts:
         assert summary["total_triggers"] == 3
         assert summary["trigger_counts"]["K-3"] == 2
         assert summary["trigger_counts"]["K-6"] == 1
+        # Block-mode-only triggers: size_down_event_count is 0.
+        assert summary["size_down_event_count"] == 0
         assert summary["annotation"] == "kill-switch-active"
 
     def test_summarize_with_config_block_mode_annotation(self):
@@ -501,7 +516,15 @@ class TestSizeDownEnforcement:
         assert new_state.size_down_active_session is False
 
     def test_size_down_k6_returns_modifier(self):
-        """K-6 breach under "size_down" mode returns (False, ..., 0.5)."""
+        """K-6 breach under "size_down" mode returns (False, "K-6-size-down", 0.5).
+
+        Phase O.17 `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE` semantic:
+        FRESH K-6 breach under size-down mode now emits reason `"K-6-size-down"`
+        so the orchestrator's `record_trigger(state, reason)` call lands in
+        the canonical 6-key dict. Prior to Phase O.17 the reason was the
+        generic `"size-down-applied"` sentinel which was silently dropped
+        by the orchestrator's keyset-iteration → sidecar-disclosure defect.
+        """
         state = self._build_breached_k6_state()
         config = ksr.KillSwitchRuntimeConfig(
             enable_k6=True, k6_enforcement="size_down",
@@ -510,14 +533,18 @@ class TestSizeDownEnforcement:
             state, config, symbol="ES", position_size=1
         )
         assert blocked is False
-        assert reason == "size-down-applied"
+        # Phase O.17: K-N-size-down specific reason emitted on FRESH breach.
+        assert reason == "K-6-size-down"
         assert sizing_modifier == 0.5
         # ADR-0028 §D-1: size-down flag persists for the session.
         assert new_state.size_down_active_session is True
         assert new_state.size_down_active_week is False
 
     def test_size_down_k7_returns_modifier(self):
-        """K-7 breach under "size_down" mode returns (False, ..., 0.5)."""
+        """K-7 breach under "size_down" mode returns (False, "K-7-size-down", 0.5).
+
+        Phase O.17: FRESH K-7 breach emits reason `"K-7-size-down"`.
+        """
         state = self._build_breached_k7_state()
         config = ksr.KillSwitchRuntimeConfig(
             enable_k7=True, k7_enforcement="size_down",
@@ -526,7 +553,8 @@ class TestSizeDownEnforcement:
             state, config, symbol="ES", position_size=1
         )
         assert blocked is False
-        assert reason == "size-down-applied"
+        # Phase O.17: K-N-size-down specific reason emitted on FRESH breach.
+        assert reason == "K-7-size-down"
         assert sizing_modifier == 0.5
         assert new_state.size_down_active_week is True
 
@@ -629,6 +657,121 @@ class TestSizeDownEnforcement:
         assert blocked is True
         assert reason == "K-3"
         assert sizing_modifier == 1.0  # K-3 retains block-only
+
+    def test_size_down_k6_increments_trigger_counts(self):
+        """Phase O.17 `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE`: a FRESH
+        K-6 breach under size-down mode increments
+        `state.trigger_counts["K-6-size-down"]` via the canonical orchestrator
+        pattern (`record_trigger(state, reason)` with reason from
+        `check_entry_blocked`); `summarize_trigger_counts.annotation` then
+        returns `"kill-switch-active"` so the sidecar disclosure correctly
+        reflects mechanism engagement.
+
+        Pre-Phase-O.17 behaviour: reason was `"size-down-applied"` sentinel;
+        `record_trigger` permissively added it as an extra key BUT the
+        orchestrator's keyset-iteration dropped it at basket aggregation
+        time → `runtime_active=false` + `annotation="kill-switch-inactive"`
+        despite the size-down primitive having engaged.
+        """
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, k6_enforcement="size_down",
+        )
+        _blocked, reason, _mod, state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        # Phase O.17 contract: orchestrator records via the returned reason.
+        state = ksr.record_trigger(state, reason)
+        assert state.trigger_counts["K-6-size-down"] == 1
+        # Block-mode K-6 unchanged at zero — bit-exact decomposition preserved.
+        assert state.trigger_counts["K-6"] == 0
+
+        summary = ksr.summarize_trigger_counts(state)
+        assert summary["runtime_active"] is True
+        assert summary["annotation"] == "kill-switch-active"
+        assert summary["size_down_event_count"] == 1
+        assert summary["total_triggers"] == 1
+
+    def test_size_down_k7_increments_trigger_counts(self):
+        """Symmetric: FRESH K-7 size-down breach increments
+        `state.trigger_counts["K-7-size-down"]` and `kill-switch-active` fires.
+        """
+        state = self._build_breached_k7_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k7=True, k7_enforcement="size_down",
+        )
+        _blocked, reason, _mod, state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        state = ksr.record_trigger(state, reason)
+        assert state.trigger_counts["K-7-size-down"] == 1
+        assert state.trigger_counts["K-7"] == 0
+
+        summary = ksr.summarize_trigger_counts(state)
+        assert summary["runtime_active"] is True
+        assert summary["annotation"] == "kill-switch-active"
+        assert summary["size_down_event_count"] == 1
+
+    def test_size_down_kill_switch_active_annotation_via_summary(self):
+        """Annotation grammar verification: after a FRESH K-6 size-down
+        breach + record_trigger landing in the canonical 6-key dict,
+        `summarize_trigger_counts(state, config)` returns the orthogonal
+        annotation pair:
+          - `annotation = "kill-switch-active"` (ADR-0025 §D-5 runtime fire)
+          - `mode_annotation = "kill-switch-mode-size-down"` (ADR-0028 §D-4 mode)
+        These no longer contradict each other in size-down mode (pre-Phase-O.17
+        bug: annotation was "kill-switch-inactive" + mode_annotation
+        "kill-switch-mode-size-down" — operator-misleading).
+        """
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, enable_k7=True, k6_enforcement="size_down",
+        )
+        _, reason, _, state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        state = ksr.record_trigger(state, reason)
+        summary = ksr.summarize_trigger_counts(state, config)
+        assert summary["annotation"] == "kill-switch-active"
+        assert summary["mode_annotation"] == "kill-switch-mode-size-down"
+        assert summary["k6_enforcement"] == "size_down"
+        assert summary["k7_enforcement"] == "block"  # not enabled in size_down mode
+
+    def test_block_mode_v3_sidecar_bit_exact_parity_invariant(self):
+        """Load-bearing regression check: block-mode v3 sidecar at run_id
+        `154237b365794244974068402b377191` carries non-zero counts in
+        `trigger_counts.K-6` (4417) + `trigger_counts.K-7` (4428) and ZERO
+        in `K-3` + `K-4` + (post-Phase-O.17) the two new `*-size-down` keys.
+        The block-mode reason strings emitted by `check_entry_blocked` MUST
+        remain `"K-6"` / `"K-7"` so the v3 sidecar reproduces bit-exactly
+        when the post-Phase-O.17 primitive is invoked with default
+        `k6_enforcement="block"` + `k7_enforcement="block"`.
+
+        This test asserts the contract at the primitive layer; the actual
+        v3 sidecar replay is verified by the full walk-forward determinism
+        guarantees in the orchestrator + ReproLog binding.
+        """
+        # Build K-6 breach under block-mode default.
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(enable_k6=True)  # default "block"
+        blocked, reason, sizing_modifier, _state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is True
+        # Phase O.17 contract: block-mode reason unchanged = "K-6".
+        assert reason == "K-6"
+        assert sizing_modifier == 1.0
+
+        # Build K-7 breach under block-mode default.
+        state = self._build_breached_k7_state()
+        config = ksr.KillSwitchRuntimeConfig(enable_k7=True)  # default "block"
+        blocked, reason, sizing_modifier, _state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is True
+        # Phase O.17 contract: block-mode reason unchanged = "K-7".
+        assert reason == "K-7"
+        assert sizing_modifier == 1.0
 
     def test_validator_runtime_parity_unaffected_by_size_down(self):
         """ADR-0028 backward-compatibility: validator is post-hoc observation-

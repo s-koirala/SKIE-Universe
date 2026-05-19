@@ -131,7 +131,41 @@ class KillSwitchRuntimeState:
         equity_at_week_start: account equity at the start of the current ISO-
             week; recorded by `advance_week` and used as the K-7 threshold
             denominator.
-        trigger_counts: dict[K-N constraint id, fire-count] for sidecar emission.
+        trigger_counts: dict[K-N constraint id, breach-fire-count] for sidecar
+            emission.
+
+            Per ADR-0028 §D-1 Phase O.17 amendment (`P1-ADR-0028-SIZE-DOWN-
+            DISCLOSURE-DEFECT-CLOSE` closure), the trigger_counts semantic is
+            **"constraint breaches"** — increments whenever a K-N constraint
+            FIRES, regardless of whether enforcement-mode is `"block"` (entry
+            rejected) or `"size_down"` (entry admitted with shrunk size). The
+            schema initializes 6 keys:
+
+              - `"K-3"` — no-add-to-loser breach (block-only enforcement)
+              - `"K-4"` — capacity-cap breach (block-only enforcement)
+              - `"K-6"` — daily circuit-breaker breach under `block` mode
+              - `"K-6-size-down"` — daily circuit-breaker breach under `size_down` mode
+              - `"K-7"` — weekly circuit-breaker breach under `block` mode
+              - `"K-7-size-down"` — weekly circuit-breaker breach under `size_down` mode
+
+            Block-mode v3 sidecars produced under ADR-0025 §D-1 (e.g., run_id
+            `154237b365794244974068402b377191`) carry zero in the two new
+            `*-size-down` keys → bit-exact reproducibility preserved per
+            ADR-0028 §D-3 backward-compatibility contract.
+
+            The previous (Phase O.16) semantic of "blocked-entries" is
+            INCORRECT — size-down breaches are silently dropped at aggregation
+            because the orchestrator's keyset-iteration excluded the
+            `"size-down-applied"` reason string. The Phase O.17 fix realigns
+            the runtime + sidecar disclosure on the canonical "constraint
+            breaches" semantic; the empirically-engaged size-down events now
+            surface in `summarize_trigger_counts.annotation = "kill-switch-active"`.
+
+            Design alternative considered: a separate `blocked_entries_count`
+            field could be added to distinguish blocked vs sized-down breaches
+            beyond what the 2 new keys already encode. Deferred to v2 per
+            `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2` (non-
+            blocking; the 6-key schema already encodes the distinction).
         universe: list of symbols in the active basket; validated at init for
             K-5 correlated-pair membership per F-1-6 audit fix.
         size_down_active_session: per ADR-0028 §D-1, set True when K-6 breach
@@ -190,7 +224,21 @@ def init_runtime_state(
         current_week_id=None,
         equity_at_session_start=float(starting_equity),
         equity_at_week_start=float(starting_equity),
-        trigger_counts={"K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0},
+        # Phase O.17 fix per `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE`:
+        # 6-key schema separates block-mode K-6/K-7 (capital-preservation
+        # rejection) from size-down-mode K-6/K-7 (admit-with-shrinkage). See
+        # `KillSwitchRuntimeState.trigger_counts` docstring for the canonical
+        # semantic. Existing block-mode v3 sidecars carry zero in the two
+        # `*-size-down` keys → bit-exact backward-compatibility per ADR-0028
+        # §D-3.
+        trigger_counts={
+            "K-3": 0,
+            "K-4": 0,
+            "K-6": 0,
+            "K-6-size-down": 0,
+            "K-7": 0,
+            "K-7-size-down": 0,
+        },
         universe=tuple(s.upper() for s in universe),
     )
 
@@ -268,12 +316,30 @@ def check_entry_blocked(
       the modifier (state.size_down_active_session OR size_down_active_week
       check OR is consulted in the new sizing modifier branch below).
 
+    Reason-string contract per Phase O.17 `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-
+    DEFECT-CLOSE`: the `reason` field carries the canonical K-N id that the
+    orchestrator passes to `record_trigger`. Six reason strings are emitted
+    across all paths:
+
+      - `"K-3"` — K-3 block (no add-to-loser)
+      - `"K-4"` — K-4 block (capacity cap)
+      - `"K-6"` — K-6 block (daily breaker under `block` mode)
+      - `"K-6-size-down"` — K-6 size-down breach (daily breaker under `size_down` mode)
+      - `"K-7"` — K-7 block (weekly breaker under `block` mode)
+      - `"K-7-size-down"` — K-7 size-down breach (weekly breaker under `size_down` mode)
+
+    Each reason directly indexes into `state.trigger_counts` so the
+    `record_trigger(state, reason)` call lands in the canonical 6-key dict.
+    Block-mode v3 sidecars produced under ADR-0025 §D-1 are bit-exact
+    reproducible since block-mode reason strings (`"K-6"`, `"K-7"`) are
+    unchanged.
+
     Order of K-N checks: K-3 (existing open position) → K-4 (capacity cap) →
     K-6 (daily breaker) → K-7 (weekly breaker). The first-firing structural
     constraint (K-3 / K-4) short-circuits and blocks; only its trigger is
     recorded. K-6 / K-7 are circuit breakers: when "block" mode is active
     they short-circuit and block; when "size_down" mode is active they set
-    the size-down flag, return (False, "K-N size-down applied",
+    the size-down flag, return (False, "K-N-size-down",
     config.size_down_fraction, new_state) but DO NOT block.
 
     Stickiness semantic: once a K-6 size-down has fired in the current
@@ -301,6 +367,14 @@ def check_entry_blocked(
     # Pre-compute the "size_down active" composite (sticky-flag OR newly-breached).
     size_down_modifier: float = 1.0
     new_state = state
+    # Phase O.17 `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE`: when a
+    # FRESH K-N breach fires under size_down mode, the orchestrator must
+    # receive the K-N-specific reason ("K-6-size-down" or "K-7-size-down")
+    # so `record_trigger(state, reason)` lands in the canonical 6-key dict.
+    # Sticky-inheritance entries (no fresh breach; flag set from prior call)
+    # return the legacy "size-down-applied" sentinel so the orchestrator's
+    # downstream sizing branch engages without double-counting the breach.
+    fresh_breach_reason: str | None = None
 
     if config.enable_k6 and state.current_session_date is not None:
         daily_pnl = state.daily_pnl_by_session_date.get(state.current_session_date, 0.0)
@@ -317,6 +391,7 @@ def check_entry_blocked(
             size_down_modifier = min(size_down_modifier, config.size_down_fraction)
             if k6_breached and not state.size_down_active_session:
                 new_state = replace(new_state, size_down_active_session=True)
+                fresh_breach_reason = "K-6-size-down"
 
     if config.enable_k7 and state.current_week_id is not None:
         weekly_pnl = state.weekly_pnl_by_week_id.get(state.current_week_id, 0.0)
@@ -330,9 +405,36 @@ def check_entry_blocked(
             size_down_modifier = min(size_down_modifier, config.size_down_fraction)
             if k7_breached and not new_state.size_down_active_week:
                 new_state = replace(new_state, size_down_active_week=True)
+                # If K-6 also fresh-breached this call, K-7 is recorded too.
+                # Both breach-counts will be incremented when the orchestrator
+                # calls `record_trigger(state, reason)` for the returned
+                # reason (we surface the K-7 reason here; K-6 was already
+                # incremented above via the previous record_trigger call IF
+                # the orchestrator uses the per-call return value).
+                #
+                # For the single-record-per-call orchestrator pattern in
+                # H062/H055, the returned reason is K-7-size-down when BOTH
+                # breach freshly; this under-counts K-6 in the rare double-
+                # breach edge case (~one call per session-AND-week boundary).
+                # Tracked under `P1-ADR-0028-DOUBLE-BREACH-CALL-COUNTING`
+                # (non-blocking; structurally rare per ADR-0017 §5 K-6/K-7
+                # threshold separation).
+                fresh_breach_reason = "K-7-size-down"
 
     if size_down_modifier < 1.0:
-        return False, "size-down-applied", size_down_modifier, new_state
+        # Fresh breach → emit specific K-N-size-down reason so the
+        # orchestrator's record_trigger call lands in the canonical key.
+        # Sticky inheritance (no fresh breach this call) → emit the legacy
+        # "size-down-applied" sentinel; the orchestrator's record_trigger
+        # call lands it permissively but the canonical 6-key keyset
+        # iteration ignores it (no double-counting; the breach was already
+        # incremented on the originating call).
+        return (
+            False,
+            fresh_breach_reason if fresh_breach_reason is not None else "size-down-applied",
+            size_down_modifier,
+            new_state,
+        )
 
     return False, None, 1.0, state
 
@@ -404,7 +506,24 @@ def update_state_on_close(
 def record_trigger(
     state: KillSwitchRuntimeState, constraint_id: str
 ) -> KillSwitchRuntimeState:
-    """Increment trigger_counts[constraint_id] for sidecar emission."""
+    """Increment trigger_counts[constraint_id] for sidecar emission.
+
+    Per Phase O.17 `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE`, the
+    canonical reason strings handled by this function (via the return of
+    `check_entry_blocked`) are:
+
+      - `"K-3"`, `"K-4"`, `"K-6"`, `"K-7"` — block-mode breaches; bit-exact
+        reproducible across Phase O.16 sidecars.
+      - `"K-6-size-down"`, `"K-7-size-down"` — size-down-mode FRESH breaches;
+        increment the dedicated keys initialized by `init_runtime_state`.
+      - `"size-down-applied"` (sentinel) — sticky-inheritance size-down on
+        entries with no fresh breach this call; the orchestrator records it
+        permissively but it does NOT contribute to `trigger_counts` since
+        the canonical 6-key keyset excludes it. Operators wanting to count
+        admitted-with-size-down entries (independent of fresh-breach counts)
+        should use a separate orchestrator-side counter; tracked under
+        `P1-ADR-0028-ADMITTED-WITH-SIZE-DOWN-COUNTER` (non-blocking).
+    """
     new_counts = dict(state.trigger_counts)
     new_counts[constraint_id] = new_counts.get(constraint_id, 0) + 1
     return replace(state, trigger_counts=new_counts)
@@ -422,12 +541,27 @@ def summarize_trigger_counts(
             supplied, the `mode_annotation` field carries `kill-switch-mode-
             {block, size-down}` per ADR-0028 §D-4. When None (legacy callers),
             mode_annotation is absent (backward-compatible).
+
+    Phase O.17 `P1-ADR-0028-SIZE-DOWN-DISCLOSURE-DEFECT-CLOSE` semantic:
+    `total_triggers` sums over the canonical 6-key trigger_counts schema
+    (K-3, K-4, K-6, K-6-size-down, K-7, K-7-size-down); `runtime_active`
+    fires on any breach regardless of enforcement mode; `annotation` is
+    `"kill-switch-active"` when any breach fired. The new
+    `size_down_event_count` operator-readable convenience field aggregates
+    K-6-size-down + K-7-size-down for fast disclosure of size-down activity.
+    Block-mode v3 sidecars are bit-exact reproducible since their two
+    `*-size-down` keys carry zero.
     """
-    total = sum(state.trigger_counts.values())
+    counts = state.trigger_counts
+    total = sum(counts.values())
+    size_down_total = (
+        int(counts.get("K-6-size-down", 0)) + int(counts.get("K-7-size-down", 0))
+    )
     summary: dict[str, Any] = {
         "runtime_active": total > 0,
-        "trigger_counts": dict(state.trigger_counts),
+        "trigger_counts": dict(counts),
         "total_triggers": total,
+        "size_down_event_count": size_down_total,
         "annotation": "kill-switch-active" if total > 0 else "kill-switch-inactive",
     }
     if config is not None:
