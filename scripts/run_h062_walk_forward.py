@@ -318,6 +318,12 @@ def _run_per_trade_simulation(
             universe=(symbol,), starting_equity=starting_equity
         )
     current_equity = starting_equity if equity_rebase_policy is not None else None
+    # P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR closure: track session-start
+    # equity separately so cost is normalized against a STABLE per-session
+    # equity within multi-trade-per-session, NOT the drifting intra-session
+    # current_equity. Resets at W8 session-boundary. justify: ADR-0017 §4.1
+    # session-start-equity-ratcheting convention.
+    session_start_equity_for_cost = starting_equity
     # BOCD per-session log-return accumulator for W8 payload (R1 F-1-3 fix: MPPM(ρ=1)
     # over single observation = log-return per GISW 2007 §2 reduction).
     bocd_session_log_ret_accumulator = 0.0
@@ -340,6 +346,8 @@ def _run_per_trade_simulation(
         nonlocal in_position, position_side, entry_idx, entry_price
         nonlocal stop_price, r_dollar, entry_session_date, position_size
         nonlocal current_equity, ks_state, bocd_session_log_ret_accumulator
+        # session_start_equity_for_cost is READ (not written) in _close_position,
+        # so it's accessed via closure-capture without nonlocal declaration.
         if not in_position:
             return
         # Realized log-return for this trade (signed).
@@ -351,18 +359,23 @@ def _run_per_trade_simulation(
         )
         r_mult = signed_dollar / r_dollar if r_dollar > 0 else 0.0
 
-        # ADR-0025 Phase O.13 deep-wire W7 cost subtraction (R1 F-1-2 unit fix).
-        # justify: cost_per_session_log_return returns NOTIONAL-scale drag; must convert
-        # to EQUITY-FRACTIONAL scale to add to trade_equity_log_return. See buildout
-        # 7d63795 §"Wire-site map — H062" W7 RE-SPEC.
+        # ADR-0025 Phase O.13 deep-wire W7 cost subtraction (R1 F-1-2 unit fix
+        # + P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR closure).
+        # justify: cost_per_session_log_return returns NOTIONAL-scale drag; must
+        # convert to EQUITY-FRACTIONAL scale to add to trade_equity_log_return.
+        # P1 closure: denominator is SESSION-START equity (stable within session
+        # per ADR-0017 §4.1) NOT the drifting intra-session current_equity.
+        # For single-trade-per-session strategies both are identical; for multi-
+        # trade-per-session the session-start-equity normalization is the
+        # canonical contract.
         cost_drag_equity_fractional = 0.0
         if cost_model is not None:
             cost_usd = cost_model.round_trip_cost_usd(
                 symbol=symbol, n_contracts=position_size
             )
-            equity_for_cost = (
-                current_equity if current_equity is not None else starting_equity
-            )
+            # Use session-start equity (stable within session) instead of
+            # current_equity which drifts as intra-session P/L accumulates.
+            equity_for_cost = session_start_equity_for_cost
             if equity_for_cost > 0:
                 cost_drag_equity_fractional = -cost_usd / equity_for_cost
 
@@ -411,6 +424,13 @@ def _run_per_trade_simulation(
         # ADR-0025 Phase O.13 deep-wire W8 session-boundary handler.
         # Fires when bar_session != prior session. Skip on t=0 (no prior session).
         if t > 0 and session_dates[t] != session_dates[t - 1]:
+            # P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR closure: refresh the
+            # session-start cost denominator at the boundary. F-1-5 R1 audit
+            # fix: gate the refresh on `if current_equity is not None` so
+            # default-OFF path is a strict no-op (literal bit-identical, no
+            # float coercion, no conditional eval after init).
+            if current_equity is not None:
+                session_start_equity_for_cost = float(current_equity)
             # CR-1-3 R1 audit fix: ts_event presence asserted at function entry
             # when ks_state/bocd_live_state non-None; no silent fallback needed.
             if ks_state is not None:

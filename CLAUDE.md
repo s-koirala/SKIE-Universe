@@ -1772,3 +1772,42 @@ Per the operator 2026-05-18 directive ("proceed"), `P1-PHASE-O13-SIDECAR-PRIMITI
 - `P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR` (Step 1b R1 F-1-2).
 - `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` (Step 2b R1 F-1-6 + sidecar R1 F-1-2).
 - `P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3` + `P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3`.
+
+### Phase O.13 cost-norm + BOCD calibration closures (2026-05-18)
+
+Per the operator 2026-05-18 directive ("continue, again ensuring all tasks are accomplished via audit-remediate loop"), two BLOCKING-BEFORE-V3-LAUNCH follow-ups CLOSED + two new BLOCKING follow-ups REGISTERED per the R1 audit's load-bearing findings.
+
+**`P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR` CLOSED** via [scripts/run_h062_walk_forward.py](scripts/run_h062_walk_forward.py): added `session_start_equity_for_cost` accumulator (initialized to `starting_equity`); used as the cost-equity-fractional drag denominator in `_close_position` (line ~330); refreshed at W8 session boundary ONLY when `current_equity is not None` (R1 F-1-5 fix: strict no-op on default-OFF; literally bit-identical to v2). For multi-trade-per-session strategies the denominator is now STABLE within a session per ADR-0017 §4.1 session-start-equity-ratcheting convention; single-trade-per-session strategies see no change.
+
+**`P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3` + `P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3` PARTIALLY CLOSED** via [scripts/calibrate_bocd_live_priors.py](scripts/calibrate_bocd_live_priors.py) + [tests/unit/test_calibrate_bocd_live_priors.py](tests/unit/test_calibrate_bocd_live_priors.py). The calibration MECHANISM is landed (script + tests + provenance + schema v2). The CALIBRATED PRIORS themselves remain pending per the R1 audit's critical finding F-1-1: the existing v2 sidecars do NOT persist per-session log-return arrays, only fold-aggregate `mppm_oos` arrays — the mppm_oos/252 fallback proxy is mathematically degenerate (each fold contributes n_oos_sessions copies of a single scalar → variance estimator is BETWEEN-fold, NOT WITHIN-session). Per the R1 audit verdict `block`, the script now REFUSES to emit priors derived from the degenerate fallback by default; operator must explicitly pass `--allow-degenerate-fallback` to override. Per-session-data persistence + proper calibration tracked as new BLOCKING follow-ups (see below).
+
+**R1 audit-remediate-loop** (single quant-auditor extended-scope; agentId `a5416eddb5eba2333`). Verdict `block`. 7 findings (1 critical + 4 major + 2 minor); 6 load-bearing fixes applied inline:
+
+| # | Finding | Severity | Fix applied |
+|---|---|---|---|
+| F-1-1 | mppm_oos/252 fallback is degenerate variance estimator | critical | Script now flags `used_degenerate_fallback: bool` per hypothesis; `main()` REFUSES emission unless `--allow-degenerate-fallback` is passed (operator-explicit acknowledgment). Existing degenerate YAML deleted. |
+| F-1-2 | `alpha_0=2.0` default has INFINITE Var[σ²] (denominator zero); self-contradictory docstring | major | Default bumped to `alpha_0=3.0` (smallest with finite Var[σ²] per Murphy 2007); docstring corrected. |
+| F-1-3 | Within-OOS information leak — calibration uses full OOS sequence then gates live-pause decisions inside that same sequence | major | Added `--calibration-window` CLI flag; YAML emits `provenance.calibration_window` field; default "unknown" sentinel marks audit-discipline gap until operator binds pre-OOS holdout. |
+| F-1-4 | YAML missing ReproLog provenance (git_head, calibration_window); H055 missing dataset_checksum | major | Added `provenance` block with `git_head` (subprocess `git rev-parse HEAD`) + `calibration_window`; H055 hypothesis block gains `substrate_dataset_checksum` field. Schema_version bumped `bocd_live_priors_v1` → `v2`. |
+| F-1-5 | Cost-norm W8 refresh's `if/else` runs at every session boundary on default-OFF (non-strict no-op) | major | Gate the refresh on `if current_equity is not None`; default-OFF path now literally bit-identical (no float coercion, no conditional eval after init). |
+| F-1-6 | `n_min=30` too low for variance-of-variance stability | minor | Bumped to `n_min=50` per Cont 2001 QF 1(2):223-236 fat-tailed moment-estimation requirements. |
+| F-1-7 | schema_version invariant not enforced at consumer side | minor | Tracked under existing `P1-BOCD-LIVE-PRIOR-LOAD-FROM-CONFIG`. |
+
+141/141 targeted tests passing (3 new calibration tests including `test_main_refuses_degenerate_fallback_by_default` + `test_main_allow_degenerate_fallback_emits_with_flag` + `test_extract_h062_degenerate_fallback_flagged`).
+
+**Closes**: `P1-PHASE-O13-COST-NORMALIZATION-DENOMINATOR` fully; `P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3` + `P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3` mechanism-layer.
+
+**New BLOCKING follow-ups registered** (close the calibration content-layer gap):
+
+| Follow-up | Status | Description |
+|---|---|---|
+| `P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST` | BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE | Persist `per_session_logret_aggregate` array in H062 + H055 v2/v3 sidecars (currently only fold-aggregate `mppm_oos` is persisted; calibration depends on per-session granularity per R1 F-1-1). |
+| `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT` | BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE | Use pre-OOS holdout window (e.g., 2015-2019 calibration window per H055/H060 §2) for prior calibration to prevent within-OOS information leak per R1 F-1-3. |
+| `P1-BOCD-LIVE-PRIOR-LOAD-FROM-CONFIG` | non-blocking | Loader primitive at `src/skie_ninja/inference/bocd_live_priors_loader.py` with schema_version literal validation per R1 F-1-7. |
+
+**Remaining BLOCKING follow-ups before V3 KPI emission**:
+- `P1-PHASE-O13-H055-KILL-SWITCH-INLINE-REPLACE` (Step 2b R1 F-1-6 + sidecar R1 F-1-2).
+- `P1-PHASE-O13-SIDECAR-PER-SESSION-LOGRET-PERSIST` (NEW; BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE).
+- `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT` (NEW; BLOCKING-BEFORE-V3-LAUNCH-WITH-BOCD-LIVE).
+
+Note: V3 launch WITHOUT `--enable-bocd-live` is unblocked — only the cost-norm + sidecar-capture + deep-wire closures are needed for the kill-switch + equity-rebase + cost-model primitive set. The BOCD live-pause is the only primitive blocked on the calibration follow-ups.
