@@ -14,12 +14,12 @@ Phase O.12 closed the validator drift surface — both modules now share the can
 
 ## Asymmetric refactor scope: H062 additive vs H055 structural-cleanup
 
-The two orchestrators have asymmetric existing state:
+The two orchestrators have asymmetric existing state. This asymmetry justifies the **5-column H062 wire-site table** (Wire-site / Line range / Primitive / Operation are independent dimensions for additive sites) vs the **4-column H055 wire-site table** (Existing inline / New primitive call are paired dimensions for replace-in-place sites) per R1 FA-1-3 audit fix.
 
 - **H062's `_run_per_trade_simulation`** at [scripts/run_h062_walk_forward.py:189-399](../../scripts/run_h062_walk_forward.py) has NO inline abandonment-trigger logic — no breakers, no current-equity rebase, no cost subtraction, no BOCD step-up. The deep wiring is **genuinely additive**: insertion of primitive calls at entry / sizing / close / session-boundary sites. Numerical behavior CHANGES when any flag is on (the four primitives interrupt or modify the existing path).
-- **H055 v2's `_run_simulation`** at [scripts/run_h055_v2_sweep.py:468-820](../../scripts/run_h055_v2_sweep.py) already has K-6 + K-7 breakers inlined (`breaker_session_active` / `breaker_week_active`), current-equity rebase inlined (`equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc`), and BOCD step-up via `C9StateMachine`. The deep wiring is **structural cleanup**: replace inline logic with calls to the shared primitives. Numerical behavior is preserved bit-identically on the existing C1-C5 sweep cells (validated via parity test); operator gains drift-free runtime ↔ validator + the BOCD live-pause hard-halt layer orthogonal to C9's adaptive Kelly halving.
+- **H055 v2's `_run_simulation`** at [scripts/run_h055_v2_sweep.py:468-820](../../scripts/run_h055_v2_sweep.py) already has K-6 + K-7 breakers inlined (`breaker_session_active` / `breaker_week_active`), current-equity rebase inlined (`equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc`), and BOCD step-up via `C9StateMachine`. The deep wiring is **structural cleanup with INTENDED numerical divergence on flag-ON paths** per R1 F-1-4 audit fix (the inline breaker uses live equity; the primitive uses session-start equity). Numerical behavior is preserved bit-identically on the existing C1-C5 sweep cells when flags are OFF (parity test validates); when flags are ON, primitive uses session-start denominator and fires later than the inline path on intra-session-recovery sessions. Operator gains drift-free runtime ↔ validator + the BOCD live-pause hard-halt layer orthogonal to C9's adaptive Kelly halving.
 
-This asymmetry is load-bearing for the v3 KPI re-emission expectations: H062 v3 produces materially different KPI numbers from v2 (max-DD truncation; survival KPIs improved); H055 v3 cells C1-C5 produce numerically-identical KPI numbers + the new annotations + emit additional informational rows.
+This asymmetry is load-bearing for the v3 KPI re-emission expectations: H062 v3 produces materially different KPI numbers from v2 (max-DD truncation; survival KPIs improved); H055 v3 cells C1-C5 produce numerically-identical KPI numbers in the default-OFF mode + cell-level intended-deltas in the flag-ON mode + emit the 3 new annotations + cost subtraction rows.
 
 ## Wire-site map — H062 `_run_per_trade_simulation`
 
@@ -28,27 +28,29 @@ This asymmetry is load-bearing for the v3 KPI re-emission expectations: H062 v3 
 | H062-W1 | Function signature | 189-198 | All 4 | Add optional kwargs: `kill_switch_config: KillSwitchRuntimeConfig \| None = None`, `equity_rebase_policy: EquityRebasePolicy \| None = None`, `bocd_live_state: BOCDLiveState \| None = None`, `cost_model: NT8RealisticCostModel \| None = None`. All default None → behavior bit-identical to v2 path. |
 | H062-W2 | Pre-loop state init | 246-269 | kill_switch + equity_rebase + bocd_live | Initialize `ks_state` via `init_runtime_state(universe=(symbol,), starting_equity=10000.0)` if `kill_switch_config` non-None. Initialize `current_equity = 10000.0` if `equity_rebase_policy` non-None. (BOCDLiveState provided by caller pre-initialized.) |
 | H062-W3 | Position-size denominator | 371 | equity_rebase | Replace `target_dollar_risk = 10000.0 * risk_budget_pct` with `target_dollar_risk = equity_for_sizing(equity_rebase_policy, current_equity) * risk_budget_pct` if policy non-None; else keep legacy. |
-| H062-W4 | Pre-entry guard | 354-356 (before `if not in_position and ev != 0:`) | kill_switch + bocd_live | If `kill_switch_config` non-None: `blocked, reason = check_entry_blocked(ks_state, kill_switch_config, symbol=symbol, position_size=size_capped)`; on block, `ks_state = record_trigger(ks_state, reason)` + skip entry. If `bocd_live_state` non-None and `is_paused(bocd_live_state)`: skip entry. |
+| H062-W4 | Pre-entry guard (RE-ORDERED per R1 F-1-1 audit fix) | INSIDE `if not in_position and ev != 0:` (line 356+), AFTER `size_capped` is computed (line 373) but BEFORE position state is set (line 377) | kill_switch + bocd_live | The R1 audit caught that `size_capped` is computed inside the entry branch at line 373; the guard cannot reference it before that point. Restructure: keep the v2 size-computation block (lines 357-375) intact; insert the guard AFTER `if size_capped < 1: continue` at line 375 and BEFORE `in_position = True` at line 377. Sequence: (a) `if bocd_live_state is not None and is_paused(bocd_live_state): continue`; (b) `if kill_switch_config is not None: blocked, reason = check_entry_blocked(ks_state, kill_switch_config, symbol=symbol, position_size=size_capped); if blocked: ks_state = record_trigger(ks_state, reason); continue`. |
 | H062-W5 | Update on open | 377-385 (after position state set) | kill_switch | If `kill_switch_config` non-None: `ks_state = update_state_on_open(ks_state, symbol=symbol, side=ev, entry_ts=..., entry_price=entry_price, position_size=size_capped, stop_price=stop_price, r_dollar=r_dollar)`. |
 | H062-W6 | Update on close + equity update | 286-313 in `_close_position` | kill_switch + equity_rebase | Compute `signed_dollar` (already done at 291-293). If `kill_switch_config` non-None: `ks_state = update_state_on_close(ks_state, symbol=symbol, realized_pnl_dollar=signed_dollar, exit_ts=...)`. If `equity_rebase_policy` non-None: `current_equity = apply_pnl_to_equity(current_equity, signed_dollar)`. |
-| H062-W7 | Cost subtraction | 299 in `_close_position` (replacing the `trade_equity_log_return = np.log(1.0 + r_mult * risk_budget_pct)` line) | cost_model | If `cost_model` non-None: `cost_drag = cost_model.cost_per_session_log_return(symbol=symbol, entry_price=entry_price, n_contracts=position_size)`; `trade_equity_log_return += cost_drag` (drag is negative). |
-| H062-W8 | Session boundary | 315 outer loop (when `session_dates[t] != session_dates[t-1]`) | kill_switch + bocd_live | If `kill_switch_config` non-None: `ks_state = advance_session(ks_state, new_session_date=session_dates[t], current_equity=current_equity)`. If ISO-week changed: also `ks_state = advance_week(ks_state, new_week_id=..., current_equity=current_equity)`. If `bocd_live_state` non-None AND a per-session-MPPM observation is available from the just-completed session: `bocd_live_state = bocd_live_update(bocd_live_state, x_t=<sess_arith_ret_or_mppm>, session_idx=..., ts_utc=...)`. |
+| H062-W7 | Cost subtraction (RE-SPEC'd per R1 F-1-2 audit fix) | 286-299 in `_close_position` | cost_model | The R1 audit caught a unit mismatch — `cost_per_session_log_return` returns a log-drag on NOTIONAL (cost/notional = ~3-7e-4 for ES at 1 contract); the existing v2 path computes `trade_equity_log_return = log(1.0 + r_mult * risk_budget_pct)` which is log-drag on EQUITY-FRACTIONAL (1%-of-equity scale). Adding these directly is wrong by ~1/risk_budget_pct = ~100× factor. Correct semantic: convert cost to equity-fractional drag. Replace the legacy line at 299 with: `cost_usd = cost_model.round_trip_cost_usd(symbol=symbol, n_contracts=position_size) if cost_model is not None else 0.0; equity_for_cost = equity_for_sizing(equity_rebase_policy, current_equity) if equity_rebase_policy is not None else 10000.0; cost_drag_equity_fractional = -cost_usd / equity_for_cost; trade_equity_log_return = np.log(1.0 + r_mult * risk_budget_pct + cost_drag_equity_fractional)`. The cost drag is now on the same equity-fractional scale as the realized P/L. For ES at $5K entry × 1 contract × $50 multiplier = $250K notional → 0.00012 cost-to-notional (negligible). For the SAME trade at $10K equity → $29.1 cost / $10K = 0.00291 cost-to-equity (250× the notional ratio; matches the 1% risk_budget_pct scale). |
+| H062-W8 | Session boundary (PAYLOAD PINNED per R1 F-1-3 audit fix) | 315 outer loop (when `session_dates[t] != session_dates[t-1]`) | kill_switch + bocd_live | If `kill_switch_config` non-None: `ks_state = advance_session(ks_state, new_session_date=session_dates[t], current_equity=current_equity)`. If ISO-week changed: also `ks_state = advance_week(ks_state, new_week_id=..., current_equity=current_equity)`. **BOCD payload pinned to MPPM(ρ=1)** per [ADR-0018 §D-3](../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) ("BOCD operating on rolling MPPM(ρ=1) paths"): accumulate the just-completed session's per-trade-log-returns into `sess_log_ret_sum`; compute `sess_mppm = mppm_rho_1(np.array([sess_arith_ret]))` where `sess_arith_ret = expm1(sess_log_ret_sum)` (the per-session arithmetic return; MPPM(ρ=1) over a single observation reduces to log-wealth growth rate = the log return itself). For the first-pass implementation, equivalent to passing `sess_log_ret_sum` directly as `x_t` since MPPM(ρ=1, T=1, Δt=1/252) = log_return per the GISW 2007 §2 reduction. **The NIG prior MUST be re-calibrated** from the v2 H062 per-session-log-return empirical distribution before any v3 launch — defaults `mu_0=0, kappa_0=1, alpha_0=1, beta_0=1` produce a unit-variance prior that does NOT match the empirical scale of per-session H062 log-returns (typically σ²~1e-4 to 1e-3). Calibration is tracked under new BLOCKING-BEFORE-V3-LAUNCH follow-up `P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3` (see §New follow-ups). Until calibration lands, the bocd_live primitive's behavior on H062 v3 is undefined — operator must EITHER pass calibrated priors at construction OR leave the `--enable-bocd-live` flag OFF in the first v3 launch. |
 | H062-W9 | Return-dict summaries | 387-396 | All 4 | Append `kill_switch_runtime_summary` (`summarize_trigger_counts(ks_state)`), `equity_rebase_summary` (`{mode, final_equity, min_equity_during_sim}`), `bocd_live_summary` (`summarize_pause_events(bocd_live_state)`), `cost_model_summary` (`{cost_model_id, calibration_source, total_log_return_drag}`) to return dict. |
 
 The H062 outer caller at [scripts/run_h062_walk_forward.py:main](../../scripts/run_h062_walk_forward.py) constructs the four primitive configs from the existing CLI flags (already wired in Phase O.11) and passes them into `_run_per_trade_simulation` via the new kwargs.
 
 ## Wire-site map — H055 v2 `_run_simulation`
 
-Per the structural-cleanup framing, the H055 v2 wire is replace-in-place. The existing inline logic is preserved bit-identically when the new flags are OFF; primitive calls are added on a parallel code path activated when flags are ON.
+**Important correction per R1 F-1-4 audit fix**: the H055 v2 wire is **structural cleanup with INTENDED numerical divergence on the C1-C5 cells when `kill_switch_config` is non-None**. The original "bit-identical" framing was incorrect. The existing inline K-6/K-7 breakers (line 785) compute the threshold against **live equity** at each bar (`equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc`); the new `kill_switch_runtime` primitive uses **session-start equity** (frozen at `advance_session` call, per ADR-0025 §D-1 F-1-7 audit fix). These produce different fire-bar timing on sessions where intra-session P/L moves equity meaningfully — the primitive fires LATER (denominator is larger) on a session where equity recovers intra-session, and the same on a session where equity is monotonic.
+
+**Numerical-equivalence policy for H055 v3**: when `kill_switch_config = None` (and the new flag is off), the inline path is preserved verbatim and v3 numerics match v2 bit-identically on C1-C5. When `kill_switch_config` non-None, the inline path is dropped in favor of the primitive — operator must validate the numerical delta per cell × symbol via the parity test (per `P1-PHASE-O13-PARITY-TEST-DEFAULT-OFF` BLOCKING-CONCURRENT, which now also tracks the flag-ON intended-delta path) and accept it as an INTENDED behavior change. The intended delta is bounded above by the magnitude of intra-session equity movement; for the 4-symbol baskets at $10K starting × 5-min cadence, the typical session-start-vs-live equity delta is small (<2% intra-session); the cell-level fire-bar drift should be ≤ 1-3 bars per session.
 
 | # | Existing inline | New primitive call | Operation |
 |---|---|---|---|
-| H055-W1 | `eq_for_size = equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc` (line 714) | `eq_for_size = equity_for_sizing(equity_rebase_policy, equity)` when policy non-None | Pin EquityRebasePolicy construction in the outer caller from the existing `cfg.use_current_equity_rebase` boolean + the runtime `--enable-equity-rebase-current` CLI flag (defaults preserve v2 behavior). |
-| H055-W2 | Inline K-6 daily-breaker state at lines 698-704 + 783-789 | `check_entry_blocked(ks_state, ks_config, symbol=symbol, position_size=size)` for K-6 | Drop the inline `breaker_session_active` flag when `kill_switch_config` non-None; rely on the primitive's `daily_pnl_by_session_date` accumulator. |
-| H055-W3 | Inline K-7 weekly-breaker state at lines 705-712 + 783-789 | `check_entry_blocked` for K-7 | Same pattern as W2 for `breaker_week_active`. |
-| H055-W4 | Inline `_close_all_units` updates `per_session_pnl` + `per_week_pnl` (lines 562-565) | `update_state_on_close` keeps the primitive in sync | Cumulative-pnl tracking shifts to the primitive's accumulators (validator-runtime parity per Phase O.12). |
-| H055-W5 | C9 `C9StateMachine` BOCD-step-up state machine (lines 533-540 + 768-779) | Orthogonal — preserved verbatim alongside `bocd_live_state` | The C9 step-up halves Kelly on decay; the new `bocd_live` hard-halts entries on decay. Operator may invoke C9 alone, bocd_live alone, or both stacked. Both produce sidecar summaries (independent annotations). |
-| H055-W6 | Zero-cost simulation (no per-trade cost subtraction) | `cost_model.cost_per_session_log_return(...)` subtracted from realized per-trade equity log-return when `cost_model` non-None | Cost drag applied at trade-close site inside `_close_all_units`. |
+| H055-W1 | `eq_for_size = equity if cfg.use_current_equity_rebase else starting_equity_for_pct_calc` (line 714) | `eq_for_size = equity_for_sizing(equity_rebase_policy, equity)` when policy non-None | Pin EquityRebasePolicy construction in the outer caller from the existing `cfg.use_current_equity_rebase` boolean + the runtime `--enable-equity-rebase-current` CLI flag (defaults preserve v2 behavior bit-identically; when on, the primitive uses live equity matching the inline path). |
+| H055-W2 | Inline K-6 daily-breaker state at lines 698-704 + 783-789 (live-equity denominator) | `check_entry_blocked(ks_state, ks_config, symbol=symbol, position_size=size)` for K-6 (session-start equity denominator per ADR-0025 §D-1 F-1-7) | When `kill_switch_config` non-None, drop the inline `breaker_session_active` flag; rely on the primitive's `daily_pnl_by_session_date` accumulator. **Intended numerical delta**: primitive fires later on intra-session-recovery sessions; bounded by intra-session equity movement. |
+| H055-W3 | Inline K-7 weekly-breaker state at lines 705-712 + 783-789 (live-equity denominator) | `check_entry_blocked` for K-7 (session-start equity denominator) | Same intended-delta pattern as W2 for `breaker_week_active`. |
+| H055-W4 | Inline `_close_all_units` updates `per_session_pnl` + `per_week_pnl` (lines 562-565) | `update_state_on_close` keeps the primitive in sync | Cumulative-pnl tracking shifts to the primitive's accumulators when `kill_switch_config` non-None (validator-runtime parity per Phase O.12). |
+| H055-W5 | C9 `C9StateMachine` BOCD-step-up state machine (lines 533-540 + 768-779) | Orthogonal — preserved verbatim alongside `bocd_live_state` | The C9 step-up halves Kelly on decay; the new `bocd_live` hard-halts entries on decay. Operator may invoke C9 alone, bocd_live alone, or both stacked. Both produce sidecar summaries (independent annotations). `bocd_live` payload pinned to per-session log-return per the H062-W8 audit-fix; SAME NIG prior calibration requirement applies (BLOCKING-BEFORE-V3-LAUNCH per `P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3`). |
+| H055-W6 | Zero-cost simulation (no per-trade cost subtraction) | Cost subtraction at trade-close site inside `_close_all_units` per the H062-W7 corrected semantic | When `cost_model` non-None: compute `cost_usd = cost_model.round_trip_cost_usd(...)` per trade; subtract from `total_pnl` BEFORE the `r_mult` denominator computation at line 559. Cost drag applied on the **dollar-pnl scale** to match the H055 simulator's existing equity-update at line 560 (`equity += total_pnl`). |
 | H055-W7 | Sweep config `use_current_equity_rebase` + `enable_pyramiding` + `enable_bocd` flags (lines 75-105) | Sweep config gains new optional `kill_switch_config_factory()` + `bocd_live_config_factory()` + `cost_model_factory()` fields | Default None for all sweep cells; operator sets via CLI per-sweep. |
 
 ## Pre-launch checklist — ADR-0011 compliance
@@ -87,7 +89,11 @@ Per [ADR-0011 production walk-forward runbook](../../docs/decisions/ADR-0011-pro
 
 ## V3 KPI report card — expected diff vs V2
 
-Per ADR-0014 §3.2 13-table format, the v3 KPI cards carry the same 13 tables. Diffs vs v2:
+**Caveat per R1 FA-1-6 + L-8/L-9/L-10 audit fixes**: the numerical ranges below are **operator-prior structural-arguments** from the kill-switch + cost-model mechanics; they are NOT empirically anchored to v2 sidecar data. Each range is a hand-derived projection from the abandonment-trigger primitives' design. Empirical disposition deferred to v3 KPI emission per `P1-PHASE-O13-COST-DRAG-MAGNITUDE-EMPIRICAL`. The R1 lit-audit also flagged the optimistic forecasts as inconsistent with R-4's "cost dominates → NEGATIVE realized OOS basket" framing — the table's "realized OOS +50-100%" range assumes kill switches preserve enough of the v2 upside to offset cost drag, which is a structural conjecture, not a measurement. Operator should treat the table as **directional guidance**, not as KPI-acceptance criteria.
+
+A cheap empirical refinement is available before launch: replay the v2 H062 sidecar's per-session P/L arrays through the K-6/K-7 thresholds + cost-drag-on-equity calculation to produce an empirically-grounded forecast. Tracked under `P1-PHASE-O13-V2-SIDECAR-REPLAY-FORECAST` (non-blocking; recommended pre-launch).
+
+Per ADR-0014 §3.2 13-table format, the v3 KPI cards carry the same 13 tables. **Forecast diffs vs v2 (operator-prior; not empirically anchored)**:
 
 | Section | V2 (Phase O.10) | V3 expected (Phase O.13) |
 |---|---|---|
@@ -107,24 +113,51 @@ Per ADR-0014 §3.2 13-table format, the v3 KPI cards carry the same 13 tables. D
 
 H055 v3 expected diff vs H055 v2 is much smaller — numerics preserved on C1-C5 cells; new annotations added; cost subtraction added (~−0.5% to −1.5% on the active cells); structural cleanup of inline → primitive.
 
-## Sequencing — execution order
+## Sequencing — execution order (RE-ORDERED per R1 F-1-7 audit fix: tests CONCURRENT with refactor, not after)
 
 ```
-Step 1 [code]: H062 deep wiring (W1..W9) + audit-remediate-loop Round 1
-Step 2 [code]: H055 v2 deep wiring (W1..W7) + audit-remediate-loop Round 1
-Step 3 [tests]: parity tests (legacy-flag-OFF behavior bit-identical to v2)
-Step 4 [tests]: integration tests (each primitive engages correctly when flagged ON)
-Step 5 [tests]: run targeted test suite; aim 90+/90+ pass
-Step 6 [commit]: Phase O.13 code commit
-Step 7 [docs]: write H062 v3 + H055 v3 production_run_runbook per ADR-0011 §14
-Step 8 [launch]: H062 v3 walk-forward via supervised_relaunch_loop.sh (4 symbols; ~5-7 hr each; total ~24 hr)
-Step 9 [launch]: H055 v3 sweep via direct invocation (5 cells × 4 symbols; ~3-5 hr per symbol; total ~16 hr)
-Step 10 [audit]: post-run audit gate per ADR-0011 §"Post-run audit gate"
-Step 11 [emit]: H062 v3 + H055 v3 KPI report cards per ADR-0014 §3.2 13-table format
-Step 12 [docs]: CLAUDE.md Phase O.13 ledger entry + commit
+Step 0  [tests]: write parity test fixtures from current v2 sidecars (BLOCKING per
+                 P1-PHASE-O13-PARITY-TEST-DEFAULT-OFF); fixtures capture v2-baseline
+                 trade-ledger output bit-identically for the default-OFF path.
+Step 1a [code]:  H062 BOCD prior calibration (BLOCKING-BEFORE-V3-LAUNCH per
+                 P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3); empirically derive
+                 mu_0, kappa_0, alpha_0, beta_0 from H062 v2 per-session log-return
+                 distribution; commit calibrated defaults to config or pass as
+                 explicit kwargs at construction.
+Step 1b [code]:  H062 deep wiring (W1..W9) — each wire site instrumented;
+                 default-OFF parity test runs as PRE-COMMIT gate (Round-1 audit-
+                 remediate-loop on the refactor itself runs as a separate sub-cycle).
+Step 2a [code]:  H055 v2 BOCD prior calibration (analogous; P1-BOCD-LIVE-PRIOR-
+                 CALIBRATION-H055-V3); H055 v2 per-session log-return distribution.
+Step 2b [code]:  H055 v2 deep wiring (W1..W7); SAME default-OFF parity test runs
+                 as PRE-COMMIT gate; intended-numerical-delta paths (kill-switch-on
+                 etc.) ship with their own per-cell expected-delta test.
+Step 3  [tests]: integration tests (each primitive engages correctly when flagged
+                 ON; verified against the H055 v2 inline-breaker semantic per
+                 the F-1-4 intended-delta documentation).
+Step 4  [tests]: targeted test suite run; aim 110+ /110+ pass (Phase O.11 baseline
+                 90 + Phase O.12 baseline 20 + new parity + integration).
+Step 5  [commit]: Phase O.13 code commit.
+Step 6  [docs]:  write H062 v3 + H055 v3 production_run_runbook per
+                 [ADR-0011](../../docs/decisions/ADR-0011-production-walkforward-runbook.md)
+                 gate 14 + §Per-hypothesis runbook with
+                 `runbook_schema_version: production_run_runbook_v1` per ADR-0011
+                 frontmatter line 13.
+Step 7  [launch]: H062 v3 walk-forward via supervised_relaunch_loop.sh (4 symbols;
+                 ~5-7 hr each per H062 v2 Phase O.10 precedent; total ~24 hr).
+                 # operator-prior wall-clock; empirical calibration deferred to
+                 # P1-PHASE-O13-WALL-CLOCK-EMPIRICAL.
+Step 8  [launch]: H055 v3 sweep via direct invocation (5 cells × 4 symbols;
+                 ~3-5 hr per symbol per H055 v2 Phase O.5 precedent; total ~16 hr).
+                 # operator-prior wall-clock.
+Step 9  [audit]: post-run audit gate per [ADR-0011 §"Post-run audit gate"](../../docs/decisions/ADR-0011-production-walkforward-runbook.md).
+Step 10 [emit]:  H062 v3 + H055 v3 KPI report cards per ADR-0014 §3.2 13-table format.
+Step 11 [docs]:  CLAUDE.md Phase O.13 ledger entry + commit.
 ```
 
-Steps 1-7 are code + test + docs; can run in a 1-2 session-pass. Steps 8-9 are the multi-hour walk-forward; **operator-discretionary launch** (not auto-triggered). Steps 10-12 follow once the walk-forward completes.
+Steps 0-6 are code + test + docs; can run in 2-3 session-passes (additional pass for BOCD prior calibration). Steps 7-8 are the multi-hour walk-forward; **operator-discretionary launch** (not auto-triggered). Steps 9-11 follow once the walk-forward completes.
+
+**Critical re-sequencing per F-1-7**: Step 0 parity-test fixtures land BEFORE any refactor; Steps 1b + 2b each include the parity test pass as a PRE-COMMIT gate per the `P1-PHASE-O13-PARITY-TEST-DEFAULT-OFF` BLOCKING-CONCURRENT designation. The prior sequence (R1 verdict) placed all tests after both refactors, contradicting the BLOCKING-CONCURRENT status.
 
 ## Risk register
 
@@ -133,7 +166,7 @@ Steps 1-7 are code + test + docs; can run in a 1-2 session-pass. Steps 8-9 are t
 | R-1 | Deep-wiring refactor breaks v2 numerical agreement on default-OFF path | high | All four primitive kwargs default None; numeric path bit-identical when None. Parity test in step 5 asserts v2-baseline cell numerics match pre-refactor on default-OFF invocation. |
 | R-2 | Per-session BOCD update site (W8) doesn't have natural anchor in H062's per-bar loop | medium | Construct a `per_session_logret_accumulator` that flushes at session boundary; pass the just-completed session's arithmetic return to `bocd_live_update`. Reference implementation: H055 v2 `sm.on_session_close` pattern at [scripts/run_h055_v2_sweep.py:768-779](../../scripts/run_h055_v2_sweep.py). |
 | R-3 | K-6/K-7 thresholds fire too aggressively → no trades on the test fold | medium | The defaults are -2% / -5% per ADR-0017 §5 + Turtle 2N convention; if the post-launch sidecar shows `trigger_counts.K-6 > 0.2 × n_session_days`, operator may relax thresholds via design.md §11.1 `# justify:` annotation. |
-| R-4 | Cost-model subtraction overflows the marginal-positive Sharpe of H062 v3's strongest cell → flips MPPM sign | low | Cost prior is conservative-1-tick (~$5-30/round-trip per CME tick_value); on H062 v2's ~10K trades the cumulative drag is ~$50-300K vs $217.57% × $40K = $87K realized P/L; cost dominates. Expected: cost-realistic v3 produces NEGATIVE realized OOS on basket; this is the OPERATOR-VISIBLE COST-REALISM the project owes. |
+| R-4 | Cost-model subtraction overflows the marginal-positive Sharpe of H062 v3's strongest cell → flips MPPM sign | medium (RE-RATED per R1 FA-1-5 audit fix; result-inversion risk is not low) | Cost prior is conservative-1-tick (~$5-30/round-trip per CME tick_value); on H062 v2's ~9,653 trades the cumulative drag is ~$48-290K vs $217.57% × $40K basket = $87K realized P/L; **before W4 kill-switch trade-blocking the cost dominates**. Important caveat: v3 W4 BLOCKS some trades (K-3/K-4/K-6/K-7 firings) → fewer trades = less cumulative cost; the v3 trade count is bounded above by v2 (9,653) but the actual count depends on K-N firing frequency over the 2024-2025 OOS window. Expected disposition: cost-realistic v3 EITHER produces NEGATIVE realized OOS on basket (the OPERATOR-VISIBLE COST-REALISM the project owes) OR produces materially-reduced positive realized OOS depending on the trade-count truncation. Pre-launch empirical refinement via the v2-sidecar-replay tracked under `P1-PHASE-O13-V2-SIDECAR-REPLAY-FORECAST` can bound this before v3 launch. The cost-drag arithmetic in this row uses $40K basket = 4 symbols × $10K starting equity per the H062 v2 baseline. |
 | R-5 | Wall-clock for 4-symbol × 2-hypothesis × 5-7 hr/symbol exceeds 40 hr | medium | ADR-0010 wake-lock + ADR-0011 supervised-relaunch-loop handle multi-day execution; per-cfg checkpoint per ADR-0011 gate 12 allows resume on interruption. Operator may launch one hypothesis at a time. |
 | R-6 | Phase O.11 shallow-CLI flags collide with new deep-wiring kwargs | low | The shallow Phase O.11 flags emit sidecar annotations + construct primitive configs only; the deep wiring consumes those configs. Phase O.13 unifies the two layers. |
 | R-7 | Cross-link broken in this buildout document | low | grep audit before commit; all `[text](path)` resolve from `plan/buildouts/`. |
@@ -160,6 +193,9 @@ Total audit-remediate-loop count for Phase O.13: 4 (buildout + H062 wire + H055 
 | `P1-PHASE-O13-INTEGRATION-TEST-FLAG-ON` | BLOCKING-CONCURRENT-WITH-DEEP-WIRE | Integration test verifies each primitive engages correctly when flagged ON |
 | `P1-PHASE-O13-COST-DRAG-MAGNITUDE-EMPIRICAL` | non-blocking | Empirical measure of cost-drag magnitude on H062 v3 realized OOS; operator-visible cost-realism dossier |
 | `P1-PHASE-O13-WALL-CLOCK-EMPIRICAL` | non-blocking | Empirical wall-clock for 4-symbol × 2-hypothesis x 5-7 hr/symbol; calibrate the buildout estimate |
+| `P1-BOCD-LIVE-PRIOR-CALIBRATION-H062-V3` | BLOCKING-BEFORE-V3-LAUNCH (per R1 F-1-3 audit fix) | Empirical NIG prior calibration `(mu_0, kappa_0, alpha_0, beta_0)` for the bocd_live module on H062 per-session log-return distribution; default unit-variance prior produces empirically-broken decay detection on the actual H062 scale (~σ² 1e-4 to 1e-3). Calibration script reads v2 H062 sidecar per-session log-return arrays and emits calibrated priors to `config/bocd_live_priors.yaml`. |
+| `P1-BOCD-LIVE-PRIOR-CALIBRATION-H055-V3` | BLOCKING-BEFORE-V3-LAUNCH | Analogous prior calibration for H055 v2's per-session log-return distribution. |
+| `P1-PHASE-O13-V2-SIDECAR-REPLAY-FORECAST` | non-blocking (recommended pre-launch) | Replay v2 H062 sidecar per-session P/L arrays through the K-6/K-7 thresholds + cost-drag-on-equity calculation; emit empirically-grounded forecast for the V3 KPI diff ranges per R1 FA-1-6 + L-8/L-9/L-10 audit fixes. |
 
 ## References
 
