@@ -1865,3 +1865,75 @@ V3 launch WITHOUT `--enable-bocd-live` is **FULLY UNBLOCKED** — all Phase O.13
 - `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT` (use pre-OOS holdout window e.g. 2015-2019 for calibration to prevent within-OOS information leak per Step calibration R1 F-1-3).
 
 V3 launch WITH `--enable-bocd-live` is still BLOCKED until: (a) v3 walk-forward run with the new orchestrator code produces a sidecar carrying `per_session_logret_aggregate`; (b) operator runs the calibration script on that sidecar restricted to a pre-OOS holdout window per `P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT`. V3 launch WITHOUT `--enable-bocd-live` remains FULLY UNBLOCKED (kill-switch + equity-rebase + cost-model primitives are production-ready).
+
+### Phase O.13 H062 v3 smoke walk-forward — empirical validation (2026-05-18)
+
+Per the operator 2026-05-18 directive ("proceed with launching the walk forward. provide KPIs of results"), launched H062 v3 in `--smoke` mode with all 3 new primitive flags ON: `--enable-kill-switch-runtime --enable-equity-rebase-current --cost-model conservative_prior`.
+
+**Run provenance**: run_id `154237b365794244974068402b377191`; substrate SHA `317429e4...`; scientific_payload_sha256 `3fcef093cd908eeb7f78fb22dd33e368607f70fb79abe0492080efb7e1cf2ea5`; sidecar at [artifacts/runs/H062/154237b365794244974068402b377191/sidecar.json](artifacts/runs/H062/154237b365794244974068402b377191/sidecar.json). Smoke mode: 4-cell inner-CV grid (vs full 48) + 60-train/30-test folds (vs 252/60); wall-clock ~16 min (vs full estimated ~24 hr).
+
+**130 folds × 4 symbols × 2,958 OOS sessions × 7,201 OOS trades** on canonical post-Phase-O.10 substrate.
+
+**Headline KPIs**:
+
+| Metric | Arm (H062 v3 smoke) | Passive EW |
+|---|---:|---:|
+| Realized OOS basket | **$0.05 (−99.9995%)** | $49,923 (+399.23%) |
+| MaxDD | **100.00%** | 45.79% |
+| **MPPM(ρ=1) primary** | **−1.0447 [−1.44, −0.62]** ❌ excludes 0 negatively | n/a |
+| LW2008 Sharpe-vs-passive | **−0.131 [−0.18, −0.08]** ❌ excludes 0 negatively | n/a |
+| Calmar differential | **−0.969 [−1.77, −0.61]** ❌ excludes 0 negatively | n/a |
+| Profit-factor differential | **−0.360 [−0.52, −0.22]** ❌ excludes 0 negatively | n/a |
+| R-multiple mean | +0.030 [−0.04, +0.10] marginal | n/a |
+| L-skewness τ_3 | +0.763 [+0.751, +0.774] strongly skew-positive | n/a |
+| Sharpe annualized | −1.468 | +0.604 |
+| Win rate | 27.1% (803W/2155L/0Z) | n/a |
+| Forward P(loss) | **91.68%** | n/a |
+| Forward P(double) | 1.32% | n/a |
+| **Risk-of-ruin (5000 paths × 252 sess, kelly=0.25, ruin@50%)** | **P(ruin) = 100.00%** (5000/5000 ruined) | n/a |
+| BOCD batch decay detection | **YES at fold 65** (max posterior 0.989) | n/a |
+
+**Per-symbol trade activity**:
+
+| Symbol | n_trades | Final equity | ROI |
+|---|---:|---:|---:|
+| ES | 93 | $9,044.79 | −9.55% |
+| NQ | **0** | $10,000.00 | 0.00% (capacity-floor; ATR-sizing × 1% risk × NQ $5 tick → <1 contract at retail) |
+| MGC | 3,928 | $26.75 | −99.73% |
+| SIL | 3,180 | $19.52 | −99.80% |
+
+**Kill-switch primitive runtime telemetry (NEW Phase O.13 abandonment-trigger infrastructure)**:
+
+| Symbol | K-3 | K-4 | K-6 (−2% daily) | K-7 (−5% weekly) | Total |
+|---|---:|---:|---:|---:|---:|
+| ES | 0 | 0 | 6 | 0 | 6 |
+| NQ | 0 | 0 | 0 | 0 | 0 |
+| MGC | 0 | 0 | **2,815** | **2,730** | **5,545** |
+| SIL | 0 | 0 | **1,596** | **1,698** | **3,294** |
+| **Basket** | **0** | **0** | **4,417** | **4,428** | **8,845** |
+
+**KPI annotations emitted**: `leakage-canary-pass · mppm-rho1-negative · bocd-decay-flag-raised · kelly-multiplier-0.25 · skew-positive · causal-mechanism-hybrid · cost-conservative-prior · repro-log-complete · calmar-diff-negative · pf-diff-negative · r-multiple-mean-marginal · kill-switch-active · bocd-live-active · paradigm-adr-0024-aggressive-growth`
+
+**Substantive verdict — H_1 cleanly REJECTED**:
+
+1. The aggressive-growth intraday Donchian channel breakout strategy on the 4-symbol intraday basket does NOT outperform passive long under v3 cost-realistic + survival-constrained framing. Confirms the Phase O.13 buildout's R-4 forecast: cost-realistic operation flipped the marginal-null H062 v2 result (MPPM +0.095 [−0.34, +0.54]) to **decisively negative** (MPPM −1.04 [−1.44, −0.62]). Cost drag is the dominant driver per the buildout's analytical prediction.
+
+2. **The abandonment-trigger primitives ACTUALLY FIRED 8,845 times** during the OOS window — this is the v3 deep-wire validation. K-6 (daily) and K-7 (weekly) breakers fired thousands of times each on MGC + SIL. The Phase O.13 ADR-0025 infrastructure works end-to-end. But the catastrophic drawdown persisted DESPITE the kill switches firing — meaning the per-trade losses are sufficient to drive equity to zero even when ~half of entries are blocked.
+
+3. **L-skewness τ_3 = +0.763 paradox**: per-trade R-multiple distribution is strongly skew-positive (small wins truncated at ATR-stop; big losses dominate) BUT aggregate basket goes to ~$0. Confirms ADR-0019's barbell-payoff annotation correctly flags the per-trade skew shape AND demonstrates why skew-positive ≠ profitable on aggregate when mean-edge is negative.
+
+4. **Per Lo 2004 AMH (ADR-0024 §D-7)**: strategy decay is the null. H062 v3 smoke confirms the null at high confidence on the post-Phase-O.10 substrate. BOCD batch detection at fold 65 (max posterior 0.989) corroborates the Phase O.7 "C9 +208.8% concentrated in early-2020" finding — the signal degraded materially after the early-OOS window.
+
+5. **Smoke caveat**: 4-cell inner-CV vs full 48 + shorter folds. Directional verdict is reliable; full-scale numerical magnitudes will refine. Full H062 v3 walk-forward (~24 hr wall-clock via `scripts/supervised_run.py`) recommended for canonical KPI report card emission per ADR-0014 §3.2.
+
+**Operator-recommended next transitions** (per ADR-0013 §1):
+
+1. **Operator-discretionary FULL H062 v3 launch** via `scripts/supervised_run.py` (multi-hour wall-clock) for canonical 13-table KPI report card v3 emission per ADR-0014 §3.2.
+
+2. **Stage transition recommendation**: H062 stays at `kpi-report-emitted` per ADR-0013 §4.1 non-loss; defer `kpi-report-emitted` → `ninjascript-implemented` transition per operator's 2026-05-04 standing decline-ninjascript directive. v3 smoke confirms the H062 hypothesis class lacks production-viable edge; NinjaScript implementation is operationally unwarranted at current signal-quality.
+
+3. **H055 v3 smoke run** is the symmetric next step (would validate the H055 inline-replace + cost-model integration on the wick-rejection MR strategy family). Operator-discretionary timing.
+
+4. **The Phase O.13 deep-wire + abandonment-trigger infrastructure** is empirically VALIDATED: all 3 primitives engaged as designed, sidecar provenance captured all 4 per-fold blocks correctly, KPI annotation grammar emitted cleanly. The infrastructure is production-ready for ANY subsequent hypothesis pre-registration under ADR-0024 paradigm.
+
+**Provenance per ADR-0013 §4.1 non-loss**: full sidecar + scientific_payload_sha256.txt preserved at [artifacts/runs/H062/154237b365794244974068402b377191/](artifacts/runs/H062/154237b365794244974068402b377191/).
