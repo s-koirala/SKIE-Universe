@@ -1972,3 +1972,50 @@ Two sibling ADRs landed per the prior-message recommendation ("a single 7-compon
 - KPI bottleneck is reframed as the loop's natural backpressure (research stays free-flowing; NinjaScript is operator-discretionary bottleneck; paper-trade = 2026 OOS per ADR-0026 §D-1 Component 2; majority-time present-tense exploration per ADR-0027 §D-5).
 
 **Operator-actionable next-step recommendation**: H062 v3 primitive-attribution ablation (`INVESTIGATE-FAILURE-MODE-H062-V3-PRIMITIVE-ATTRIBUTION`) — 3-cell decomposition on the existing v3 fixture (~6 hr wall-clock); informs whether the K-6/K-7 size-down-vs-block ADR-0025 amendment is empirically justified before codification per ADR-0027 §D-3.
+
+### Phase O.15: H062 v3 primitive-attribution ablation — `INVESTIGATE-FAILURE-MODE-H062-V3-PRIMITIVE-ATTRIBUTION` closed (2026-05-19)
+
+Per the Phase O.14 operator-actionable next-step recommendation + ADR-0027 §D-3 empirical-before-amendment sequencing rule. Closes `INVESTIGATE-FAILURE-MODE-H062-V3-PRIMITIVE-ATTRIBUTION` (one of three adoption-time exemplars of the new tag class) with verdict `complete-no-further-action` at the investigation-memo layer.
+
+**Empirical fixture**: 4 new smoke-mode H062 walk-forward runs on the canonical substrate `317429e49ad636746d15bf6310fd8f24bc45611ef03e50abefdc25fc6ba12dc7` (4-cell inner-CV grid × 130 folds × rng_seed `20260514` × git HEAD `fe95ec1bdf`; ~6m 21s total wall-clock thanks to substrate filesystem caching across runs); plus 2 reference sidecars (Phase O.10 v2 full-grid all-OFF `eb729b201595484594ce4c9ddde72d05`; Phase O.13 v3 all-ON smoke `154237b365794244974068402b377191`). New sidecars: A0 baseline `5e52f0b7ddd94ecea3187566c0e255d0`, A1 cost-only `edbc263e7ed14ca3a2252a10e94e45c3`, A2 kill-switch-only `d01ca71b7ee34863b4219003d9a05601`, A3 equity-rebase-only `5589abf07c85471a84f75feead6e0174`.
+
+**Substantive findings** (per [investigation memo §6](research/01_hypothesis_register/H062/INVESTIGATE-FAILURE-MODE-H062-V3-PRIMITIVE-ATTRIBUTION.md)):
+
+| Cell | Basket ROI | MPPM(ρ=1) | n_trades | K-6 fires | K-7 fires | Δ vs A0 (pp) |
+|---|---:|---:|---:|---:|---:|---:|
+| A0 baseline (all OFF) | **+261.88%** | +0.0966 [−0.305, +0.497] | 10,326 | 0 | 0 | 0 (reference) |
+| A1 cost-only | **−100.00%** | −1.1347 [−1.550, −0.724] | 10,326 | 0 | 0 | **−361.88** |
+| A2 kill-switch-only | −21.91% | −0.0212 [−0.423, +0.355] | 7,127 | 4,425 | 4,502 | **−283.79** |
+| A3 equity-rebase-only | +211.02% | +0.0847 [−0.325, +0.517] | 10,342 | 0 | 0 | −50.86 |
+| Ref v3 all-ON | −99.9995% | −1.0447 [−1.444, −0.616] | 7,201 | 4,417 | 4,428 | −361.88 (cumulative) |
+
+**Cost (A1) is the empirically DOMINANT primitive driver**: enabling `--cost-model conservative_prior` alone — with no kill-switch + no equity-rebase — is sufficient to drive the basket from +261.88% to −100.00% bankruptcy (Δ −361.88 pp; bit-equal to the cumulative v3 all-ON effect within rounding). Saturation-floor at −100% bankruptcy is responsible for the non-additivity of singletons (Σ-singletons −696.5 pp vs cumulative −361.88 pp; interaction +334.65 pp). Per-primitive share of cumulative v3 delta: cost A1 = 100.0%; kill-switch A2 = 78.4%; equity-rebase A3 = 14.1%.
+
+**Operator-intuition verdict** ("muted profits while drawdowns ran"): **partially supported**. The kill-switch-asymmetric-blocking mechanism IS empirically present (A2 blocks ~31% of trades, drops win-rate 34.24% → 29.84%, drops basket +261.88% → −21.91%) — K-6/K-7 fire during drawdown sessions and block subsequent entries that may have been winners. But cost-realism is the DOMINANT driver of the v3 catastrophe, not the kill-switch asymmetry. The intuition correctly identified one mechanism but mis-ranked its dominance vs cost.
+
+**Empirical justification for a future ADR-0025 amendment**: justified, with two-component scope: (1) K-6/K-7 size-down option with tunable fraction f (addresses kill-switch asymmetry; operator-intuition-motivated); (2) cost-realism-aware promotion-decision-rule documenting that hypotheses with marginal mean-edge (CI covers zero PRE-cost) require POST-cost evaluation at ninjascript-implementation decision point (NOT in operator intuition; surfaced by A1 dominance). Per ADR-0027 §D-3, this memo does NOT write the amendment; the empirical finding is the INPUT to a separate amendment cycle. Tracked under new follow-up `P1-ADR-0025-AMENDMENT-K6-K7-SIZE-DOWN-VS-BLOCK`.
+
+**Audit-remediate-loop** Round 1 with inline self-audit (per `P1-AGENT-TOOL-NOT-SURFACED` documented workaround pattern): 6 quant findings (0 critical + 3 major + 3 minor; all major remediated inline — F-Q-3 A3 trade-count footnote; F-Q-4 saturation-floor framing verified empirically anchored; F-Q-6 A1 cost-flips-marginal-winners mechanism documented); 4 reproducibility findings (verified all 4 ablations share substrate + rng + git + cfg SHAs). Round 1 verdict `accept-with-residuals`; Round 2 verification deferred to the future `P1-ADR-0025-AMENDMENT-K6-K7-SIZE-DOWN-VS-BLOCK` cycle.
+
+**Implications for parent hypothesis H062**: stage unchanged (`kpi-report-emitted` v2; this investigation is RESEARCH that informs future v3 KPI emission). No design.md §1-§7 amendment (preserved per ADR-0013 §"Frozen pre-registration amendment" immutability). H062 design.md §17 revision-log MAY cross-reference this investigation memo (operator-discretionary; `P1-H062-DESIGN-MD-CROSS-REFERENCE-INVESTIGATION`).
+
+**Implications for future hypotheses** (constraints to inherit; failure modes to canary against): (a) cost-realism is mandatory at promotion-decision time, not v(N) KPI emission; (b) kill-switch K-6/K-7 in current block-entry form is asymmetric — hypotheses enabling `--enable-kill-switch-runtime` SHALL acknowledge in design.md §11.1 `# justify:` annotation that winning entries during recovery may be blocked; (c) the L-skew positive-payoff structure (H062 v2 τ_3 = +0.737) does NOT compensate for negative mean-edge — design.md §1.5 (or equivalent expected-payoff block) SHALL acknowledge this constraint.
+
+**Artifacts landed in Phase O.15**:
+
+- Investigation memo: [research/01_hypothesis_register/H062/INVESTIGATE-FAILURE-MODE-H062-V3-PRIMITIVE-ATTRIBUTION.md](research/01_hypothesis_register/H062/INVESTIGATE-FAILURE-MODE-H062-V3-PRIMITIVE-ATTRIBUTION.md) (frontmatter `status: complete-no-further-action`)
+- Audit trail: [docs/audits/audit_trail_2026-05-19_h062-v3-primitive-attribution-ablation.md](docs/audits/audit_trail_2026-05-19_h062-v3-primitive-attribution-ablation.md)
+- 4 new ablation sidecars under [artifacts/runs/H062/](artifacts/runs/H062/)
+- 4 run logs under `logs/phase_o15_ablation/` (gitignored per project convention; regenerable via canonical command per the investigation memo §2)
+
+**New follow-ups registered by Phase O.15**:
+
+| Follow-up | Status | Description |
+|---|---|---|
+| `P1-ADR-0025-AMENDMENT-K6-K7-SIZE-DOWN-VS-BLOCK` | OPEN; non-blocking; sequenced AFTER this investigation per ADR-0027 §D-3 | Two-component amendment cycle (operator-intuition-motivated K-6/K-7 size-down + cost-realism-aware promotion-decision-rule). |
+| `P1-H062-DESIGN-MD-CROSS-REFERENCE-INVESTIGATION` | OPEN; non-blocking | Cross-reference this investigation from H062 design.md §17 revision-log. Operator-discretionary timing. |
+| `P1-PHASE-O15-V3-PROMOTION-DECISION-RULE` | OPEN; non-blocking | Project-level POST-cost promotion-decision-rule documentation. |
+| `P1-PHASE-O15-CROSS-HYPOTHESIS-COST-CANARY` | OPEN; non-blocking | Generalize cost-dominance finding via the H055 v2 + H050 v1 analogous ablations under the other two adoption-time INVESTIGATE-FAILURE-MODE entries. |
+| `P1-PHASE-O15-LSKEWNESS-NEGATIVE-MEAN-EDGE-WARNING` | OPEN; non-blocking | Project-level memo: positive L-skewness alone does NOT compensate for negative mean-edge. Future design.md §1.5 acknowledgment. |
+
+**Time-budget category** (per ADR-0027 §D-5): `investigate` — catastrophic-result decomposition; counts toward the ≤25% investigation soft cap of the rolling-30-day commit history.
