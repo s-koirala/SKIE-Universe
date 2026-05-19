@@ -24,6 +24,7 @@ No stage is terminal. There is no `archive` stage. Operator-discretionary review
 | **H060** | Cross-futures TSMOM on {ES, NQ, MGC, SIL} (pre-cost research-only) | 2c | `kpi-report-emitted` (v2; canonical substrate) | [design.md](H060/design.md) | [stage.md](H060/stage.md) | [v1](H060/H060_kpi_report_v1.md) · [v2](H060/H060_kpi_report_v2.md) | [failure_log.md](H060/failure_log.md) |
 | **H062** | Intraday Donchian-channel breakout on {ES, NQ, MGC, SIL} at super-Kelly grid with BOCD halt + switching-bandit redirect | 2c | `kpi-report-emitted` (**v2**; MPPM + walk-forward inner-CV bugs corrected) | [design.md](H062/design.md) | [stage.md](H062/stage.md) | [v0 skeleton](H062/H062_kpi_report_v0.md) · [v1](H062/H062_kpi_report_v1.md) · [v2](H062/H062_kpi_report_v2.md) | [failure_log.md](H062/failure_log.md) |
 | **H065** | Intraday Donchian-channel breakout with ATR-scaled TP overlay (H062 + M-grid) | 2b | `kpi-report-emitted` (v2; canonical substrate; H_1 null on all TP cells) | [design.md](H065/design.md) | [stage.md](H065/stage.md) | [v0 skeleton](H065/H065_kpi_report_v0.md) · [v1](H065/H065_kpi_report_v1.md) · [v2](H065/H065_kpi_report_v2.md) | [failure_log.md](H065/failure_log.md) |
+| **H067** | Cost-light Donchian-channel breakout on SIL standalone with N-lot position-size grid (genetic successor of H065 v2 M_inf-SIL cell per ADR-0027 §D-4) | 2c | `designed` | [design.md](H067/design.md) | [stage.md](H067/stage.md) | [v0 skeleton](H067/H067_kpi_report_v0.md) | [failure_log.md](H067/failure_log.md) |
 
 ## Queued (per the H055 successor tree)
 
