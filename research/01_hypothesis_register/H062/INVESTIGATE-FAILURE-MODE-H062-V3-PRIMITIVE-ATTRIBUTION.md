@@ -167,7 +167,7 @@ H062 remains at `kpi-report-emitted` (v2) per [ADR-0013 §1](../../../docs/decis
   - 4 new ReproLog records under [logs/reproducibility/](../../../logs/reproducibility/): `5e52f0b7...json`, `edbc263e...json`, `d01ca71b...json`, `5589abf0...json`
   - 4 run logs under `logs/phase_o15_ablation/` (gitignored per project convention; regenerable via canonical command below)
   - New follow-up: `P1-ADR-0025-AMENDMENT-K6-K7-SIZE-DOWN-VS-BLOCK` (cycle subsequent to this closure per ADR-0027 §D-3)
-  - Commit SHA: see audit trail §"Closure"
+  - Commit SHA: `1adc62a` (Phase O.15 landing commit; 2026-05-19)
 
 ## Cross-references
 

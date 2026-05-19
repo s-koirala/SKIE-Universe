@@ -58,7 +58,7 @@ Convention: BLOCKING-* status drives ordering; non-blocking are listed below as 
 ## Closure
 
 - **Investigation closure**: per ADR-0027 §D-1(c) form (i) — closed on ablation-complete (4 sidecars on disk + §6 table populated + §7 implication written + R1 audit-remediate-loop applied with `accept-with-residuals` verdict).
-- **Commit SHA**: see investigation memo §8 closure (populated on commit).
+- **Commit SHA**: `1adc62a` (Phase O.15 commit; landed 2026-05-19; backfilled via follow-on minor edit per the project's documented post-commit SHA-binding pattern).
 - **Push target**: `origin/main`.
 - **Time-budget category** (per ADR-0027 §D-5 non-binding annotation): `investigate` (catastrophic-result decomposition; counts toward the ≤25% investigation soft cap of the rolling-30-day commit history per `P1-ADR-0027-TIME-BUDGET-TRACKER-SCRIPT`).
 
