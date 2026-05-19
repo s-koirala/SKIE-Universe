@@ -58,6 +58,15 @@ __all__ = [
 
 _logger = logging.getLogger(__name__)
 
+# Phase O.18 `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2`:
+# canonical 4-key block-mode-reason allowlist for `blocked_entries_count`
+# increments. `record_trigger` only increments the parallel counter for
+# constraint_ids in this set; size-down reasons (K-6-size-down /
+# K-7-size-down) and the sticky-inheritance sentinel (size-down-applied)
+# are explicitly excluded since they do NOT correspond to entries actually
+# rejected (size-down admits entry at reduced size).
+_BLOCK_MODE_REASONS: frozenset[str] = frozenset({"K-3", "K-4", "K-6", "K-7"})
+
 
 @dataclass(frozen=True)
 class KillSwitchRuntimeConfig:
@@ -160,12 +169,36 @@ class KillSwitchRuntimeState:
             the runtime + sidecar disclosure on the canonical "constraint
             breaches" semantic; the empirically-engaged size-down events now
             surface in `summarize_trigger_counts.annotation = "kill-switch-active"`.
+        blocked_entries_count: dict[K-N constraint id, entries-actually-rejected]
+            for operator-readable semantic decomposition per Phase O.18
+            `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2`.
 
-            Design alternative considered: a separate `blocked_entries_count`
-            field could be added to distinguish blocked vs sized-down breaches
-            beyond what the 2 new keys already encode. Deferred to v2 per
-            `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2` (non-
-            blocking; the 6-key schema already encodes the distinction).
+            Distinct from `trigger_counts`: this field counts ONLY entries
+            that were structurally REJECTED (orchestrator skipped the entry
+            because `check_entry_blocked` returned `blocked=True`). Size-down
+            breaches (which admit the entry with reduced size) are NOT counted
+            here — they appear only in `trigger_counts["K-N-size-down"]`. The
+            schema is 4-key (no `-size-down` sub-keys since size-down doesn't
+            block):
+
+              - `"K-3"` — entries rejected due to no-add-to-loser
+              - `"K-4"` — entries rejected due to capacity-cap
+              - `"K-6"` — entries rejected due to daily breaker under `block` mode
+              - `"K-7"` — entries rejected due to weekly breaker under `block` mode
+
+            Operator-readability invariant per Phase O.18: for any
+            `block`-mode-only run, `blocked_entries_count[K-N] ==
+            trigger_counts[K-N]` for K ∈ {3, 4, 6, 7}; under `size_down` mode
+            on K-6/K-7, the constraint breaches surface in
+            `trigger_counts["K-N-size-down"]` while `blocked_entries_count[K-N]`
+            stays at zero (entry was admitted at reduced size, NOT rejected).
+
+            The block-mode v3 sidecar at run_id
+            `154237b365794244974068402b377191` (post-Phase-O.17 6-key schema)
+            satisfies the parity invariant `blocked_entries_count[K-6] ==
+            trigger_counts[K-6] == 4417` and `blocked_entries_count[K-7] ==
+            trigger_counts[K-7] == 4428` — bit-exact reproducibility preserved
+            per the Phase O.18 backward-compat contract.
         universe: list of symbols in the active basket; validated at init for
             K-5 correlated-pair membership per F-1-6 audit fix.
         size_down_active_session: per ADR-0028 §D-1, set True when K-6 breach
@@ -188,6 +221,15 @@ class KillSwitchRuntimeState:
     # ADR-0028 §D-1: per-session / per-week size-down flags.
     size_down_active_session: bool = False
     size_down_active_week: bool = False
+    # Phase O.18 `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2`:
+    # parallel "entries actually rejected" counter — decomposes constraint
+    # breaches (trigger_counts) from entries blocked (this field). Pure
+    # additive polish; canonical 4-key schema initialized by
+    # `init_runtime_state` (block-only K-N keys; no `-size-down` sub-keys).
+    # default_factory=dict so existing code paths constructing State without
+    # this kwarg continue to work; init_runtime_state initializes the
+    # canonical 4-key schema.
+    blocked_entries_count: dict[str, int] = field(default_factory=dict)
 
 
 def validate_universe_for_k5(universe: tuple[str, ...]) -> None:
@@ -240,6 +282,16 @@ def init_runtime_state(
             "K-7-size-down": 0,
         },
         universe=tuple(s.upper() for s in universe),
+        # Phase O.18 `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2`:
+        # 4-key schema (block-mode K-N only; size-down doesn't reject). Pre-
+        # Phase-O.18 sidecars (Phase O.17 6-key trigger_counts) carry zero in
+        # this field by default_factory — backward-compatible.
+        blocked_entries_count={
+            "K-3": 0,
+            "K-4": 0,
+            "K-6": 0,
+            "K-7": 0,
+        },
     )
 
 
@@ -523,10 +575,43 @@ def record_trigger(
         admitted-with-size-down entries (independent of fresh-breach counts)
         should use a separate orchestrator-side counter; tracked under
         `P1-ADR-0028-ADMITTED-WITH-SIZE-DOWN-COUNTER` (non-blocking).
+
+    Phase O.18 `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2`: this
+    function ALSO increments `state.blocked_entries_count[constraint_id]` for
+    the four block-mode reason strings ({"K-3", "K-4", "K-6", "K-7"}) — these
+    are the canonical cases where `check_entry_blocked` returned `blocked=True`
+    and the orchestrator skipped the entry. Size-down reason strings
+    (`"K-6-size-down"`, `"K-7-size-down"`) increment only `trigger_counts`
+    (the entry was admitted at reduced size, NOT rejected). The
+    `"size-down-applied"` sentinel increments neither canonical field
+    (sticky-inheritance does not constitute a fresh constraint breach).
+
+    Operator-readability invariant: for any block-mode-only run, the parity
+    `blocked_entries_count[K-N] == trigger_counts[K-N]` holds for K ∈ {3, 4,
+    6, 7}; the V3 sidecar at run_id `154237b365794244974068402b377191`
+    satisfies this trivially (K-6: 4417, K-7: 4428; K-3 + K-4 zero).
+
+    Backward-compat: pre-Phase-O.18 state constructed with `default_factory`
+    empty dict for `blocked_entries_count` is tolerated — the function uses
+    `.get(constraint_id, 0) + 1` semantics so a missing key initializes to
+    0 + 1 = 1. `init_runtime_state` initializes the canonical 4-key dict so
+    fresh runs are well-formed.
     """
     new_counts = dict(state.trigger_counts)
     new_counts[constraint_id] = new_counts.get(constraint_id, 0) + 1
-    return replace(state, trigger_counts=new_counts)
+
+    # Phase O.18: parallel block-mode-only counter for entries actually
+    # rejected. Size-down reasons (K-N-size-down) increment only trigger_counts.
+    # justify: 4-key block-mode allowlist canonical per Phase O.18 schema;
+    # extracted as module-level `_BLOCK_MODE_REASONS` for performance + clarity.
+    new_blocked = dict(state.blocked_entries_count)
+    if constraint_id in _BLOCK_MODE_REASONS:
+        new_blocked[constraint_id] = new_blocked.get(constraint_id, 0) + 1
+    return replace(
+        state,
+        trigger_counts=new_counts,
+        blocked_entries_count=new_blocked,
+    )
 
 
 def summarize_trigger_counts(
@@ -551,17 +636,33 @@ def summarize_trigger_counts(
     K-6-size-down + K-7-size-down for fast disclosure of size-down activity.
     Block-mode v3 sidecars are bit-exact reproducible since their two
     `*-size-down` keys carry zero.
+
+    Phase O.18 `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2`: emits
+    parallel `blocked_entries_count` (canonical 4-key {K-3, K-4, K-6, K-7})
+    + `total_blocked_entries` aggregate. Semantically distinct from
+    `trigger_counts` per the dataclass docstring: constraint breaches vs
+    entries actually rejected. For any block-mode-only run, the parity
+    `blocked_entries_count[K-N] == trigger_counts[K-N]` holds for K ∈
+    {3, 4, 6, 7}; under size-down K-6/K-7, `blocked_entries_count[K-N]`
+    stays at zero while `trigger_counts["K-N-size-down"]` accumulates.
     """
     counts = state.trigger_counts
     total = sum(counts.values())
     size_down_total = (
         int(counts.get("K-6-size-down", 0)) + int(counts.get("K-7-size-down", 0))
     )
+    # Phase O.18: blocked_entries_count surfacing in summary; default
+    # to empty dict for back-compat with pre-Phase-O.18 state instances
+    # constructed without init_runtime_state.
+    blocked_entries = dict(state.blocked_entries_count) if state.blocked_entries_count else {}
+    total_blocked = sum(blocked_entries.values())
     summary: dict[str, Any] = {
         "runtime_active": total > 0,
         "trigger_counts": dict(counts),
         "total_triggers": total,
         "size_down_event_count": size_down_total,
+        "blocked_entries_count": blocked_entries,
+        "total_blocked_entries": total_blocked,
         "annotation": "kill-switch-active" if total > 0 else "kill-switch-inactive",
     }
     if config is not None:

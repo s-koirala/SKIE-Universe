@@ -817,3 +817,345 @@ class TestParityWithValidator:
             frozenset({"CL", "MCL"}),
         }
         assert expected == set(ksc.K5_CORRELATED_PAIRS)
+
+
+class TestBlockedEntriesCountV2:
+    """Phase O.18 `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2`.
+
+    Parallel `blocked_entries_count` field decomposes "constraint breaches"
+    (existing 6-key trigger_counts) from "entries actually rejected" (new
+    4-key blocked_entries_count). Pure additive polish; trigger_counts schema
+    is unchanged.
+    """
+
+    def _build_breached_k6_state(self, current_equity: float = 10_000.0):
+        """Helper: construct state with K-6 daily breach pre-registered."""
+        from datetime import date
+
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=current_equity
+        )
+        state = ksr.advance_session(
+            state,
+            new_session_date=date(2025, 6, 16),
+            current_equity=current_equity,
+        )
+        # Realised -2.5% (over the -2% K-6 daily threshold).
+        state = ksr.update_state_on_close(
+            state, symbol="ES",
+            realized_pnl_dollar=-0.025 * current_equity,
+            exit_ts=pd.Timestamp("2025-06-16 14:30:00", tz="UTC"),
+        )
+        return state
+
+    def _build_breached_k7_state(self, current_equity: float = 10_000.0):
+        from datetime import date  # noqa: F401 — date used by ksc functions
+
+        sess_date = ksc.session_date_from_timestamp(
+            pd.Timestamp("2025-06-16 14:30:00", tz="UTC")
+        )
+        week_id = ksc.iso_week_id_from_session_date(sess_date)
+
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=current_equity
+        )
+        state = ksr.advance_week(
+            state, new_week_id=week_id, current_equity=current_equity
+        )
+        state = ksr.advance_session(
+            state, new_session_date=sess_date, current_equity=current_equity
+        )
+        # Realised -6% weekly (over the -5% K-7 threshold).
+        state = ksr.update_state_on_close(
+            state, symbol="ES",
+            realized_pnl_dollar=-0.06 * current_equity,
+            exit_ts=pd.Timestamp("2025-06-16 14:30:00", tz="UTC"),
+        )
+        return state
+
+    def test_init_state_has_canonical_4_key_blocked_entries_schema(self):
+        """Phase O.18: blocked_entries_count initialized to {K-3, K-4, K-6, K-7}: 0.
+
+        Note 4 keys (no -size-down sub-keys) since size-down doesn't reject.
+        """
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        assert state.blocked_entries_count == {
+            "K-3": 0,
+            "K-4": 0,
+            "K-6": 0,
+            "K-7": 0,
+        }
+
+    def test_block_mode_k6_increments_both_fields(self):
+        """Block-mode K-6 rejection: trigger_counts["K-6"] AND
+        blocked_entries_count["K-6"] both increment by 1.
+        """
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(enable_k6=True)  # default "block"
+        blocked, reason, _mod, _new = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is True
+        assert reason == "K-6"
+
+        # Orchestrator canonical flow: record the triggered constraint id.
+        state = ksr.record_trigger(state, reason)
+        assert state.trigger_counts["K-6"] == 1
+        assert state.blocked_entries_count["K-6"] == 1
+        # Other keys untouched.
+        assert state.trigger_counts["K-7"] == 0
+        assert state.blocked_entries_count["K-7"] == 0
+        # K-6-size-down still 0 (block mode; not size-down).
+        assert state.trigger_counts["K-6-size-down"] == 0
+
+    def test_block_mode_k7_increments_both_fields(self):
+        """Block-mode K-7 rejection: parallel to K-6."""
+        state = self._build_breached_k7_state()
+        config = ksr.KillSwitchRuntimeConfig(enable_k7=True)  # default "block"
+        blocked, reason, _mod, _new = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is True
+        assert reason == "K-7"
+
+        state = ksr.record_trigger(state, reason)
+        assert state.trigger_counts["K-7"] == 1
+        assert state.blocked_entries_count["K-7"] == 1
+
+    def test_block_mode_k3_increments_both_fields(self):
+        """Block-mode K-3 (no-add-to-loser): rejection counts in both."""
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        config = ksr.KillSwitchRuntimeConfig(enable_k3=True)
+        state = ksr.update_state_on_open(
+            state, symbol="ES", side=1,
+            entry_ts=pd.Timestamp("2025-06-16 14:00:00", tz="UTC"),
+            entry_price=5000.0, position_size=1,
+            stop_price=4990.0, r_dollar=500.0,
+        )
+        blocked, reason, _mod, _new = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is True
+        assert reason == "K-3"
+
+        state = ksr.record_trigger(state, reason)
+        assert state.trigger_counts["K-3"] == 1
+        assert state.blocked_entries_count["K-3"] == 1
+
+    def test_block_mode_k4_increments_both_fields(self):
+        """Block-mode K-4 (capacity-cap): rejection counts in both."""
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k4=True, capacity_caps={"ES": 20}
+        )
+        blocked, reason, _mod, _new = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=21,
+        )
+        assert blocked is True
+        assert reason == "K-4"
+
+        state = ksr.record_trigger(state, reason)
+        assert state.trigger_counts["K-4"] == 1
+        assert state.blocked_entries_count["K-4"] == 1
+
+    def test_size_down_k6_does_not_increment_blocked_entries(self):
+        """Size-down mode K-6: trigger_counts["K-6-size-down"] increments,
+        blocked_entries_count["K-6"] stays at zero (entry admitted at reduced
+        size; NOT rejected).
+        """
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k6=True, k6_enforcement="size_down",
+        )
+        blocked, reason, modifier, new_state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is False  # admitted at reduced size
+        assert reason == "K-6-size-down"
+        assert modifier == 0.5
+
+        # Orchestrator records the K-6-size-down reason.
+        state = ksr.record_trigger(new_state, reason)
+        # trigger_counts decomposition is preserved.
+        assert state.trigger_counts["K-6-size-down"] == 1
+        assert state.trigger_counts["K-6"] == 0  # block-mode key unchanged
+        # blocked_entries_count stays at zero — no entry was rejected.
+        assert state.blocked_entries_count["K-6"] == 0
+        assert state.blocked_entries_count == {
+            "K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0
+        }
+
+    def test_size_down_k7_does_not_increment_blocked_entries(self):
+        """Symmetric: K-7 size-down."""
+        state = self._build_breached_k7_state()
+        config = ksr.KillSwitchRuntimeConfig(
+            enable_k7=True, k7_enforcement="size_down",
+        )
+        blocked, reason, modifier, new_state = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        assert blocked is False
+        assert reason == "K-7-size-down"
+        assert modifier == 0.5
+
+        state = ksr.record_trigger(new_state, reason)
+        assert state.trigger_counts["K-7-size-down"] == 1
+        assert state.trigger_counts["K-7"] == 0
+        # blocked_entries_count stays at zero.
+        assert state.blocked_entries_count["K-7"] == 0
+
+    def test_sticky_size_down_applied_increments_neither(self):
+        """Sticky-inheritance via "size-down-applied" sentinel: increments
+        neither trigger_counts (canonical 6-key keyset excludes it) NOR
+        blocked_entries_count (4-key keyset also excludes it).
+        """
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        state = ksr.record_trigger(state, "size-down-applied")
+        # Permissive add to trigger_counts (extra key).
+        assert state.trigger_counts.get("size-down-applied", 0) == 1
+        # Canonical 6-key sums unchanged (size-down-applied not in canonical).
+        # All 6 canonical keys still zero.
+        canonical_sum = sum(
+            state.trigger_counts[k]
+            for k in ("K-3", "K-4", "K-6", "K-6-size-down", "K-7", "K-7-size-down")
+        )
+        assert canonical_sum == 0
+        # 4-key blocked_entries_count untouched.
+        assert state.blocked_entries_count == {
+            "K-3": 0, "K-4": 0, "K-6": 0, "K-7": 0
+        }
+
+    def test_summarize_emits_both_count_fields(self):
+        """summarize_trigger_counts emits trigger_counts +
+        blocked_entries_count + total_triggers + total_blocked_entries.
+        """
+        state = self._build_breached_k6_state()
+        config = ksr.KillSwitchRuntimeConfig(enable_k6=True)
+        _, reason, _, _ = ksr.check_entry_blocked(
+            state, config, symbol="ES", position_size=1
+        )
+        state = ksr.record_trigger(state, reason)
+
+        summary = ksr.summarize_trigger_counts(state)
+        assert "trigger_counts" in summary
+        assert "blocked_entries_count" in summary  # Phase O.18 new field
+        assert "total_triggers" in summary
+        assert "total_blocked_entries" in summary  # Phase O.18 new field
+        assert summary["blocked_entries_count"] == {
+            "K-3": 0, "K-4": 0, "K-6": 1, "K-7": 0
+        }
+        assert summary["total_blocked_entries"] == 1
+        assert summary["trigger_counts"]["K-6"] == 1
+
+    def test_summarize_block_mode_parity_invariant(self):
+        """Operator-readability parity invariant: for block-mode-only run,
+        `blocked_entries_count[K-N] == trigger_counts[K-N]` for K ∈ {3,4,6,7}.
+
+        This is the canonical operator-readable check pre-Phase-O.18: in
+        block-mode-only runs, both fields agree numerically; under size-down
+        they diverge (constraint breaches vs entries rejected).
+        """
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        # Synthetic block-mode-only sequence — 3 K-3 + 2 K-4 + 5 K-6 + 4 K-7.
+        for _ in range(3):
+            state = ksr.record_trigger(state, "K-3")
+        for _ in range(2):
+            state = ksr.record_trigger(state, "K-4")
+        for _ in range(5):
+            state = ksr.record_trigger(state, "K-6")
+        for _ in range(4):
+            state = ksr.record_trigger(state, "K-7")
+
+        summary = ksr.summarize_trigger_counts(state)
+        # Parity invariant.
+        for k in ("K-3", "K-4", "K-6", "K-7"):
+            assert summary["trigger_counts"][k] == summary["blocked_entries_count"][k]
+        # Cross-sum invariant.
+        assert summary["total_blocked_entries"] == 3 + 2 + 5 + 4
+        # No size-down activity.
+        assert summary["size_down_event_count"] == 0
+        assert summary["total_triggers"] == 3 + 2 + 5 + 4
+
+    def test_summarize_size_down_divergence(self):
+        """Size-down mode: blocked_entries_count diverges from trigger_counts.
+
+        Synthetic mix: 2 K-3 blocks (block-only enforcement) + 3 K-6-size-down
+        size-down breaches. Expect:
+          trigger_counts["K-3"] = 2          blocked_entries_count["K-3"] = 2
+          trigger_counts["K-6"] = 0          blocked_entries_count["K-6"] = 0
+          trigger_counts["K-6-size-down"] = 3  (no K-6-size-down in blocked)
+          total_triggers = 5                 total_blocked_entries = 2
+        """
+        state = ksr.init_runtime_state(
+            universe=("ES",), starting_equity=10_000.0
+        )
+        for _ in range(2):
+            state = ksr.record_trigger(state, "K-3")
+        for _ in range(3):
+            state = ksr.record_trigger(state, "K-6-size-down")
+
+        summary = ksr.summarize_trigger_counts(state)
+        assert summary["trigger_counts"]["K-3"] == 2
+        assert summary["blocked_entries_count"]["K-3"] == 2
+        assert summary["trigger_counts"]["K-6"] == 0
+        assert summary["blocked_entries_count"]["K-6"] == 0
+        assert summary["trigger_counts"]["K-6-size-down"] == 3
+        assert summary["total_triggers"] == 5
+        assert summary["total_blocked_entries"] == 2
+        assert summary["size_down_event_count"] == 3
+        # Annotation still fires per Phase O.17 contract.
+        assert summary["annotation"] == "kill-switch-active"
+
+    def test_v3_sidecar_bit_exact_block_mode_parity_invariant(self):
+        """Load-bearing Phase O.18 backward-compat invariant: the V3 block-mode
+        sidecar at run_id `154237b365794244974068402b377191` carries
+        `trigger_counts.K-6 = 4417` + `trigger_counts.K-7 = 4428`. Under the
+        Phase O.18 parity invariant, `blocked_entries_count.K-6 = 4417` AND
+        `blocked_entries_count.K-7 = 4428` MUST hold post-Phase-O.18 since
+        block-mode rejections increment both fields atomically via
+        `record_trigger`.
+
+        This test simulates the V3 ledger directly at the primitive layer
+        (the actual V3 sidecar replay is verified by the full walk-forward
+        determinism guarantees in the orchestrator + ReproLog binding).
+        """
+        state = ksr.init_runtime_state(
+            universe=("ES", "NQ", "MGC", "SIL"), starting_equity=10_000.0
+        )
+        # Synthetic replay of V3 block-mode trigger ledger from sidecar:
+        # ES K-6: 6; MGC K-6: 2815; SIL K-6: 1596 → total 4417.
+        # ES K-7: 0; MGC K-7: 2730; SIL K-7: 1698 → total 4428.
+        for _ in range(4417):
+            state = ksr.record_trigger(state, "K-6")
+        for _ in range(4428):
+            state = ksr.record_trigger(state, "K-7")
+
+        summary = ksr.summarize_trigger_counts(state)
+        # Phase O.17 bit-exact trigger_counts contract preserved.
+        assert summary["trigger_counts"]["K-6"] == 4417
+        assert summary["trigger_counts"]["K-7"] == 4428
+        assert summary["trigger_counts"]["K-3"] == 0
+        assert summary["trigger_counts"]["K-4"] == 0
+        # Phase O.18 parity invariant: blocked_entries_count == trigger_counts
+        # for all 4 block-mode keys.
+        assert summary["blocked_entries_count"]["K-6"] == 4417
+        assert summary["blocked_entries_count"]["K-7"] == 4428
+        assert summary["blocked_entries_count"]["K-3"] == 0
+        assert summary["blocked_entries_count"]["K-4"] == 0
+        # Aggregates.
+        assert summary["total_triggers"] == 4417 + 4428
+        assert summary["total_blocked_entries"] == 4417 + 4428
+        # No size-down activity in V3 sidecar (block-mode only).
+        assert summary["size_down_event_count"] == 0
+        # Annotation grammar.
+        assert summary["annotation"] == "kill-switch-active"
