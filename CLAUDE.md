@@ -2204,3 +2204,73 @@ Per the Phase O.14 ADR-0027 §D-1 adoption-time follow-ups + the operator 2026-0
 **No new follow-ups registered by Phase O.18**: all operator-actionable next-steps land under existing follow-ups `P1-H055-COST-EMPIRICAL-CALIBRATION` + `P1-H055-OPTUNA-INNER-CV-IMPL` + `P1-PHASE-O15-LSKEWNESS-NEGATIVE-MEAN-EDGE-WARNING` per investigation memo §7. Operator-discretionary §17 revision-log append on H055 design.md per memo §7(a) — deferred to subsequent commit.
 
 **Time-budget category** (per ADR-0027 §D-5): `investigation` — empirical-attribution on existing sidecars; closes one of three ADR-0027 §D-1 adoption-time exemplars. Counts toward the ≤25% investigation soft cap; combined with Phase O.15 + Phase O.16 + Phase O.17 the cumulative 2026-05-19 investigation-class budget is ~5.5 hr of investigation + ~3 hr of infrastructure-class defect-close work, well within ADR-0027 §D-5 envelope.
+
+### Phase O.18 closure synthesis — 6-parallel-agent campaign cross-task report (2026-05-19)
+
+Per operator 2026-05-19 directive ("execute all 5 tasks via iterative agentic delegation that follows the audit-remediate loop") + the empirically-grounded next-step queue surfaced at Phase O.17 closure. Six parallel background agents executed concurrently with their own R1 audit-remediate-loops per SKILL.md 3-round cap.
+
+**Six commits chained on origin/main**:
+
+| Task | Commit | Outcome |
+|---|---|---|
+| #26 trigger_counts v2 | [525bad0](https://github.com/s-koirala/SKIE-Universe/commit/525bad0) | `blocked_entries_count` parallel 4-key field added; constraint-breaches vs entries-rejected semantic separation; 78/78 tests pass including v3 bit-exact parity invariant; closes `P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2` |
+| #29 test_em_kernels triage | [47fa672](https://github.com/s-koirala/SKIE-Universe/commit/47fa672) | Actual defect: asymmetric F-1-1 NaN guard between numba JIT + numpy-reference fallback paths (introduced by commit 341a94b); forward fix per ADR-0027 §D-3; 81/81 + 141/141 regime suite pass; downstream KPI impact zero (production runs used numba path) |
+| #27 H050 HMM-gating-harm INVESTIGATE | [16c100d](https://github.com/s-koirala/SKIE-Universe/commit/16c100d) | H-c whipsaw PRIMARY (102k forced flips on 337k-bar ES OOS = **30.33% transition rate**; cost-drag 1.87×-5.66× full signal magnitude); H-b anti-selection SECONDARY (gate selects worse-Sharpe state on both ES + NQ); 4 successor variants registered (H050.invert, H050.stable-state, cadence-5min, multi-state-HMM); 2 candidate ADR amendments queued per §D-3 |
+| #28 H055 v2 MGC INVESTIGATE | [384a352](https://github.com/s-koirala/SKIE-Universe/commit/384a352) | Reframed: +87% / −94% / +69.1% spread is cross-hypothesis-family (H055 MR + H062 breakout), NOT within-H055-cell-Kelly; sub-hypothesis ordering H-c ≥ H-a > H-b; Kelly is amplifier not sign-flipper; MGC C3 super-Kelly H055 v2 is project-wide strongest standalone cell but forward survival depends on cost-empirical-calibration + Optuna-inner-CV + paper-trade-with-BOCD-live-ARMED |
+| #24 H068 v1 walk-forward | [4d14bfb](https://github.com/s-koirala/SKIE-Universe/commit/4d14bfb) | **Pre-empirical prediction VERIFIED to 3%**: slip=0.5 predicted ratio 2.22 → realized 2.278 (crosses H_1 ≥2 threshold); first cost-light positive ROI in project history (+23.12% at slip=0.5); H_1 conjunctive NULL only on n_trades=108 inferential-power floor; payoff strongly skew-positive τ_3 ≈ +0.89 CI strict-excl-zero |
+| #25 H067 v1 walk-forward | [4171d31](https://github.com/s-koirala/SKIE-Universe/commit/4171d31) | H_1 NULL on all 5 N-cells × 2 cost-arms; A1 ratios bounded [0.59, 0.81]; 50% slip cut lifts to 0.93-1.27 — still sub-threshold; only zero-slip clears (physically unachievable); canonical empirical instance of ADR-0027 §D-3 (R1 design audit caught N-lot mechanism error BEFORE the run) |
+
+**Cross-task strategic finding (load-bearing project-level conclusion)**: the cost-reduction axis MUST operate at the **SLIP layer** (sub-1-tick empirical calibration via paper-trade fill data), NOT at the **N-LOT layer**. H068 + H067 contrast is the empirical evidence basis:
+
+| | H068 (slip sensitivity, ES) | H067 (N-lot grid, SIL) |
+|---|---|---|
+| Cost-reduction axis | sub-1-tick slip | N-lot contract sizing |
+| Best A1 ratio | **2.278** (slip=0.5) | 0.810 (N=4) |
+| Best A1 ROI | **+23.12%** | −79.81% |
+| H_1 verdict | edge present, statistically underpowered | NULL at any N |
+| 50% slip cut clears H_1 | **YES** (just crosses) | NO (still sub-threshold) |
+
+Future cost-light hypothesis pre-registrations should anchor on slip-axis empirical-sensitivity-sweep (not N-lot). This is the canonical strategic anchor for the project's cost-light forward narrative from Phase O.18 forward.
+
+**Phase O.18 also closes three ADR-0027 §D-1 adoption-time exemplars** (all three INVESTIGATE-FAILURE-MODE entries that the project carried into Phase O.14):
+- `INVESTIGATE-FAILURE-MODE-H062-V3-PRIMITIVE-ATTRIBUTION` ✓ closed Phase O.15
+- `INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM` ✓ closed Phase O.18 (this cycle)
+- `INVESTIGATE-FAILURE-MODE-H055-V2-MGC-CATASTROPHE-VS-SUCCESS` ✓ closed Phase O.18 (this cycle)
+
+The INVESTIGATE-FAILURE-MODE follow-up class introduced by ADR-0027 has now been empirically validated across all 3 of its motivating exemplars. The discipline holds — each investigation produced operator-actionable empirical findings that codified into either a successor hypothesis (H050.invert/.stable-state), a paradigm reframing (H062 v3 cost dominance), or a forward-survival precondition list (H055 v2 MGC).
+
+**Meta-finding: the empirical-surfacing-via-audit-loop pattern repeats consistently** — Phase O.13 sidecar capture defect, Phase O.14 ADR citation overreach, Phase O.15 wrong-tick-value + N-lot-mechanism-error in orchestrator prompt, Phase O.16 wrong-section-pin in citation, Phase O.17 size-down disclosure defect, Phase O.18 EM-kernel asymmetric-guard defect. Each was caught by empirical-run / audit-remediate-loop AFTER initial landing — confirming the safety net works at every layer (including the orchestrator-prompt layer where my own unverified priors got caught by agent R1 audits). This validates ADR-0027 §D-3's load-bearing role + the safety value of executing primitives quickly to surface latent defects.
+
+**KPI report card emissions added at Phase O.18**:
+- [H068 v1](research/01_hypothesis_register/H068/H068_kpi_report_v1.md) — first cost-light positive ROI in project history
+- [H067 v1](research/01_hypothesis_register/H067/H067_kpi_report_v1.md) — empirically formalizes the N-lot linear-scaling-cost null
+
+**`promising-*` annotations registered per ADR-0026 §D-3** (binding for future operator-promotion decisions):
+- H068 v1 slip=0.5: `promising-realized-roi-cost-conservative-prior-317429e49ad63674`
+- H067 v1 all cells: `not-promising-mppm-cost-conservative-prior-317429e49ad63674`
+
+**Documentation cascade landed concurrent with Phase O.18 closure** (this commit group): CLAUDE.md Phase O.18 closure synthesis (this section); [INDEX.md](research/01_hypothesis_register/INDEX.md) H067 + H068 stage transitions; [RESULTS_INDEX.md](research/01_hypothesis_register/RESULTS_INDEX.md) H067 v1 + H068 v1 rows; [hypothesis_backlog.md](hypothesis_backlog.md) H067 + H068 stage updates; [CHANGELOG.md](CHANGELOG.md) Phase O.11-O.18 entries (8 phases were missing from CHANGELOG; all caught up here).
+
+**Operator-relevant next-step queue post-Phase-O.18** (operator-discretionary):
+
+1. **MGC C3 operator-action track** (per Task #28 finding; operator has stated this is upcoming) — paper-trade authorization on MGC C3 super-Kelly H055 v2 cell with three preconditions: `P1-H055-COST-EMPIRICAL-CALIBRATION` + `P1-H055-OPTUNA-INNER-CV-IMPL` + 2026-Q3-Q4 paper-trade-with-BOCD-live-ARMED. MGC C3 is project-wide strongest standalone cell (+87% basket OOS on H055 v2; payoff skew-positive).
+2. **H050 successor variants** (per Task #27 finding) — pre-register `H050.invert` + `H050.stable-state` to discriminate H-b anti-selection from H-c whipsaw mechanism empirically. ~4-6 hr each per H067/H068 pre-reg precedent.
+3. **H068 v2 expanded-substrate** (per Task #24 finding) — multi-instrument basket OR longer substrate window to clear n_trades=108 inferential-power floor; would convert the H068 v1 "edge present but underpowered" result to a power-clear conjunctive H_1 verdict.
+4. **ADR-0005 amendment cycle** (per Task #27 implication) — consider mandatory state-stability-confirmation layer for future HMM-gated hypothesis pre-registrations (H050/H052a/H052b family fundamentally rely on HMM gating; the whipsaw + anti-selection failure modes are likely shared).
+5. **Recalibration-disclosure annotation primitive** (Task #21 deferred from Phase O.16) — implements `P1-METALS-ENERGY-COST-RECALIBRATION-DISCLOSURE` BLOCKING-BEFORE-NEXT-V(N+1)-KPI-EMISSION. Becomes load-bearing when MGC C3 paper-trade results emit a v3 KPI card on the recalibrated-fee substrate.
+6. Pre-existing items still open: ADR-0017/0018 design.md cascade; metals-energy substrate v2 extension (H061 full CL); 0DTE QQQ sibling-repo cross-validation per ADR-0006; session-handoff template implementation (operator-track per 2026-05-19 directive).
+
+**Time-budget category** (per ADR-0027 §D-5): aggregate 6-task campaign decomposes as ~25% present-tense (H068 + H067 walk-forwards = the empirically-positive forward exploration) + ~25% investigation (H050 + H055 INVESTIGATE entries) + ~50% infrastructure (trigger_counts v2 + test_em_kernels fix + this documentation cascade). Within ADR-0027 §D-5 envelope; the parallel-6-agent dispatch preserved the ≥50% present-tense ratio at the cycle level while closing both INVESTIGATE backlog and code-quality residuals in a single cycle. Cumulative 2026-05-19 wall-clock across 6 agents ~12-15 hr.
+
+**Closes**: 6 Phase O.18 follow-ups + 3 ADR-0027 §D-1 adoption-time exemplars + 1 Phase O.17 deferred polish (`P1-ADR-0028-BLOCKED-ENTRIES-VS-SIZE-DOWN-DECOMPOSE-V2`) + 1 pre-existing test defect (`test_em_kernels`-asymmetric-guard). Total: 11 follow-ups closed in the parallel-6-agent campaign.
+
+**New non-blocking follow-ups registered by Phase O.18** (consolidated; per individual task audit trails):
+- `P1-H050-INVERT-SUCCESSOR-PRE-REG` — H050.invert variant pre-registration (per Task #27)
+- `P1-H050-STABLE-STATE-SUCCESSOR-PRE-REG` — H050.stable-state variant pre-registration (per Task #27)
+- `P1-H050-CADENCE-5MIN-SUCCESSOR-PRE-REG` — cadence-5min HMM variant (per Task #27)
+- `P1-H050-MULTI-STATE-HMM-SUCCESSOR-PRE-REG` — multi-state HMM variant (per Task #27)
+- `P1-H068-V2-EXPANDED-SUBSTRATE` — H068 v2 multi-instrument basket OR longer-substrate-window to clear n_trades inferential-power floor (per Task #24)
+- `P1-H068-V2-COST-FRICTION-SENSITIVITY-EMPIRICAL-DEEPEN` — H068 v2 finer-grained slip sensitivity grid around the 0.5 cell (per Task #24)
+- `P1-ADR-0005-HMM-STATE-STABILITY-AMENDMENT` — candidate ADR-0005 amendment for mandatory state-stability-confirmation layer (per Task #27 implication; sequenced after H050.stable-state empirical decomposition completes per §D-3)
+- `P1-MGC-C3-PAPER-TRADE-AUTHORIZATION-MEMO` — operator-action runbook for MGC C3 paper-trade with 3 preconditions per Task #28 finding (operator-stated upcoming)
+- `P1-ADR-0028-FIRST-COST-FRICTION-EDGE-EMPIRICAL-EMISSION` — first KPI emission with `cost-friction-dominated-edge-present` annotation FIRED (H067 v1 H068 v1 are the empirical first-uses; this follow-up closes upon operator review of both cards)
