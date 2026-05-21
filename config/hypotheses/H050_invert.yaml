@@ -1,0 +1,109 @@
+# H050.invert hypothesis configuration.
+#
+# Genetic-successor mechanism-discrimination variant of H050 v1 per
+# ADR-0027 §D-4. Tests the H-b anti-selection sub-hypothesis from the
+# parent INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM closure memo §7.3
+# Variant A by inverting the canonical HMM state-ordering rule.
+#
+# H050 v1 §5 line 63: gate = HIGHEST-mean state (canonical per ADR-0005).
+# H050.invert §5:     gate = LOWEST-mean state  (THE INVERSION).
+#
+# All other H050 v1 mechanic specifications (universe, splits, features,
+# labels, splitter, hyperparameter grid, search protocol) preserved
+# verbatim per ADR-0027 §D-4 "preserved infrastructure".
+#
+# Cross-references:
+#   research/01_hypothesis_register/H050_invert/design.md
+#   research/01_hypothesis_register/H050/INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM.md
+hypothesis_id: H050_invert
+parent_hypothesis_id: H050
+test_statistic: "SR_filtered_gated_LOW - SR_filtered_unconditional"  # per design.md §1; gate-state inversion
+universe: [ES, NQ]  # front-month roll-adjusted; preserved verbatim from H050 v1
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  train: {start: "2015-01-01", end: "2022-12-31"}
+  val:   {start: "2023-01-01", end: "2023-12-31"}
+  test:  {start: "2024-01-01", end: "2025-12-31"}
+
+# Feature factory per H050 v1 §3 (preserved verbatim).
+features: [rv_parkinson@1.0, rv_realized@1.0, realized_skew@1.0, ofi_tickrule@1.0]
+
+# Triple-barrier labels per H050 v1 §4 (preserved verbatim; AFML §3.4 per H050 v1 §15.1 Erratum-1).
+labels:
+  method: triple_barrier
+  pt_sl_grid: [1.0, 1.5, 2.0]
+  vertical_barrier_grid: [30m, 60m, 120m]
+  volatility_estimator: yang_zhang
+  volatility_lookback_grid: [20, 60, 120]
+
+# LightGBM classifier per H050 v1 §5 (preserved verbatim).
+classifier:
+  family: lightgbm
+  grid:
+    num_leaves: [15, 31, 63]
+    learning_rate: [0.01, 0.05]
+    min_data_in_leaf: [20, 50]
+  search: {method: random, n_draws: 200, seed: 20260520}  # justify: identical to H050 v1 N=200 random search per design.md §5; seed matches H050.invert design.md §11 RNG seed for in-hypothesis reproducibility
+
+# HMM regime-gate per ADR-0005 (preserved from H050 v1 EXCEPT canonical_state_ordering).
+hmm:
+  covariance_type: [diag, full]  # d=1 dedup at fit time per H050 v1 hmm_covariance_d1_equivalence_addendum
+  selection: bic_plus_cv_ll
+  inference: filter_states  # ADR-0005 anti-look-ahead
+  canonical_state_ordering: lowest_mean_emission  # justify: THE INVERSION SITE per design.md §5; H050 v1 default is `highest_mean_emission`; H050.invert pre-registers the lowest-mean choice per ADR-0027 §D-4 + §D-3 empirical-before-amendment to test the H-b anti-selection sub-hypothesis empirically before any future ADR-0005 amendment. The HMM likelihood is label-permutation-invariant per Frühwirth-Schnatter 2006 §3.5 + Stephens 2000; the ordering choice is operational labeling, not a substantive modeling claim.
+
+# Splitter per H050 v1 §6 (preserved verbatim).
+splitter:
+  method: purged_walk_forward
+  embargo: auto  # max(PACF_lag, politis_white_block) per plan §4.1
+  purge: auto    # max(vertical_barrier) across folds
+
+# Inference + KPI-only annotations per ADR-0013 (no binding gates per §1 + §2).
+gates:
+  ledoit_wolf_2008_differential_ci:  # SECONDARY per ADR-0017 §1.2; preserved for cross-arm comparability with H050 v1
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 2000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+  hansen_spa:  # SECONDARY per ADR-0017 §1.2; M=1 degenerate per H050 v1 precedent
+    alpha: 0.05
+    variant: consistent
+    n_bootstrap: 1000
+    omega_method: hac  # ADR-0008 single-strategy default
+  bh_q: {threshold: 0.10}  # H050 v1 default; preserved
+  power: {target: 0.80}    # H050 v1 default; preserved
+
+# PRIMARY metric vector per ADR-0017 §3 + ADR-0018 §D-1 (NEW relative to H050 v1).
+primary_metric_vector:
+  mppm_rho_1: {input_periodicity: per_session, ci_method: stationary_bootstrap, n_bootstrap: 1000, rng_seed_offset: 100}
+  terminal_wealth_q05: {n_paths: 5000, n_sessions_forward: 252, ruin_threshold: 0.50}
+  calmar_differential: {ci_method: stationary_bootstrap, n_bootstrap: 1000, rng_seed_offset: 200}
+  profit_factor: {ci_method: stationary_bootstrap, n_bootstrap: 1000, rng_seed_offset: 300}
+  r_multiple_mean: {ci_method: stationary_bootstrap, n_bootstrap: 1000, rng_seed_offset: 400}
+risk_of_ruin:
+  enabled: true
+  n_paths: 5000
+  n_sessions_forward: 252
+  ruin_threshold: 0.50  # justify: ADR-0017 §4.2 default
+payoff_shape:
+  enabled: true  # ADR-0019 §3 L-skewness annotation
+
+# Cost model per H050 v1 §7 + ADR-0025 §D-3 (conservative-prior default per operator standing directive).
+cost_model: nt8_es_nq_rth_v1   # design.md §7; consistent with H050 v1
+cost_sensitivity_mult: 1.0      # 1.0 = 1-tick prior; 2.0 for worst-case sensitivity
+cost_provenance: conservative_prior  # ADR-0025 §D-3 annotation
+
+# Abandonment-trigger primitives per ADR-0025 (opt-in per ADR-0024 §D-2).
+# H050.invert v1 defaults: kill-switch OFF (asymmetric blocking pattern per
+# Phase O.15 H062 v3 primitive-attribution + parent INVESTIGATE-FAILURE-MODE
+# memo §7.4 + ADR-0028); equity-rebase fixed (H050 v1 sizing convention
+# preserved per design.md §11.1); bocd-live OFF (calibration deferred per
+# `P1-BOCD-LIVE-PRIOR-CALIBRATION-H050-INVERT`).
+abandonment_triggers:
+  kill_switch_runtime_enabled: false
+  equity_rebase_mode: fixed  # H050 v1 100%-of-equity-when-active sizing per design.md §11.1
+  bocd_live_enabled: false
+
+random_seed: 20260520  # justify: design-date YYYYMMDD per F-Q-8 H054 precedent + H055 convention; identical to H050.stable-state seed for cross-arm comparability
