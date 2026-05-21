@@ -79,8 +79,10 @@ Triple-barrier per Lopez de Prado AFML §3.2.
 - Commission: per-contract commission from [config/instruments.yaml](../../../config/instruments.yaml) (CME-cited fees).
 - Slippage: regime-conditional (RTH only for H050), fit walk-forward from paper-trade logs once the TrivialSmokeTest run completes; until then, a conservative constant-tick slippage prior is used with sensitivity analysis.
 
-## 8. Gate thresholds (AMENDED 2026-05-03 per ADR-0013; supersedes the 2026-05-01 ADR-0012 amendment)
+## 8. Gate thresholds (AMENDED 2026-05-20 per ADR-0017 + ADR-0018; supersedes the 2026-05-03 ADR-0013 amendment, which superseded the 2026-05-01 ADR-0012 amendment)
 
+> **AMENDED 2026-05-20 by [ADR-0017 survival-constrained optimization paradigm](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) §1.2 + §3 + §5 and [ADR-0018 regime-conditional aggressive-growth paradigm](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) §D-1 + §D-2 + §D-3.** Sharpe-family metrics are DEMOTED from primary inferential anchor to secondary KPI; the survival-constrained metric vector (`terminal_wealth_q05`, `calmar_differential`, `profit_factor`, `r_multiple_mean`) replaces Sharpe-differential as the load-bearing operator-review artifact. MPPM(ρ=1) per [GISW 2007 *RFS* DOI 10.1093/rfs/hhm025](https://doi.org/10.1093/rfs/hhm025) replaces Sharpe in inner-CV fitness. The §1 `T_H050` Sharpe-differential test statistic is PRESERVED VERBATIM as a SECONDARY KPI per ADR-0017 §1.2 — it is computed verbatim and reported as a numerical KPI in every H050 KPI report card; what changes is its promotion-decision-rule weight at the §8+§10 layer. Full cascade text + K-1..K-8 kill-switch inheritance per ADR-0017 §5 + per-hypothesis applicability table in Appendix A at the end of this file.
+>
 > **AMENDED 2026-05-03 by [ADR-0013 permanent-exploration-no-archive-ninjascript-terminus](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md).** ADR-0013 dissolves all binding gates: every former Class A item becomes a KPI annotation in the canonical KPI report card per ADR-0013 §3, with methodological-correctness annotation banner per §2.1 (NOT a gate). H050 progresses through the stage progression of ADR-0013 §1; operator promotion at every transition is discretionary on the KPI report card (ADR-0013 §5.3). Full §10 + new §15 NinjaScript Implementation cascade lands under follow-up `P1-ADR-0013-DESIGN-MD-CASCADE`.
 >
 > **ALL TEXT BELOW THIS BANNER IS HISTORICAL RECORD** preserved verbatim per ADR-0013 §4.1 non-loss mandate (per Round-2 audit F-2-5 remediation). For the current disposition philosophy and authoritative gating semantics see ADR-0013 §1-§5. The legacy "binding gates" / "Class A" / "three-class rubric" / disposition labels (`archive(complete; KPI report)`, `calibration-failed`, `leakage-detected`, `reproducibility-incomplete`) referenced below are SUPERSEDED and exist solely for audit-trail provenance.
@@ -121,7 +123,9 @@ The pre-ADR-0012 H050 §8 + §10 was a Sharpe-CI gating tree archiving null on: 
 - Max folds: computed at pre-reg time from pilot; bounded above by calendar-window limit.
 - Search budget exceedance (per §5 random-search cap) is recorded as right-censoring in the selection log, not a halt.
 
-## 10. Decision rule (AMENDED 2026-05-01 per ADR-0012)
+## 10. Decision rule (AMENDED 2026-05-20 per ADR-0017 + ADR-0018; supersedes the 2026-05-01 ADR-0012 amendment)
+
+> **AMENDED 2026-05-20** per [ADR-0017](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) + [ADR-0018](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md). The H050 decision rule is restructured to the survival-constrained metric vector + MPPM(ρ=1) inner-CV fitness layer. Operator review of the canonical ADR-0014 §3.2 13-table KPI report card (extended from 9 to 13 tables per ADR-0017 §3 + ADR-0019 §3) is the load-bearing artifact. The legacy §1 T_H050 Sharpe-differential statistic is preserved verbatim as a SECONDARY KPI (computed and reported in every emission). Per ADR-0013 §5.3 + the user 2026-05-04 standing decline-ninjascript directive, the `kpi-report-emitted` → `ninjascript-implemented` transition is operator-discretionary. Full cascade text + per-hypothesis applicability in Appendix A.
 
 The H050 decision rule is restructured per [ADR-0012 §"Disposition labels under the new rubric"](../../../docs/decisions/ADR-0012-disposition-philosophy-aspirational-mvp.md) into the three-class disposition rubric (`leakage-detected` / `reproducibility-incomplete` / `calibration-failed` / `prerequisite-not-met` / `archive(complete; KPI report)`).
 
@@ -208,3 +212,70 @@ This sizing convention will inform the §3.1 Realized OOS + Forward-Projection b
 - [research/01_hypothesis_register/H050/purge_rule_addendum_2026-05-03.md](purge_rule_addendum_2026-05-03.md) — per-cfg purge ratification (F-Q-2 closure)
 - [research/01_hypothesis_register/H050/embargo_pw2004_addendum_2026-05-03.md](embargo_pw2004_addendum_2026-05-03.md) — PW2004 embargo project-operational framing (F-L-2 closure)
 - [docs/audits/audit_trail_2026-05-03_h050-orchestrator-leakage-clean.md](../../../docs/audits/audit_trail_2026-05-03_h050-orchestrator-leakage-clean.md) — Round-1 + Round-2 + Round-3 audit-remediate-loop trail
+
+## Appendix A — ADR-0017 + ADR-0018 cascade amendment (2026-05-20)
+
+Per the BLOCKING-BEFORE-NEXT-STAGE-3-RUN follow-ups `P1-ADR-0017-DESIGN-MD-CASCADE` + `P1-ADR-0018-DESIGN-MD-CASCADE`, this appendix is the load-bearing reference for the 2026-05-20 amendment of §8 + §10 + §11.1 per Path A frozen-pre-reg amendment discipline ([ADR-0013](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §"Frozen pre-registration amendment"). §1-§7 are PRESERVED VERBATIM. The §1 `T_H050` Sharpe-differential test statistic is preserved as a SECONDARY KPI computed and reported verbatim in every KPI report card.
+
+### A.1 Primary inferential vector (replaces Sharpe-differential at §8+§10 layer)
+
+Per [ADR-0017 §1 + §3](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md), the load-bearing operator-review artifact at every stage transition becomes the survival-constrained metric vector with bootstrap CIs:
+
+| Primary metric | Definition (per ADR-0017 §3) | KPI annotation grammar |
+|---|---|---|
+| `terminal_wealth_q05` | 5th percentile of 252-session bootstrap-forward $10K-baseline ending equity per Politis-White 2004 block-length stationary bootstrap | `tw-q05-{above-baseline, above-half, below-half, below-quarter}` |
+| `calmar_differential` | `Calmar_arm − Calmar_bench` per [Young 1991 *Futures* 20(12)](https://www.semanticscholar.org/paper/02bd29696844c0d428412d7300fa5056f0aa9172) with paired-pairs block-stationary-bootstrap CI per [Politis-Romano 1994 *JASA* 89(428)](https://doi.org/10.1080/01621459.1994.10476870) | `calmar-diff-{positive, marginal, negative}` |
+| `profit_factor` | `gross_profit / gross_loss` per arm; differential vs benchmark | `pf-diff-{positive, marginal, negative}` |
+| `r_multiple_mean` | Per-trade R = realized P/L / |1R| where 1R = pre-entry stop × position size; mean of per-trade distribution | `r-multiple-mean-{positive, marginal, negative}` |
+
+Inner-CV fitness becomes **MPPM(ρ=1)** per [ADR-0018 §D-1](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) ([Goetzmann-Ingersoll-Spiegel-Welch 2007 *RFS* 21(4) DOI 10.1093/rfs/hhm025](https://doi.org/10.1093/rfs/hhm025)) — manipulation-proof per GISW Theorem 1, reduces to log-wealth via L'Hôpital.
+
+Sharpe-family LW2008 differential CI + Hansen 2005 SPA family p-value are PRESERVED as secondary KPIs at their existing ADR-0014 §3.2 table positions (Tables 3 + 4 + 7) per ADR-0017 §3 demotion machinery. The H050 design.md §1 T_H050 test statistic is COMPUTED VERBATIM in every KPI report card.
+
+### A.2 Inner-CV fitness — MPPM(ρ=1)
+
+Per [ADR-0018 §D-1](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md), the inner-CV cell-selection fitness for any H050 hyperparameter grid (LightGBM `num_leaves` / `learning_rate` / `min_data_in_leaf` per §5; HMM `covariance_type` / `n_states` per §5 + ADR-0005 adaptive rule) is **MPPM(ρ=1)** on per-session-aggregated log-return basket NOT Sharpe-differential. Kelly multiplier grid `{0.25, 0.5, 1.0, 1.5, 2.0, 2.5}` per ADR-0018 §D-2; super-Kelly cells `{1.5, 2.0, 2.5}` carry mandatory `super-kelly-operator-discretionary` annotation. Adams-MacKay 2007 BOCD decay-detector per ADR-0018 §D-3 with `decay-detected-{yes, no}` annotation on rolling MPPM path.
+
+### A.3 K-1..K-8 kill-switch inheritance (per ADR-0017 §5)
+
+H050 inherits the 8 hard kill-switch constraints from [ADR-0017 §5](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md). Per-hypothesis applicability:
+
+| # | Constraint (ADR-0017 §5) | Default | H050 applicability |
+|---|---|---|---|
+| K-1 | Per-trade $-stop = 1.0R; R = `k × ATR_n × multiplier × position_size`, `k = 2.0` (Turtle 2N) | applicable | Per-bar HMM-gated directional signal; 1R-stop on triple-barrier `pt_sl` per §4 implements the K-1 contract. |
+| K-2 | Per-trade time-stop = 2× median winning-trade duration on calibration holdout | applicable | Triple-barrier `vertical_barrier` per §4 (`{30m, 60m, 120m}` grid) is the time-stop. |
+| K-3 | No-add-to-loser (zero exception) | applicable | Single-position-per-symbol convention. |
+| K-4 | Per-symbol position cap per [ADR-0001](../../../docs/decisions/ADR-0001-project-scope.md) (≤20 ES, ≤40 NQ) | applicable | Retail-capacity ceiling enforced at sizing layer. |
+| K-5 | Correlated-instrument inventory cap (ES+MES, NQ+MNQ, etc.) | n/a at v1 | H050 universe is ES OR NQ per arm (separate arms; no cross-instrument pair within a single arm). K-5 becomes applicable if a future amendment adds MES alongside ES or MNQ alongside NQ. |
+| K-6 | Daily circuit breaker = -2% of equity realized P/L | applicable | Wired at the runtime layer per ADR-0025 §D-1 (opt-in per CLI). |
+| K-7 | Weekly circuit breaker = -5% of equity realized P/L | applicable | Same. |
+| K-8 | Adverse-direction entry filter (T_H trend-gate sign disagrees with entry AND adverse > 0.5 ATR) | applicable-by-existing-gate | HMM forward-filter at §5 (state-gate selecting highest-mean state for long entries) IS the trend gate; K-8 spec is structurally satisfied by the existing gating mechanic. |
+
+Kill-switch enforcement-mode (block vs size-down) per [ADR-0028 §D-1](../../../docs/decisions/ADR-0028-k6-k7-size-down-cost-friction-edge.md) — `block` default preserves bit-equivalence with v1 KPI; `size_down` operator-opt-in per design.md `# justify:` annotation.
+
+### A.4 §11.1 Kill-switch parameters cross-reference
+
+H050 design.md does not currently enumerate §11.1 numeric kill-switch parameters. Per the ADR-0017 §5 inheritance, the kill-switch parameter list at NinjaScript-implementation time is:
+- `K-1 per-trade $-stop` = 1.0R per the §4 triple-barrier `pt_sl` (calibrated post-paper-trade under follow-up `P1-H050-KILL-SWITCH-EMPIRICAL`).
+- `K-2 per-trade time-stop` = `max(vertical_barrier)` per §4 (calibrated to 2× median winning-trade duration on calibration holdout if available).
+- `K-6 daily circuit breaker` = -2% equity (project default).
+- `K-7 weekly circuit breaker` = -5% equity (project default).
+- `K-4 per-symbol position cap` per ADR-0001 (≤20 ES, ≤40 NQ).
+- `K-3 no-add-to-loser` enforced at sizing layer.
+- `K-5 correlated-instrument inventory cap` n/a at v1 (single-symbol-per-arm universe).
+- `K-8 adverse-direction entry filter` satisfied by HMM gate per §5.
+
+### A.5 Revision-log
+
+| Date | Amendment | Cross-reference |
+|---|---|---|
+| 2026-04-20 | Initial design.md commit, `status: designed` | git history initial commit |
+| 2026-05-01 | §8 + §10 amended per ADR-0012 (now superseded) | Phase D ADR-0012 amendment |
+| 2026-05-03 | §8 + §10 amended per ADR-0013 (KPI-only; no binding gates) | [ADR-0013](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) + Phase F |
+| 2026-05-04 | §15 added per ADR-0013 §5.1 (NinjaScript Implementation mandate) | [ADR-0013 §5](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) + Phase G |
+| 2026-05-20 | §8 + §10 + §11.1 amended per ADR-0017 + ADR-0018 (this Appendix A); §1-§7 preserved verbatim; T_H050 secondary KPI | [ADR-0017](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) + [ADR-0018](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) + Phase O.19 audit trail at [docs/audits/audit_trail_2026-05-20_adr-0017-0018-design-md-cascade.md](../../../docs/audits/audit_trail_2026-05-20_adr-0017-0018-design-md-cascade.md) |
+
+### A.6 §1-§7 immutability assertion
+
+Per [ADR-0013 §"Frozen pre-registration amendment"](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md): §1 (hypothesis statement), §2 (universe + sample period), §3 (features), §4 (label construction), §5 (estimator), §6 (splitter), §7 (cost model) are IMMUTABLE under project-level ADR amendments. This 2026-05-20 cascade amends ONLY §8 (gate thresholds) + §10 (decision rule) + §11.1 (kill-switch parameters cross-ref). The §1 H_1 `T_H050 = SR_{filtered, gated} − SR_{filtered, unconditional}` test statistic and the §1 H_1 statement `SR_{s*} - SR_uncond > 0` are PRESERVED VERBATIM and computed/reported verbatim in every KPI report card per ADR-0017 §1.2 (with the role demoted from primary inferential anchor to secondary KPI at the §8+§10 layer only).
+

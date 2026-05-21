@@ -128,7 +128,9 @@ where $pnl^{ORB}_t$ is the per-session ORB P/L (same labels as H052a §4) net of
 
 `futures_orb_v1` per [src/skie_ninja/backtest/costs/futures_orb_v1.py](../../../src/skie_ninja/backtest/costs/futures_orb_v1.py) (1-tick slippage prior; per-side commission + exchange fee + NFA per [config/instruments.yaml](../../../config/instruments.yaml)). Cost is APPLIED as a per-session log-return drag `log(1 - cost_round_trip / notional)` per ADR-0013 §3.1 F-CONV-2 binding. Empirical regime-wise calibration deferred to `P1-H054-COST-CALIBRATION-EMPIRICAL` (paper-trade prerequisite).
 
-## 8. Gate thresholds (per ADR-0013; KPI-only, no binding gates)
+## 8. Gate thresholds (AMENDED 2026-05-20 per ADR-0017 + ADR-0018; preserves ADR-0013 KPI-only philosophy)
+
+> **AMENDED 2026-05-20 by [ADR-0017 survival-constrained optimization paradigm](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) §1.2 + §3 + §5 and [ADR-0018 regime-conditional aggressive-growth paradigm](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) §D-1 + §D-2 + §D-3.** Sharpe-family metrics are DEMOTED from primary inferential anchor to secondary KPI; the survival-constrained metric vector (`terminal_wealth_q05`, `calmar_differential`, `profit_factor`, `r_multiple_mean`) replaces Sharpe-differential as the load-bearing operator-review artifact. MPPM(ρ=1) per [GISW 2007 *RFS* DOI 10.1093/rfs/hhm025](https://doi.org/10.1093/rfs/hhm025) replaces Sharpe in inner-CV fitness. The §1 `T_H054_a` (stress-state-vs-unconditional Sharpe-differential) and `T_H054_b` (anti-gate Sharpe vs zero) test statistics are PRESERVED VERBATIM as SECONDARY KPIs per ADR-0017 §1.2 — computed and reported verbatim in every H054 KPI report card; what changes is their promotion-decision-rule weight at the §8+§10 layer. Full cascade text + K-1..K-8 kill-switch inheritance per ADR-0017 §5 + per-hypothesis applicability table in Appendix A at the end of this file.
 
 Per [ADR-0013](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §1, no KPI value forces or blocks any stage transition. Every former Class A item from ADR-0012 is reported as a KPI annotation.
 
@@ -202,7 +204,9 @@ Single production walk-forward run on ES 2025 OOS. No multiple-rerun-on-same-OOS
 
 Given the structurally-low ES anti-gate trade frequency (~23 trades over 230 OOS sessions), H054 v1 is best understood as **a directional indicator + power-floor probe**, NOT a definitive test. A v1 result of "T_H054_b LW2008 CI covers zero" should be interpreted as "consistent-with-noise-given-low-trade-count", NOT "anti-gate hypothesis falsified." A v1 result of "T_H054_b LW2008 CI excludes zero on the positive side" would carry more evidentiary weight (would need SR ≳ 0.15). A successor H054 v2 with a longer accumulated OOS window (or pooled ES+NQ + MES+MNQ) would be necessary for a definitive verdict.
 
-## 10. Decision rule
+## 10. Decision rule (AMENDED 2026-05-20 per ADR-0017 + ADR-0018; preserves ADR-0013 KPI-only philosophy)
+
+> **AMENDED 2026-05-20** per [ADR-0017](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) + [ADR-0018](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md). The H054 decision rule preserves the ADR-0013 KPI-only philosophy AND adds the survival-constrained metric vector + MPPM(ρ=1) inner-CV fitness layer as the load-bearing operator-review artifact. The legacy §1 T_H054_a + T_H054_b Sharpe statistics are preserved verbatim as SECONDARY KPIs. Per ADR-0013 §5.3 + the user 2026-05-04 standing decline-ninjascript directive, the `kpi-report-emitted` → `ninjascript-implemented` transition is operator-discretionary. Full cascade text + per-hypothesis applicability in Appendix A.
 
 Per [ADR-0013 §1](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md): no KPI value forces or blocks any stage transition. Operator reviews the KPI report card and decides at every transition (operator-discretionary; decision-logged).
 
@@ -225,7 +229,9 @@ Per [ADR-0009](../../../docs/decisions/ADR-0009-blas-thread-pinning.md) + [ADR-0
 - Random seed: 20260505 (frozen).  <!-- justify: design-date encoded as YYYYMMDD per F-Q-8 fix; deterministic, no upstream selection bias -->
 - Single-seed mandate: no per-replicate seed sweep on the OOS test fold.
 
-### 11.1 Kill-switch parameters (per ADR-0013 §5.1; cross-link to NinjaScript §15)
+### 11.1 Kill-switch parameters (AMENDED 2026-05-20 per ADR-0017 §5; cross-link to NinjaScript §15 + Appendix A.3)
+
+> **AMENDED 2026-05-20** per [ADR-0017 §5](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md). The K-1..K-8 mandatory inheritance list at Appendix A.3 applies to H054 at the NinjaScript-implementation layer. The §11.1 parameters BELOW are the H054-specific operational-threshold instantiation of K-1 + K-2 + K-4 + K-6/K-7 contracts; they are PRESERVED VERBATIM and remain operational. See Appendix A.3 for the per-K applicability table.
 
 NinjaScript implementation kill-switch parameters (used at paper-trade-active and live stages, NOT during backtest):
 
@@ -327,3 +333,57 @@ Per [ADR-0013 §"Frozen pre-registration amendment"](../../../docs/decisions/ADR
 - **Empirical motivation**: H052a KPI report card v1 [research/01_hypothesis_register/H052a/H052a_kpi_report_v1.md](../H052a/H052a_kpi_report_v1.md).
 - **Companion lit-review**: [lit_review_H054_2026-05-05.md](lit_review_H054_2026-05-05.md) (TBD; produced by Phase 0 lit-check).
 - **Substrate binding**: [data_requirements.md](data_requirements.md) (TBD; produced before `designed` freeze).
+- **2026-05-20 §8 + §10 + §11.1 amendment per ADR-0017 + ADR-0018**: see Appendix A below. §1-§7 preserved verbatim; T_H054_a + T_H054_b demoted to secondary KPIs. Audit trail at [docs/audits/audit_trail_2026-05-20_adr-0017-0018-design-md-cascade.md](../../../docs/audits/audit_trail_2026-05-20_adr-0017-0018-design-md-cascade.md).
+
+## Appendix A — ADR-0017 + ADR-0018 cascade amendment (2026-05-20)
+
+Per the BLOCKING-BEFORE-NEXT-STAGE-3-RUN follow-ups `P1-ADR-0017-DESIGN-MD-CASCADE` + `P1-ADR-0018-DESIGN-MD-CASCADE`, this appendix is the load-bearing reference for the 2026-05-20 amendment of §8 + §10 + §11.1 per Path A frozen-pre-reg amendment discipline ([ADR-0013](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md) §"Frozen pre-registration amendment"). §1-§7 are PRESERVED VERBATIM. The §1 `T_H054_a` (stress-state-vs-unconditional) and `T_H054_b` (anti-gate vs zero) Sharpe statistics are preserved as SECONDARY KPIs computed and reported verbatim in every KPI report card. H054 is currently at `kpi-report-emitted` per Phase H with operator-declined-ninjascript precedent — this cascade is documentation-only and applies prospectively to subsequent re-emission.
+
+### A.1 Primary inferential vector (replaces Sharpe-differential at §8+§10 layer)
+
+Per [ADR-0017 §1 + §3](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md), the load-bearing operator-review artifact becomes the survival-constrained metric vector with bootstrap CIs:
+
+| Primary metric | Definition (per ADR-0017 §3) | KPI annotation grammar |
+|---|---|---|
+| `terminal_wealth_q05` | 5th percentile of 252-session bootstrap-forward $10K ending equity | `tw-q05-{above-baseline, above-half, below-half, below-quarter}` |
+| `calmar_differential` | `Calmar_arm − Calmar_bench`; for H054 benchmark = always-flat (per §8.b primary inference for T_H054_b); paired-pairs block-stationary-bootstrap CI per [Politis-Romano 1994](https://doi.org/10.1080/01621459.1994.10476870) | `calmar-diff-{positive, marginal, negative}` |
+| `profit_factor` | `gross_profit / gross_loss` per arm | `pf-diff-{positive, marginal, negative}` |
+| `r_multiple_mean` | Per-trade R-multiple mean; H054 single round-trip per stress-state session | `r-multiple-mean-{positive, marginal, negative}` |
+
+Inner-CV fitness becomes **MPPM(ρ=1)** per [ADR-0018 §D-1](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md). Sharpe-family LW2008 univariate CI on T_H054_b + Hansen 2005 SPA p preserved as secondary KPIs at their existing ADR-0014 §3.2 table positions.
+
+### A.2 Inner-CV fitness — MPPM(ρ=1)
+
+For H054 hyperparameter selection across the 27-cell label-cfg grid (PT/SL/timestop) per §4 + the 3-fold inner CV per §6, fitness is **MPPM(ρ=1)** on per-session-aggregated log-return basket NOT Sharpe-differential. Kelly multiplier grid `{0.25, 0.5, 1.0, 1.5, 2.0, 2.5}` per ADR-0018 §D-2. BOCD decay detector per ADR-0018 §D-3. Per §8.b `dsr-cell-deflated` annotation per Bailey-López de Prado [DSR](https://doi.org/10.3905/jpm.2014.40.5.094) remains as a secondary KPI alongside the §A.1 primary vector.
+
+### A.3 K-1..K-8 kill-switch inheritance (per ADR-0017 §5; cross-link to existing §11.1)
+
+H054's existing §11.1 numeric kill-switch parameters are PRESERVED VERBATIM as the H054-specific operational-threshold instantiation of K-1 + K-2 + K-4 + K-6/K-7 contracts. The inheritance mapping:
+
+| # | Constraint (ADR-0017 §5) | H054 applicability |
+|---|---|---|
+| K-1 | Per-trade $-stop = 1.0R; `k=2.0` (Turtle 2N) | applicable; §11.1 `Per-session loss limit` = $500 / contract / session is the canonical H054 instantiation (volatility-normalized stop equivalent). |
+| K-2 | Per-trade time-stop = 2× median winning-trade duration | applicable; §11.1 `Wall-clock cap = 14:00 ET timestop` matches §4 label time-stop. |
+| K-3 | No-add-to-loser | applicable; §11.1 `Daily session count cap = 1` (one anti-gate ORB attempt per session) structurally implements no-add-to-loser. |
+| K-4 | Per-symbol position cap per [ADR-0001](../../../docs/decisions/ADR-0001-project-scope.md) (≤20 ES, ≤40 NQ) | applicable; §11.1 `Per-session loss limit` × position-size enforces the per-symbol cap; ADR-0001 ceiling binds at sizing layer. |
+| K-5 | Correlated-instrument inventory cap | n/a at v1; H054 v1 universe is ES-only per §9.3 F-Q-6 fix (NQ excluded). Becomes applicable in a future H054 v2 that includes ES + NQ jointly or MES + MNQ. |
+| K-6 | Daily circuit breaker = -2% equity | applicable; §11.1 `Realized daily P/L exit ≤ -$1,500 / contract` is the canonical H054 instantiation (at 1-contract sizing on a $10K bankroll baseline this is roughly -15% of equity rather than -2%; H054 v1 deliberately uses a wider H054-specific threshold given the ~23-trade-OOS budget per §9.5). Runtime ADR-0025 §D-1 wiring is the project-level K-6 enforcement. |
+| K-7 | Weekly circuit breaker = -5% equity | applicable; runtime ADR-0025 §D-1 wiring at -5% equity (project default; H054 has no specific weekly override). |
+| K-8 | Adverse-direction entry filter | applicable-by-existing-gate; H054 anti-gate inversion logic IS the entry-direction filter — H054 only fires on H052a-gated-OUT sessions, by construction the H052a HMM gate's adverse-direction signal IS the entry-trigger. The K-8 spec ("forbid entries where T_H trend-gate sign disagrees AND adverse > 0.5 ATR") is the inverse-form of H054's entry rule — H054 enters ONLY on adverse-state-signaling sessions, which IS the anti-gate H_1. |
+
+Kill-switch enforcement-mode per [ADR-0028 §D-1](../../../docs/decisions/ADR-0028-k6-k7-size-down-cost-friction-edge.md) — `block` default; `size_down` operator-opt-in.
+
+### A.4 §11.1 cross-reference
+
+The existing §11.1 kill-switch parameters (Per-session loss limit, Daily session count cap, Realized daily P/L exit, Wall-clock cap) are preserved verbatim as the canonical H054 instantiation; per-K applicability documented in A.3. Calibrated post-paper-trade under existing follow-up `P1-H054-KILL-SWITCH-EMPIRICAL`.
+
+### A.5 Revision-log
+
+| Date | Amendment | Cross-reference |
+|---|---|---|
+| 2026-05-05 | Initial design.md commit, `status: designed`; §17 decision log + lit-check + audit-remediate-loop closure | git history initial commit + Phase H |
+| 2026-05-20 | §8 + §10 + §11.1 amended per ADR-0017 + ADR-0018 (this Appendix A); §1-§7 preserved verbatim; T_H054_a + T_H054_b secondary KPIs | [ADR-0017](../../../docs/decisions/ADR-0017-survival-constrained-optimization-paradigm.md) + [ADR-0018](../../../docs/decisions/ADR-0018-regime-conditional-aggressive-growth-paradigm.md) + Phase O.19 audit trail at [docs/audits/audit_trail_2026-05-20_adr-0017-0018-design-md-cascade.md](../../../docs/audits/audit_trail_2026-05-20_adr-0017-0018-design-md-cascade.md) |
+
+### A.6 §1-§7 immutability assertion
+
+Per [ADR-0013 §"Frozen pre-registration amendment"](../../../docs/decisions/ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md): §1-§7 are IMMUTABLE under project-level ADR amendments. This 2026-05-20 cascade amends ONLY §8 + §10 + §11.1. The §1 H_1 statements (T_H054_a stress-state-vs-unconditional incremental Sharpe; T_H054_b anti-gate Sharpe vs zero) and the §1 anti-gate inversion mechanism (H054 enters ONLY on H052a-gated-OUT sessions) are PRESERVED VERBATIM. The §9 pilot-derivation expectation-management framing ("structurally low ES anti-gate trade frequency ~23 trades over 230 OOS sessions; v1 is best understood as directional indicator + power-floor probe, NOT definitive test") is PRESERVED VERBATIM.
