@@ -1,0 +1,231 @@
+# H068 v2 hypothesis configuration.
+#
+# Multi-instrument basket expansion of H068 v1 cost-light Donchian channel-breakout.
+# Genetic successor per ADR-0027 §D-4 single-axis-genetic-cross discipline; single
+# cross-axis = universe expansion from ES standalone (H068 v1) → 3-symbol basket
+# {ES, MGC, SIL} on the canonical post-Phase-O.10 substrate.
+#
+# Closes `P1-H068-V2-EXPANDED-SUBSTRATE` BLOCKING follow-up registered by Phase O.18
+# closure synthesis (CLAUDE.md commit `8434c37`). Empirical motivation: lift H068 v1
+# statistically-underpowered conjunctive H_1 NULL (n_trades=108 below 252-session
+# bootstrap saturation) to a power-clear evaluation via Grinold 1989 √breadth
+# multiplier at the basket-aggregated MPPM(ρ=1) CI layer.
+#
+# Pre-reg design at:
+#   research/01_hypothesis_register/H068_v2/design.md
+#
+# Per ADR-0014 §3.2 + ADR-0017 §3.2 + ADR-0019 §3 + ADR-0026 §D-1: end-of-simulation
+# results-summary tables MANDATORY in every KPI report card emitted from this
+# hypothesis. The §0 3-component summary header (per ADR-0026 §D-1) PRECEDES the
+# ADR-0014 §3.2 13-table format.
+#
+# Per ADR-0028 §D-1 + §D-2: K-6 + K-7 enforcement defaults to `block` per Phase O.18
+# Task #20 empirical finding (size-down doesn't recover cost-dominated catastrophes);
+# `cost-friction-dominated-edge-{present, absent, n/a}` annotation per ADR-0028 §D-2
+# emitted at BOTH per-symbol AND basket-aggregated granularity per design.md §1.2.
+
+hypothesis_id: H068_v2
+parent_hypothesis_id: H068
+parent_hypothesis_kpi: H068_kpi_report_v1.md  # H068 v1 KPI v1 anchor (slip=0.5 A1 ratio 2.278; +23.12% ROI; n_trades=108)
+
+test_statistic: "MPPM_rho1_basket"  # PRIMARY per ADR-0018 D-1; basket-aggregated MPPM(ρ=1) per design.md §1
+test_statistic_secondary: "SR_breakout_minus_SR_passive_BH_per_symbol_and_basket"  # secondary informational per ADR-0017 §1.2 demotion
+
+# v2 universe: 3-symbol basket per design.md §2; NQ deliberately omitted per retail-equity-floor
+# constraint (H062 v2 + H065 v1 + H068 v1 empirically confirmed 0 trades at $10K starting equity);
+# MNQ substitution deferred per P1-H068-V2-MNQ-EXTENSION-V3 (requires new Databento extraction;
+# MNQ NOT in canonical substrate `317429e4...` per data_requirements.md §"Source dataset"); MCL
+# deferred per P1-H068-V2-WITH-CL-MCL-EXTEND (depends on H061 substrate-extension cycle).
+universe: [ES, MGC, SIL]  # justify: 3-symbol equity-index + metals basket on canonical post-Phase-O.10 substrate; preserves all H068 v1 modal-cell mechanics; expected basket n_trades ≈ 7,200 (~67× v1 ES-only n=108) per H062 v2 per-symbol trade-frequency reference (CLAUDE.md Phase O.10 ledger entry)
+
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  substrate_dataset_checksum: "317429e49ad636746d15bf6310fd8f24bc45611ef03e50abefdc25fc6ba12dc7"  # canonical post-Phase-O.10 main-HEAD; per data/processed/_provenance/vendor_legacy_1min_roll_adjusted_20260518.json; run_id 38d63bdd2def4fa9804c78fbcb1a76ce
+  calibration_holdout: {start: "2020-01-01", end: "2020-12-31"}  # justify: 1-year window constrained by ES substrate start; matches H068 v1 §2 calibration holdout precisely per parent-cell preservation
+  is:   {start: "2021-01-01", end: "2023-12-31"}  # justify: 3-year window matching H068 v1 IS per parent-cell preservation
+  oos:  {start: "2024-01-01", end: "2026-05-15"}  # ~2.4-year window matching H068 v1 OOS per parent-cell preservation
+  oos_per_symbol:
+    ES:   {end: "2026-05-15"}  # justify: ES substrate right-edge per Phase O.3 H1-2026 extension
+    MGC:  {end: "2026-05-15"}  # justify: MGC substrate right-edge per Phase O.3 H1-2026 extension
+    SIL:  {end: "2026-05-15"}  # justify: SIL substrate right-edge per Phase O.3 H1-2026 extension
+  sub_window_2026:
+    start: "2026-04-01"
+    end: "2026-05-15"
+    # justify: mandatory reporting cell per ADR-0026 §D-1 §0 3-component summary header component 2
+
+# Per-bar features per design.md §3 (inherited from H068 v1 + H062 verbatim; preserved infrastructure).
+features:
+  - donchian_channel_high_n  # H062 feature factory at src/skie_ninja/features/h062/donchian.py
+  - donchian_channel_low_n
+  - atr_n_wilder  # H062 feature factory; Wilder 1978 (practitioner)
+  - trend_filter_a_ts_mom_L60_tau1  # ID_1 = "a_ts_mom" FIXED per H065 v2 modal; L=60, τ=1.0
+  - h_dwell_first_fire_state  # H062 design.md §4 first-fire dwell convention
+
+# Per-trade entry/exit labels per design.md §4 (M=∞ no-TP-overlay preserved from H068 v1 + H065 v2 M_inf-ES parent).
+labels:
+  method: per_trade_donchian_breakout_atr_stop_eod_flatten_no_tp
+  pt_inf: true  # M=∞ binding per H068 v1 + H065 v2 M_inf_h062_v1_fixed-ES parent cell preservation; no profit target
+  sl_atr_mult_fixed: 2.0  # justify: k_atr=2.0 FIXED per H065 modal; H068 v1 + H068 v2 preserve verbatim per ADR-0027 §D-4 single-axis-genetic-cross discipline (cell-grid sweep is on slip × Kelly, NOT on signal-generation params)
+  vertical_barrier: eod_flatten
+  # Per-symbol EOD-flatten boundaries per design.md §4:
+  #   ES: 15:00 CT (RTH end)
+  #   MGC: 16:00 CT (24/5 session-rollover boundary)
+  #   SIL: 16:00 CT (24/5 session-rollover boundary)
+
+# Splitter per design.md §5.6 (preserved verbatim from H068 v1 per ADR-0027 §D-4 single-axis discipline).
+splitter:
+  method: purged_walk_forward
+  outer_train_sessions: 252  # justify: ADR-0027 §D-2 bounded set {63, 126, 252, 504}; preserved from H068 v1 parent
+  outer_test_sessions: 60  # justify: 60-session OOS roll per H068 v1 + H065 v2 + H062 + H060 precedent
+  embargo_minutes: 2400  # justify: 480 max-bar holding × 5 min/bar = 2400 min; per H068 v1 + H065 + H062 design.md §5.6 binding
+  embargo_sessions_equivalent_rth: 5.93  # informational; ES RTH session = 405 min
+  embargo_sessions_equivalent_24_5: 1.74  # informational; MGC/SIL 24/5 session = 1380 min
+  purge_minutes: 2400  # justify: matches embargo per ADR-0007 stacked-embargo convention
+  inner_cv_n_folds: 3  # justify: per H068 v1 + H062 v2 inner-CV structure
+
+# Donchian-channel breakout signal-construction grid per design.md §5 — FIXED at H065 v2 modal feature cell per parent-cell preservation.
+donchian_signal_fixed:
+  cadence_min: 5  # justify: H065 v2 M_inf-ES modal preserved per ADR-0027 §D-4 single-axis-genetic-cross discipline
+  channel_n_5min_bars: 120  # justify: H065 v2 M_inf_h062_v1_fixed-ES modal channel_n=120; preserved verbatim
+  h_dwell_5min_bars: 5  # justify: H065 v2 M_inf-ES modal h_dwell=5
+  atr_lookback_bars: 14  # justify: H065 v2 M_inf-ES modal atr_n=14 + Wilder 1978 default
+  trend_filter_id_1: a_ts_mom  # justify: H065 v2 M_inf-ES modal trend_id; FIXED no inner-CV selection
+  trend_filter_a_ts_mom_L: 60  # justify: H065 v2 modal lookback
+  trend_filter_a_ts_mom_tau: 1.0  # justify: H065 v2 modal threshold
+
+# Sizing rule per design.md §5.3 (preserved from H068 v1 verbatim; fixed-equity per H065 v2 M_inf_h062_v1_fixed parent cell preservation).
+sizing:
+  per_trade_risk_pct_equity: 0.01  # 1% Turtle 2N convention per Faith 2007 (practitioner)
+  kelly_multiplier_grid: [0.25, 0.5, 1.0, 1.5, 2.0, 2.5]  # justify: ADR-0018 D-2; quarter-Kelly lower bound per MacLean-Thorp-Ziemba 2010; 2.5× upper bound at theoretical defensibility ceiling per ADR-0017 §4.1
+  super_kelly_threshold: 1.0  # justify: cells above 1.0 carry mandatory `super-kelly-operator-discretionary` annotation per ADR-0018 D-2
+  use_current_equity: false  # justify: FIXED-equity per H068 v1 + H065 v2 M_inf_h062_v1_fixed parent cell preservation; current-equity rebase deferred to v3 per P1-H068-V3-CURRENT-EQUITY-REBASE
+  retail_capacity_caps:
+    ES: 20  # justify: ADR-0001 retail-tier ES cap
+    MGC: 999  # justify: micro-class effectively unbounded at retail-tier $10K equity (per-trade-risk × 1% × $10K = $100 risk budget; MGC 1R-cost ~$10-30 → max ~10 contracts unless catastrophic event)
+    SIL: 999  # justify: micro-class effectively unbounded at retail-tier (per-trade-risk × 1% × $10K = $100 risk budget; SIL 1R-cost ~$50-150 → max ~1-2 contracts)
+  position_size_floor: 1  # justify: minimum 1 contract per trade; v2 keeps 1-lot per cell per parent-cell preservation (N-lot deferred to v3)
+
+# Per-symbol cost-arm × slip-sensitivity grid per design.md §6 + ADR-0028 §D-2 zero-cost-A0-reference convention.
+cost_model:
+  cost_model_id: "nt8_realistic_v1"  # per src/skie_ninja/backtest/costs/nt8_realistic.py
+  sensitivity_mult_grid: [1.0, 0.5, 0.25]  # justify: H068 v1 sub-1-tick slip empirical sensitivity sweep preserved verbatim per ADR-0027 §D-4; cross-hypothesis investigation 2026-05-19 §7.2 practitioner-anecdote range 0.3-0.7 ticks for retail-tier liquid CME equity-index futures on RTH
+  zero_cost_reference_emit: true  # justify: ADR-0028 §D-2 mandatory zero-cost A0 reference cell per slip × Kelly × symbol; required for `cost-friction-dominated-edge-{present, absent, n/a}` annotation evaluation
+  # Per-symbol fee schedules per config/instruments.yaml + Phase O.16 fee verification (commit `9a3a512`):
+  per_symbol_fees:
+    ES:
+      commission_per_side_usd: 0.85  # NinjaTrader Brokerage Unlimited Q1-2026
+      exchange_fee_usd: 1.18  # CME 2024-02 (PRIMARY-SOURCE-VERIFIED; pre-Phase-O.16; NOT in O.16 scope)
+      nfa_fee_usd: 0.02  # NFA Rulebook Section 13 eff. 2024-01-01
+      tick_value: 12.50
+    MGC:
+      commission_per_side_usd: 0.85
+      exchange_fee_usd: 1.45  # CME 2024-02 (verified Phase O.16 commit `9a3a512`)
+      nfa_fee_usd: 0.02
+      tick_value: 1.00
+    SIL:
+      commission_per_side_usd: 0.85
+      exchange_fee_usd: 1.00  # CME 2024-02 (verified Phase O.16 commit `9a3a512`)
+      nfa_fee_usd: 0.02
+      tick_value: 5.00
+
+# Kill-switch runtime + abandonment-trigger opt-in declaration per design.md §11.1.
+kill_switch_runtime:
+  enable_k3: false  # justify: K-3 no-add-to-loser; vacuous at H068 v2 single-unit (no pyramiding; 1-lot per cell)
+  enable_k4: true  # justify: per-symbol capacity cap per ADR-0017 §5 K-4
+  k4_per_symbol_caps:
+    ES: 20  # justify: ADR-0001 ES retail-tier cap
+    MGC: 999  # justify: micro-class effectively unbounded at retail (see sizing.retail_capacity_caps)
+    SIL: 999  # justify: micro-class effectively unbounded at retail
+  enable_k5: false  # justify: N/A at v2 universe {ES, MGC, SIL} (no correlated pairs per ADR-0017 §5 K-5; runtime's validate_universe_for_k5 returns clean per ADR-0025 §D-1 contract)
+  enable_k6: true  # justify: ADR-0017 §5 K-6 daily circuit breaker -2% × equity_at_session_start; per-symbol enforcement
+  k6_enforcement: "block"  # justify: ADR-0028 §D-1 default per Phase O.18 Task #20 empirical finding (size-down doesn't recover cost-dominated catastrophes); preserved at v2 per parent-cell preservation
+  enable_k7: true  # justify: ADR-0017 §5 K-7 weekly circuit breaker -5% × equity_at_week_start; per-symbol enforcement
+  k7_enforcement: "block"  # justify: ADR-0028 §D-1 default per Phase O.18 Task #20 empirical finding
+  size_down_fraction: 0.5  # informational; not used at v2 since k6/k7_enforcement = "block" (preserved per Phase O.18 finding)
+
+equity_rebase:
+  mode: "fixed"  # justify: FIXED-equity per H068 v1 + H065 v2 M_inf_h062_v1_fixed parent cell preservation; current-equity rebase deferred to v3 per P1-H068-V3-CURRENT-EQUITY-REBASE
+  starting_equity_per_symbol: 10000.0  # justify: ADR-0013 §3.1 mandatory $10K-starting-capital reference; per-symbol independent starting equity (no inter-symbol capital sharing at v2)
+
+bocd_live:
+  enabled: false  # justify: BOCD live-pause primitive DISABLED at v2 per parent-cell preservation; no calibrated priors per P1-BOCD-CALIBRATION-PRE-OOS-HOLDOUT; deferred to v3 per P1-H068-V3-BOCD-LIVE
+  # batch BOCD decay-detector observer per design.md §5.4 retained as descriptive annotation only at v2
+
+# News-calendar exclusion per design.md §3 (inherited from H062 + H068 v1 verbatim).
+news_calendar:
+  enabled: true
+  fomc_buffer_min: 15  # justify: Lucca-Moench 2015 anchor for FOMC pre-announcement drift
+  nfp_buffer_min: 5  # justify: H062 + H055 design.md §4 binding
+  cpi_buffer_min: 5  # justify: H062 + H055 design.md §4 binding
+  source: "src/skie_ninja/utils/news_calendar.py"  # FRED FOMC + BLS NFP/CPI release calendars per H055 design.md §4 binding
+
+# Inference primitives per design.md §8 + §9.
+inference:
+  primary_metric: "MPPM_rho1"  # per ADR-0018 D-1
+  survival_constrained_metric_vector:
+    - terminal_wealth_q05  # per ADR-0017 §3
+    - calmar_differential  # per ADR-0017 §3
+    - profit_factor  # per ADR-0017 §3
+    - r_multiple_mean  # per ADR-0017 §3
+  payoff_shape_l_skewness_tau3: true  # per ADR-0019 §3
+  causal_mechanism_e_value: true  # per ADR-0022 §3
+  lw2008_differential_ci:
+    enabled: true  # per ADR-0017 §1.2 demotion; secondary KPI
+    bandwidth_strategy: "PW2004_data_dependent"  # justify: Politis-White 2004 block-length selection
+    n_bootstrap: 1000  # justify: standard for inference CI per ADR-0017 §1.2
+  hansen_spa:
+    enabled: true  # per ADR-0008 omega-corrected method; KPI annotation only per design.md §8
+    k_max_recommended: 500  # justify: conservative upper bound per H062 + H068 v1 precedent; revisable post-paper-trade per `P1-H068-V2-POWER-SIM-PRODUCTION-MODE`
+    omega_corrected: true  # per ADR-0008
+  romano_wolf_fwer:
+    enabled: true  # per design.md §8; family size = 3 slip cells at basket level
+    family_size_basket: 3  # justify: 3 slip cells per H_1 family-size convention preserved from H068 v1 §1
+    method: "stepwise"  # per Romano-Wolf 2005
+  dsr_deflation:
+    enabled: true  # per Bailey-López de Prado 2014; MANDATORY since realized cell count 18 ≥ dsr_activation_size 10
+    dsr_activation_size: 10  # per config/gate.yaml project-canonical
+  risk_of_ruin_monte_carlo:
+    enabled: true  # per ADR-0017 §4.2 mandatory
+    n_paths: 5000
+    n_sessions: 252
+    ruin_threshold_fraction: 0.5  # justify: 50% of starting bankroll per ADR-0017 §4.2 + Vince 1990 Ch. 5 (practitioner)
+
+# Sample-size + power per design.md §9.
+sample_size:
+  n_min_trades_per_symbol_per_cell_guard: 50  # justify: H068 v1 §9 statistical-power caveat preserved; n_min=50 per cell per Tharp 1998 R-multiple-distribution narrow-CI threshold
+  n_min_trades_basket_per_cell_guard: 150  # justify: 3 × per-symbol n_min=50 per design.md §9 basket-level guard
+  expected_basket_n_trades: 7200  # informational; per H062 v2 per-symbol trade-frequency reference (CLAUDE.md Phase O.10 ledger)
+
+# Reproducibility per design.md §12.
+reproducibility:
+  rng_seed: 20260520  # justify: v2 seed distinguished from H068 v1's 20260519 per ADR-0017 §3 fresh-seed convention + pre-reg-date 2026-05-20
+  run_context_required: true  # per ADR-0017 §3 + ADR-0026 §D-2 mandatory-verbosity carveout
+  repro_log_schema_version: 13  # per CLAUDE.md §"Reproducibility (hook-enforced)" mandate
+
+# Sensitivity exhibits per design.md §13.
+sensitivity_exhibits:
+  required:
+    - per_symbol_slip_cell_13_table  # per design.md §13 + ADR-0014 §3.2
+    - basket_aggregated_13_table  # per design.md §13 H_1 inferential anchor
+    - 108_cell_per_symbol_heatmap  # 3 symbols × 3 slip × 6 Kelly × 2 cost-arm
+    - 36_cell_basket_aggregated_heatmap  # 3 slip × 6 Kelly × 2 cost-arm
+    - cost_friction_breakeven_ratio_per_symbol_per_slip_table  # per design.md §6
+    - slip_1_tick_parent_baseline_anchor  # direct-comparability to H068 v1
+    - 2026_04_to_2026_05_subwindow  # per ADR-0026 §D-1 component 2
+
+# Cell-budget cap per ADR-0027 §D-2.
+cell_budget:
+  per_symbol_cells: 36  # 3 slip × 6 Kelly × 2 cost-arm
+  all_symbol_cells: 108  # 3 symbols × 36 per-symbol cells
+  basket_aggregated_cells: 36  # 3 slip × 6 Kelly × 2 cost-arm at basket level
+  total_emitted_cells: 144  # 108 per-symbol + 36 basket-aggregated
+  adr_0027_d2_cap: 1000  # justify: ADR-0027 §D-2 cell-budget cap; 144 well under cap
+
+# Cross-references.
+cross_references:
+  design_md: "research/01_hypothesis_register/H068_v2/design.md"
+  data_requirements_md: "research/01_hypothesis_register/H068_v2/data_requirements.md"
+  lit_review_md: "research/01_hypothesis_register/H068_v2/lit_review_H068_v2_2026-05-20.md"
+  parent_kpi_md: "research/01_hypothesis_register/H068/H068_kpi_report_v1.md"
+  audit_trail_md: "docs/audits/audit_trail_2026-05-20_h068_v2_design.md"
+  blocking_followup_closure: "P1-H068-V2-EXPANDED-SUBSTRATE (per CLAUDE.md Phase O.18 closure synthesis commit 8434c37)"
