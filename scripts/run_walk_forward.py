@@ -253,6 +253,17 @@ from skie_ninja.backtest import cfg_checkpoint as _cfg_checkpoint
 from skie_ninja.backtest import lgb_inner_cv_checkpoint as _lgb_inner_cv_checkpoint
 
 
+# Phase O.20 H050.invert (P1-H050-INVERT-WALK-FORWARD-ORCHESTRATOR-IMPL):
+# module-level flag for HMM gate-state inversion. When True, the gate
+# selects the LOWEST-mean emission state (per H050.invert design.md §5)
+# instead of the canonical HIGHEST-mean state (per H050 v1 §5 + ADR-0005).
+# Set by `--invert-gate` CLI flag in _parse_args; read at the single
+# inversion site near line 1616. Default False preserves H050 v1
+# bit-identical behavior. This mirrors the established pragmatic
+# module-level state pattern used by _LGB_INNER_CV_CURRENT_CTX below.
+_INVERT_HMM_GATE: bool = False
+
+
 # P1-LGB-INNER-CV-RESULT-CHECKPOINT (2026-04-30): module-level cfg
 # context the cfg loop sets just before calling _run_symbol_label_cfg
 # and clears afterwards. _inner_cv_select_hp reads this to decide
@@ -1492,7 +1503,18 @@ def _fit_fold_body(  # noqa: PLR0912, PLR0915
         if regime_high_mean_cached is not None:
             rhm_short = regime_high_mean_cached
         else:
-            rhm_short = int(np.argmax(hmm.params_.means[:, 0])) if hmm.params_ else 0
+            # H050.invert (Phase O.20): mirror the inversion site above
+            # so the degenerate-y short-circuit branch produces the
+            # same gate-state choice as the production branch.
+            if hmm.params_:
+                _means = hmm.params_.means[:, 0]
+                rhm_short = (
+                    int(np.argmin(_means))
+                    if _INVERT_HMM_GATE
+                    else int(np.argmax(_means))
+                )
+            else:
+                rhm_short = 0
         if hmm_terminal_log_alpha_cached is not None:
             tla_short = hmm_terminal_log_alpha_cached
         else:
@@ -1606,14 +1628,27 @@ def _fit_fold_body(  # noqa: PLR0912, PLR0915
     )
     final_model.fit(X_tr, y_tr)
 
-    # Highest-mean regime state (for inference-time gating). Taken
-    # from the HMM's emission means.
+    # Gate-state selection (for inference-time gating). Taken from the
+    # HMM's emission means. H050 v1 selects the HIGHEST-mean state per
+    # ADR-0005 canonical state-ordering rule (`np.argmax(means)`).
+    # H050.invert (Phase O.20) selects the LOWEST-mean state per
+    # H050_invert/design.md §5 (`np.argmin(means)`) to test the H-b
+    # anti-selection sub-hypothesis from the parent
+    # INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM closure memo §7.3
+    # Variant A. The variable name `regime_high_mean` is preserved
+    # verbatim for upstream code compatibility; semantically it is the
+    # "gate state index" in both branches. The cache key is naturally
+    # disjoint across H050 v1 vs H050.invert runs because each run has
+    # its own run_id + on-disk HMM-fit cache directory.
     assert hmm.params_ is not None
     if regime_high_mean_cached is not None:
         regime_high_mean = int(regime_high_mean_cached)
     else:
         means = hmm.params_.means[:, 0]
-        regime_high_mean = int(np.argmax(means))
+        if _INVERT_HMM_GATE:
+            regime_high_mean = int(np.argmin(means))
+        else:
+            regime_high_mean = int(np.argmax(means))
 
     # P1-HMM-FOLD-WARM-START: harvest train-fold terminal log α as the
     # sufficient statistic for the test-fold filter prior (ADR-0005
@@ -1889,6 +1924,20 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "(symbol, fold). The disabled path is the legacy code path "
             "and is exposed for byte-identical-output regression "
             "verification."
+        ),
+    )
+    ap.add_argument(
+        "--invert-gate",
+        action="store_true",
+        help=(
+            "Phase O.20 H050.invert (P1-H050-INVERT-WALK-FORWARD-"
+            "ORCHESTRATOR-IMPL): invert the HMM gate-state selection "
+            "from the canonical highest-mean state (H050 v1) to the "
+            "lowest-mean state (H050.invert per design.md §5). Tests "
+            "the H-b anti-selection sub-hypothesis from the parent "
+            "INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM memo §7.3 "
+            "Variant A. Default OFF preserves H050 v1 bit-identical "
+            "behavior. Invoked by scripts/run_h050_invert_walk_forward.py."
         ),
     )
     ap.add_argument(
@@ -3024,11 +3073,18 @@ def run(argv: list[str] | None = None) -> Path:
     args = _parse_args(argv)
     cfg = load_config(args.config)
     paths = ProjectPaths.discover()
+    # Phase O.20 H050.invert: set the module-level HMM gate-inversion
+    # flag from the CLI arg BEFORE entering the run pipeline so all
+    # downstream _fit_fold_body calls observe the chosen ordering rule.
+    # Defaults to False (H050 v1 highest-mean canonical ordering).
+    global _INVERT_HMM_GATE
+    _INVERT_HMM_GATE = bool(getattr(args, "invert_gate", False))
     _run_start_ctx = {
         "config": str(args.config),
         "smoke": bool(args.smoke),
         "dry_run": bool(args.dry_run),
         "no_hmm_cache": bool(getattr(args, "no_hmm_cache", False)),
+        "invert_gate": bool(getattr(args, "invert_gate", False)),
     }
     _PROGRESS.start("run", **_run_start_ctx)
     try:
