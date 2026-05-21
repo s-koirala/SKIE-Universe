@@ -264,6 +264,31 @@ from skie_ninja.backtest import lgb_inner_cv_checkpoint as _lgb_inner_cv_checkpo
 _INVERT_HMM_GATE: bool = False
 
 
+# Phase O.20 H050.stable-state (P1-H050-STABLE-STATE-WALK-FORWARD-ORCHESTRATOR-IMPL):
+# module-level integer for the N-bar state-stability filter on the HMM
+# gate-engagement layer. When N >= 2, the regime_indicator at test bar t
+# is 1 only when the modal-state assignment p(s_t = gate_state | y_{1:t})
+# > 0.5 has held for N consecutive bars (t-N+1, ..., t); otherwise 0.
+# When N == 1 the filter is a no-op and the output is bit-identical to
+# H050 v1 (the per-bar `posterior > 0.5` indicator).
+#
+# Set by `--stable-state-n` CLI flag in _parse_args; read at the single
+# gate-engagement site in `_predict_fold` after `filter_states_from_prior`
+# produces the per-bar posterior. Default 1 preserves H050 v1
+# bit-identical behavior.
+#
+# Per H050.stable-state design.md §5: counter resets at fold boundaries
+# (the test-fold filter starts from the warm-started prior posterior;
+# the stability counter is initialised to 0 at the first test-fold bar
+# and accumulates only over test-fold bars). PIT-causality preserved by
+# construction (state at bar t depends only on modal-state assignments
+# at bars t-N+1, ..., t, each of which is a pure function of y_{1:t}).
+#
+# This mirrors the established pragmatic module-level state pattern
+# used by `_INVERT_HMM_GATE` above and `_LGB_INNER_CV_CURRENT_CTX` below.
+_STABLE_STATE_N: int = 1
+
+
 # P1-LGB-INNER-CV-RESULT-CHECKPOINT (2026-04-30): module-level cfg
 # context the cfg loop sets just before calling _run_symbol_label_cfg
 # and clears afterwards. _inner_cv_select_hp reads this to decide
@@ -1791,7 +1816,42 @@ def _predict_fold(
             test_first_position=test_first_position,
         )
     high_state = fitted["regime_high_mean"]
-    regime_indicator = (filtered[:, high_state] > 0.5).astype(np.float64)
+    # H050 v1 gate: indicator of P(s_t = gate_state | y_{1:t}) > 0.5.
+    # Per-bar modal-state assignment is a pure function of y_{1:t} →
+    # PIT-causal by construction.
+    raw_indicator = (filtered[:, high_state] > 0.5).astype(np.float64)
+    if _STABLE_STATE_N <= 1:
+        # H050 v1 path: no stability filter (N=1 == no-op == raw indicator).
+        regime_indicator = raw_indicator
+    else:
+        # H050.stable-state (Phase O.20): N-bar consecutive-in-state filter.
+        # The gate fires at bar t only if the modal-state assignment has
+        # been the gate_state for at least N consecutive bars
+        # (t-N+1, ..., t). Equivalent to requiring `raw_indicator` to have
+        # held value 1 for the last N bars inclusive.
+        #
+        # PIT-causality preserved by construction: state at bar t depends
+        # only on `raw_indicator[t-N+1:t+1]`, each of which is a pure
+        # function of y_{1:t}. Counter resets at fold boundaries because
+        # this function consumes only the test-fold posterior sequence
+        # `filtered` (the train-fold tail is NOT carried forward; per
+        # H050.stable-state design.md §5 + `P1-H050-STABLE-STATE-FOLD-
+        # CONTINUITY` BLOCKING test).
+        #
+        # Implementation: rolling sum of the last N raw indicators; gate
+        # is 1 iff the rolling sum equals N (i.e. all N most recent bars
+        # were in the gate_state). Warmup (first N-1 bars) yields 0.
+        n_bars = raw_indicator.shape[0]
+        regime_indicator = np.zeros(n_bars, dtype=np.float64)
+        if n_bars >= _STABLE_STATE_N:
+            # Cumulative-sum-based rolling sum of length N — bit-identical
+            # to the naive per-bar loop within float64 precision and
+            # vectorised in numpy.
+            cumsum = np.concatenate([[0.0], np.cumsum(raw_indicator)])
+            rolling_n = cumsum[_STABLE_STATE_N:] - cumsum[:-_STABLE_STATE_N]
+            regime_indicator[_STABLE_STATE_N - 1:] = (rolling_n >= _STABLE_STATE_N).astype(
+                np.float64
+            )
     return np.stack([p, regime_indicator], axis=1)
 
 
@@ -1938,6 +1998,27 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM memo §7.3 "
             "Variant A. Default OFF preserves H050 v1 bit-identical "
             "behavior. Invoked by scripts/run_h050_invert_walk_forward.py."
+        ),
+    )
+    ap.add_argument(
+        "--stable-state-n",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Phase O.20 H050.stable-state (P1-H050-STABLE-STATE-WALK-"
+            "FORWARD-ORCHESTRATOR-IMPL): N-bar state-stability filter "
+            "on the HMM gate-engagement layer. The gate fires at test "
+            "bar t only if the modal-state assignment has held the "
+            "gate_state for at least N consecutive bars (t-N+1, ..., t). "
+            "Tests the H-c whipsaw sub-hypothesis from the parent "
+            "INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM memo §7.3 "
+            "Variant B. Pre-registered grid per H050.stable-state "
+            "design.md §5: {3, 5, 10, 20} at 1-min cadence. Default N=1 "
+            "is a no-op preserving H050 v1 bit-identical behavior. "
+            "Counter resets at fold boundaries per design.md §5 + "
+            "`P1-H050-STABLE-STATE-FOLD-CONTINUITY` BLOCKING test. "
+            "Invoked by scripts/run_h050_stable_state_walk_forward.py."
         ),
     )
     ap.add_argument(
@@ -3079,12 +3160,26 @@ def run(argv: list[str] | None = None) -> Path:
     # Defaults to False (H050 v1 highest-mean canonical ordering).
     global _INVERT_HMM_GATE
     _INVERT_HMM_GATE = bool(getattr(args, "invert_gate", False))
+    # Phase O.20 H050.stable-state: set the module-level N-bar state-
+    # stability filter from the CLI arg BEFORE entering the run pipeline
+    # so all downstream _predict_fold calls observe the chosen N. Default
+    # N=1 is a no-op preserving H050 v1 bit-identical behavior.
+    global _STABLE_STATE_N
+    _stable_state_n_raw = int(getattr(args, "stable_state_n", 1))
+    if _stable_state_n_raw < 1:
+        raise ValueError(
+            f"--stable-state-n must be >= 1 (got {_stable_state_n_raw}). "
+            "N=1 is the H050 v1 no-op default; N >= 2 enables the "
+            "stability filter per H050.stable-state design.md §5."
+        )
+    _STABLE_STATE_N = _stable_state_n_raw
     _run_start_ctx = {
         "config": str(args.config),
         "smoke": bool(args.smoke),
         "dry_run": bool(args.dry_run),
         "no_hmm_cache": bool(getattr(args, "no_hmm_cache", False)),
         "invert_gate": bool(getattr(args, "invert_gate", False)),
+        "stable_state_n": int(_stable_state_n_raw),
     }
     _PROGRESS.start("run", **_run_start_ctx)
     try:
