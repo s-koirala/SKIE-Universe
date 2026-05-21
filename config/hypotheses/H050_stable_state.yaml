@@ -1,0 +1,120 @@
+# H050.stable-state hypothesis configuration.
+#
+# Genetic-successor mechanism-discrimination variant of H050 v1 per
+# ADR-0027 §D-4. Tests the H-c whipsaw sub-hypothesis from the parent
+# INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM closure memo §7.3
+# Variant B by adding an N-bar state-stability-confirmation filter at
+# the gate-engagement layer.
+#
+# H050 v1 §5 line 63 canonical state-ordering (highest-mean) is preserved
+# verbatim; the stability filter is the ONLY divergence.
+#
+# Cross-references:
+#   research/01_hypothesis_register/H050_stable_state/design.md
+#   research/01_hypothesis_register/H050/INVESTIGATE-FAILURE-MODE-H050-HMM-GATING-HARM.md
+hypothesis_id: H050_stable_state
+parent_hypothesis_id: H050
+test_statistic: "SR_filtered_gated_stable_N - SR_filtered_unconditional"  # per design.md §1; per-N
+universe: [ES, NQ]  # front-month roll-adjusted; preserved verbatim from H050 v1
+data:
+  source: "data/processed/vendor_legacy_1min_roll_adjusted/"
+  train: {start: "2015-01-01", end: "2022-12-31"}
+  val:   {start: "2023-01-01", end: "2023-12-31"}
+  test:  {start: "2024-01-01", end: "2025-12-31"}
+
+# Feature factory per H050 v1 §3 (preserved verbatim).
+features: [rv_parkinson@1.0, rv_realized@1.0, realized_skew@1.0, ofi_tickrule@1.0]
+
+# Triple-barrier labels per H050 v1 §4 (preserved verbatim; AFML §3.4 per H050 v1 §15.1 Erratum-1).
+labels:
+  method: triple_barrier
+  pt_sl_grid: [1.0, 1.5, 2.0]
+  vertical_barrier_grid: [30m, 60m, 120m]
+  volatility_estimator: yang_zhang
+  volatility_lookback_grid: [20, 60, 120]
+
+# LightGBM classifier per H050 v1 §5 (preserved verbatim).
+classifier:
+  family: lightgbm
+  grid:
+    num_leaves: [15, 31, 63]
+    learning_rate: [0.01, 0.05]
+    min_data_in_leaf: [20, 50]
+  search: {method: random, n_draws: 200, seed: 20260520}  # justify: identical to H050 v1 N=200; seed matches H050.stable-state design.md §11 RNG seed
+
+# HMM regime-gate per ADR-0005 (preserved verbatim from H050 v1; canonical_state_ordering = highest_mean_emission).
+hmm:
+  covariance_type: [diag, full]  # d=1 dedup at fit time
+  selection: bic_plus_cv_ll
+  inference: filter_states  # ADR-0005 anti-look-ahead
+  canonical_state_ordering: highest_mean_emission  # justify: H050 v1 default preserved per design.md §5; the inversion variant is the sibling H050.invert.yaml
+
+# N-bar state-stability filter per design.md §5 (THE NEW MECHANISM).
+state_stability_filter:
+  enabled: true
+  n_grid: [3, 5, 10, 20]  # justify: design.md §5 pre-registered N grid; bars at 1-min cadence; spans noise-floor (N=3, matches H050 v1 median active-run length per INVESTIGATE-FAILURE-MODE memo §6.3) to ~7× median (N=20). 4 cells × 2 symbols = 8 strategies in this hypothesis's SPA family.
+  counter_reset_at_fold_boundary: true  # justify: design.md §11.2 + P1-H050-STABLE-STATE-FOLD-CONTINUITY-TEST; counter resets across walk-forward purge + embargo boundary to preserve PIT-causality
+
+# Splitter per H050 v1 §6 (preserved verbatim).
+splitter:
+  method: purged_walk_forward
+  embargo: auto  # max(PACF_lag, politis_white_block) per plan §4.1
+  purge: auto    # max(vertical_barrier) across folds
+
+# Inference + KPI-only annotations per ADR-0013 (no binding gates per §1 + §2).
+gates:
+  ledoit_wolf_2008_differential_ci:  # SECONDARY per ADR-0017 §1.2; per-N
+    alpha: 0.05
+    tails: two
+    must_exclude: 0
+    n_bootstrap: 2000
+    block_length: auto
+    bandwidth_strategy: per_replicate
+  hansen_spa:  # SECONDARY per ADR-0017 §1.2; M=8 family (4-N × 2-symbol)
+    alpha: 0.05
+    variant: consistent
+    n_bootstrap: 1000
+    omega_method: hac
+  bh_q: {threshold: 0.10}
+  power: {target: 0.80}
+  romano_wolf_stepwise: true  # justify: M=8 family per the 4-N × 2-symbol grid; preserves the H055 RW-FWER convention for cross-cell control per `P1-H055-RW2005-STEPWISE-CONJUNCTIVE` precedent
+
+# PRIMARY metric vector per ADR-0017 §3 + ADR-0018 §D-1 (NEW relative to H050 v1).
+primary_metric_vector:
+  mppm_rho_1: {input_periodicity: per_session, ci_method: stationary_bootstrap, n_bootstrap: 1000, rng_seed_offset: 100}
+  terminal_wealth_q05: {n_paths: 5000, n_sessions_forward: 252, ruin_threshold: 0.50}
+  calmar_differential: {ci_method: stationary_bootstrap, n_bootstrap: 1000, rng_seed_offset: 200}
+  profit_factor: {ci_method: stationary_bootstrap, n_bootstrap: 1000, rng_seed_offset: 300}
+  r_multiple_mean: {ci_method: stationary_bootstrap, n_bootstrap: 1000, rng_seed_offset: 400}
+risk_of_ruin:
+  enabled: true
+  n_paths: 5000
+  n_sessions_forward: 252
+  ruin_threshold: 0.50
+payoff_shape:
+  enabled: true  # ADR-0019 §3 L-skewness annotation per-N
+
+# Cost model per H050 v1 §7 + ADR-0025 §D-3 (conservative-prior default per operator standing directive).
+cost_model: nt8_es_nq_rth_v1
+cost_sensitivity_mult: 1.0
+cost_provenance: conservative_prior  # ADR-0025 §D-3 annotation
+
+# Cost-drag-attribution exhibit per design.md §7 (LOAD-BEARING for H-c whipsaw discrimination).
+# v1 emission MUST report per-N transition rate + per-N cost-drag attribution in Table 8
+# of the KPI report card; the empirical pattern (decreasing transition rate AND decreasing
+# cost drag as N rises) is the key discriminator for the H-c whipsaw hypothesis vs the
+# H-b anti-selection hypothesis. See design.md §7 + §8.
+cost_drag_attribution:
+  enabled: true
+  per_n_rows: true
+
+# Abandonment-trigger primitives per ADR-0025 (opt-in per ADR-0024 §D-2).
+# H050.stable-state v1 defaults: kill-switch OFF, equity-rebase fixed,
+# bocd-live OFF (same defaults as the sibling H050.invert v1 for cross-arm
+# comparability).
+abandonment_triggers:
+  kill_switch_runtime_enabled: false
+  equity_rebase_mode: fixed  # H050 v1 100%-of-equity-when-active sizing per design.md §11.1
+  bocd_live_enabled: false
+
+random_seed: 20260520  # justify: identical to H050.invert seed + design.md §11; design-date YYYYMMDD per F-Q-8 H054 precedent
