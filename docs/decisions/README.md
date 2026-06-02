@@ -18,6 +18,7 @@ Grouped by domain. Click an ADR ID for the full text.
 | [ADR-0021](ADR-0021-liquidity-provision-research-track-scoping.md) | Liquidity-provision research-track scoping — H100-series reserved; orderbook substrate deferred | proposed | 2026-05-12 |
 | [ADR-0023](ADR-0023-metals-energy-futures-substrate-expansion.md) | Metals/energy futures substrate expansion — CL/MCL/GC/MGC via Databento; monthly-roll calendar; 24/5 session policy | proposed | 2026-05-12 |
 | [ADR-0027](ADR-0027-operational-discipline-bounded-exploration.md) | **Operational discipline** — INVESTIGATE-FAILURE-MODE follow-up class; grid-search axis budgets; empirical-before-amendment sequencing; genetic-successor discipline; soft time-budget split | accepted | 2026-05-19 |
+| [ADR-0029](ADR-0029-regime-switching-meta-allocation-central-program.md) | **Regime-switching meta-allocation central program** — the closed loop (deploy → capture → detect decay → reallocate → cycle) as project center of gravity; two-tier early-warning above BOCD; ergodicity-grounded path-dependence resolution (median+MPPM headline, full-Kelly promotable ceiling, pooled de-correlated arms); MPV2 forward-validation as the falsifiable center | accepted | 2026-06-02 |
 
 ### Inference and statistical methodology
 
@@ -56,7 +57,7 @@ Grouped by domain. Click an ADR ID for the full text.
 
 ## Load-bearing ADRs (read these first)
 
-For a new reader trying to understand the current research posture:
+For a new reader trying to understand the current research posture, **start with [ADR-0029](ADR-0029-regime-switching-meta-allocation-central-program.md)** — the center-of-gravity ADR (2026-06-02): the project's organizing objective is the regime-switching meta-allocation closed loop; per-hypothesis work is arm-library cultivation feeding the allocator; the ADRs below are its components. Then, in order:
 
 1. **[ADR-0013](ADR-0013-permanent-exploration-no-archive-ninjascript-terminus.md)** — the central governance ADR. No promotion gates; every hypothesis progresses to NinjaScript regardless of KPI; non-loss mandate forbids deletion of audit / report card / sidecar files.
 2. **[ADR-0017](ADR-0017-survival-constrained-optimization-paradigm.md)** — the central inferential ADR. Sharpe demoted to KPI; primary metrics are terminal-wealth-q05 + Calmar-differential + profit-factor + R-multiple-mean. Mandatory inheritance from H055 forward.

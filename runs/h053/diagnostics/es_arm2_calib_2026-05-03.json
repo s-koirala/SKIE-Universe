@@ -1,0 +1,84 @@
+{
+  "best_lgb_cell": {
+    "max_depth": 3,
+    "n_estimators": 50
+  },
+  "best_lgb_cv_r2": -0.07510218138690965,
+  "calibrator_comparisons": [
+    {
+      "binding_bss_passed": false,
+      "binding_slope_passed": false,
+      "bss_lower_ci": -0.5444202502200494,
+      "bss_point": -0.39246459093932295,
+      "bss_upper_ci": -0.28053545314261946,
+      "n_cal": 0,
+      "name": "no_calibration_minmax_scaled",
+      "reliability_slope_lower": -0.7168084955131516,
+      "reliability_slope_point": 0.08873234960003246,
+      "reliability_slope_upper": 0.9071317151746182
+    },
+    {
+      "binding_bss_passed": false,
+      "binding_slope_passed": false,
+      "bss_lower_ci": -0.11938087552493024,
+      "bss_point": -0.05647571340438606,
+      "bss_upper_ci": -0.0034739808325953726,
+      "n_cal": 1332,
+      "name": "isotonic_full_IS_train",
+      "reliability_slope_lower": -0.25568787796321296,
+      "reliability_slope_point": 0.28878738187209146,
+      "reliability_slope_upper": 0.7191790260277662
+    },
+    {
+      "beta_params": {
+        "a": 0.04432384198530376,
+        "b": -0.001893589928399573,
+        "c": 1.0364004510680689
+      },
+      "binding_bss_passed": false,
+      "binding_slope_passed": true,
+      "bss_lower_ci": -0.03423267799963367,
+      "bss_point": 0.0033330116839164203,
+      "bss_upper_ci": 0.03338551920283827,
+      "n_cal": 1332,
+      "name": "beta_calibration_full_IS_train",
+      "reliability_slope_lower": -0.854004030863961,
+      "reliability_slope_point": 0.42993952922177986,
+      "reliability_slope_upper": 1.0210045481855354
+    },
+    {
+      "binding_bss_passed": false,
+      "binding_slope_passed": true,
+      "bss_lower_ci": -0.012746285131373037,
+      "bss_point": -7.922044334485179e-05,
+      "bss_upper_ci": -4.001085411931005e-06,
+      "n_cal": 1332,
+      "name": "platt_logistic_full_IS_train",
+      "reliability_slope_lower": -746471.7454292034,
+      "reliability_slope_point": 88129.89202233472,
+      "reliability_slope_upper": 904938.4803372989
+    }
+  ],
+  "n_test": 367,
+  "n_train": 1332,
+  "raw_directional_sharpe": 0.09402373280282554,
+  "raw_prediction_diagnostics": {
+    "predictand_typical_sigma_bps": "y \u2248 \u00b150-100 bps per session; std comparable means model is varying meaningfully",
+    "test_IQR": 8.620554456412364e-05,
+    "test_MAD": 5.464212439732798e-05,
+    "test_quantiles_p0_5_25_50_75_95_100": [
+      -0.001050716121560644,
+      -0.00042159601234019055,
+      -9.678606092870905e-05,
+      -4.214393653138107e-05,
+      -1.05805163645854e-05,
+      0.000820303530540999,
+      0.004220472486464093
+    ],
+    "test_std": 0.00047571033381794015
+  },
+  "synthesis": {
+    "any_calibrator_passes_binding_gates_at_full_IS_train": false,
+    "interpretation": "If raw_test_std is small (<1e-3), the LightGBM RAW predictions are near-constant \u2014 no calibrator can recover what isn't there. If raw_test_std is meaningful (>1e-3) but no calibrator passes both binding gates, the issue is fundamental forecast-frequency mismatch on this OOS fold (regime shift, distribution drift, or signal absence). If any calibrator at full IS train passes both gates, the v3 inner-CV-fold N_cal was the limiting factor and a successor hypothesis with an amended calibrator could promote."
+  }
+}

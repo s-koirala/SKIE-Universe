@@ -1,0 +1,23 @@
+{
+  "config_resolved_sha256": "2b271608c3fa861e6da0bf52e0419370f1384e5d1a19b8156ef7f1c3df0f4476",
+  "dataset_checksums": {
+    "h050_pre_reg_filtered_es": "5a4766fd0a050fcf9c51812195005078354c9cd60e67f80675e73e493968b34c",
+    "h050_pre_reg_filtered_nq": "8832335d8a0b2968ab0b35e6adca4220ee9e59b1902a48cac6834d3627834339",
+    "vendor_legacy_1min_roll_adjusted": "b3ee230aa12ec1826fb8283a4469fc85a5ab792f396fdfccd0eacd51b3168e1d"
+  },
+  "env_id": "be80f7deb0f0c666d78e06d0e7917780f64f567b730e064d0515fc4142ec9d55",
+  "git_head": "d8c6acd1a9acd4d8f55f426213d21220536ccebe",
+  "host": {
+    "cpu": "AMD64",
+    "os": "Windows 10",
+    "python": "3.11.15"
+  },
+  "hypothesis_id": "H050",
+  "model_hash": "6b6ed8fae988f9f154cde88a6069b78377a34a62ab8139bbfde56aad41fdc379",
+  "phase": "walk_forward",
+  "pip_freeze_path": "logs/reproducibility/env/c92ce92af9a6a103f64241690f3a5c22b7f542053ef524fefcd74662651d9d4e.txt",
+  "pip_freeze_sha256": "c92ce92af9a6a103f64241690f3a5c22b7f542053ef524fefcd74662651d9d4e",
+  "rng_seed": 20260420,
+  "run_id": "31d23ecd8e3842dd8ebd5687ce9c91d5",
+  "timestamp_utc": "2026-05-03T23:50:36.299276+00:00"
+}

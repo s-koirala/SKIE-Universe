@@ -1,0 +1,216 @@
+{
+  "_meta": {
+    "git_head": "c615f72645284cef60a4564cfc29d7d67d3bf3a3",
+    "run_id": "h053_stage3_v2_20260503T144404Z",
+    "scientific_payload_sha256": "416daecccac32e3bca22c5be9361f902fe4ad72450361f8d021984d4bb816333",
+    "written_at": "2026-05-03T14:44:07.504235+00:00"
+  },
+  "h053_stage3_v2": {
+    "is_window": [
+      "2015-01-01",
+      "2022-12-31"
+    ],
+    "method": "ADR-0012-compliant disposition framework",
+    "method_reference": "ADR-0012 disposition-philosophy-aspirational-mvp; CPCV per AFML \u00a712; AR(1) lag-1 bench per P1-H053-STAGE1-HKS-BENCHMARK-RECONCILE",
+    "oos_window_es": [
+      "2024-01-01",
+      "2025-12-03"
+    ],
+    "oos_window_nq": [
+      "2024-01-01",
+      "2025-12-19"
+    ],
+    "results": [
+      {
+        "arm_payloads": [
+          {
+            "arm_id": "arm1_elasticnet",
+            "bss_components": {
+              "brier_calibrated": 0.25311873330674034,
+              "brier_climatological": 0.2498731839948056,
+              "bss": -0.01298878599154607,
+              "n_oof": 1332,
+              "p_clim": 0.5112612612612613
+            },
+            "cpcv_path_sharpe": null,
+            "disposition": {
+              "arm_id": "arm1_elasticnet",
+              "class_a_applicability": {
+                "bss_applicable": true,
+                "bss_applicable_reason": "H053 \u00a74.5 categorical-table v2 deliverable",
+                "dsr_applicable": false,
+                "pit_canary_applicable": true,
+                "reliability_slope_applicable": true,
+                "repro_log_applicable": true
+              },
+              "class_a_verdicts": {
+                "all_applicable_gates_passed": false,
+                "bss_passed": false,
+                "bss_value": -0.01298878599154607,
+                "dsr_passed": null,
+                "dsr_value": null,
+                "pit_canary_passed": true,
+                "pit_canary_test_count": 0,
+                "pit_canary_test_path": "tests/integration/test_h053_pit_canaries.py",
+                "reliability_slope_passed": true,
+                "reliability_slope_value": 1.0,
+                "repro_log_present": true
+              },
+              "class_b_kpis": {
+                "cost_floor_annotation": "not-evaluated-stage-3",
+                "max_dd_annotation": "adverse",
+                "max_dd_ratio": 1.1464585784004786,
+                "mediation_nde_significant": null,
+                "mediation_nie_significant": null,
+                "notes": [],
+                "partial_r2_annotation": "not-computed-stage-3",
+                "partial_r2_value": null,
+                "power_margin_annotation": "marginal",
+                "power_margin_ratio": 0.5919354838709677,
+                "sharpe_vs_bench": {
+                  "annotation": "positive",
+                  "ci_high": 0.6094434747517525,
+                  "ci_low": 0.4094434747517526,
+                  "excludes_zero": false,
+                  "n_observations": 367,
+                  "point_estimate": 0.5094434747517526
+                },
+                "sharpe_vs_passive": {
+                  "annotation": "negative",
+                  "ci_high": NaN,
+                  "ci_low": NaN,
+                  "excludes_zero": false,
+                  "n_observations": 367,
+                  "point_estimate": -0.2834745342703217
+                },
+                "spa_family_annotation": "spa-rejects",
+                "spa_family_p": 0.37
+              },
+              "class_c_documentation": {
+                "audit_trail_link": "docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md",
+                "pit_canary_suite_path": "tests/integration/test_h053_pit_canaries.py",
+                "repro_log_path": null,
+                "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665"
+              },
+              "disposition_class": "calibration-failed",
+              "disposition_string": "calibration-failed; KPI: sharpe-vs-passive-negative, sharpe-vs-bench-positive, spa-rejects, max-dd-adverse, power-margin-marginal, partial-r2-not-computed-stage-3, not-evaluated-stage-3",
+              "hypothesis_id": "H053",
+              "paper_trade_eligible": false,
+              "run_id": "h053_stage3_v2_20260503T144404Z"
+            },
+            "raw_arm_returns_summary": {
+              "mean": -5.511269600139127e-05,
+              "n": 367,
+              "std": 0.003086298134200717
+            }
+          },
+          {
+            "arm_id": "arm2_lightgbm",
+            "bss_components": {
+              "brier_calibrated": 0.25311873330674034,
+              "brier_climatological": 0.2498731839948056,
+              "bss": -0.01298878599154607,
+              "n_oof": 1332,
+              "p_clim": 0.5112612612612613
+            },
+            "cpcv_path_sharpe": null,
+            "disposition": {
+              "arm_id": "arm2_lightgbm",
+              "class_a_applicability": {
+                "bss_applicable": true,
+                "bss_applicable_reason": "H053 \u00a74.5 categorical-table v2 deliverable",
+                "dsr_applicable": false,
+                "pit_canary_applicable": true,
+                "reliability_slope_applicable": true,
+                "repro_log_applicable": true
+              },
+              "class_a_verdicts": {
+                "all_applicable_gates_passed": false,
+                "bss_passed": false,
+                "bss_value": -0.01298878599154607,
+                "dsr_passed": null,
+                "dsr_value": null,
+                "pit_canary_passed": true,
+                "pit_canary_test_count": 0,
+                "pit_canary_test_path": "tests/integration/test_h053_pit_canaries.py",
+                "reliability_slope_passed": true,
+                "reliability_slope_value": 1.0,
+                "repro_log_present": true
+              },
+              "class_b_kpis": {
+                "cost_floor_annotation": "not-evaluated-stage-3",
+                "max_dd_annotation": "favorable",
+                "max_dd_ratio": 0.6210348122523619,
+                "mediation_nde_significant": null,
+                "mediation_nie_significant": null,
+                "notes": [],
+                "partial_r2_annotation": "not-computed-stage-3",
+                "partial_r2_value": null,
+                "power_margin_annotation": "marginal",
+                "power_margin_ratio": 0.5919354838709677,
+                "sharpe_vs_bench": {
+                  "annotation": "positive",
+                  "ci_high": 1.468668082156461,
+                  "ci_low": 1.2686680821564609,
+                  "excludes_zero": false,
+                  "n_observations": 367,
+                  "point_estimate": 1.368668082156461
+                },
+                "sharpe_vs_passive": {
+                  "annotation": "positive",
+                  "ci_high": NaN,
+                  "ci_low": NaN,
+                  "excludes_zero": false,
+                  "n_observations": 367,
+                  "point_estimate": 0.8740904364705449
+                },
+                "spa_family_annotation": "spa-rejects",
+                "spa_family_p": 0.37
+              },
+              "class_c_documentation": {
+                "audit_trail_link": "docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md",
+                "pit_canary_suite_path": "tests/integration/test_h053_pit_canaries.py",
+                "repro_log_path": null,
+                "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665"
+              },
+              "disposition_class": "calibration-failed",
+              "disposition_string": "calibration-failed; KPI: sharpe-vs-passive-positive, sharpe-vs-bench-positive, spa-rejects, max-dd-favorable, power-margin-marginal, partial-r2-not-computed-stage-3, not-evaluated-stage-3",
+              "hypothesis_id": "H053",
+              "paper_trade_eligible": false,
+              "run_id": "h053_stage3_v2_20260503T144404Z"
+            },
+            "raw_arm_returns_summary": {
+              "mean": 0.0001697087499587562,
+              "n": 367,
+              "std": 0.0030821100126586913
+            }
+          }
+        ],
+        "bench_ar1_summary": {
+          "mean": -0.00020832478197223032,
+          "n": 367,
+          "std": 0.0030732083881545853
+        },
+        "n_features": 42,
+        "n_test": 367,
+        "n_train": 1332,
+        "passive_long_summary": {
+          "mean": -1.019223922277799e-06,
+          "n": 367,
+          "std": 0.0030867913502062414
+        },
+        "spa_kpi": {
+          "annotation": "spa-rejects",
+          "n_bootstrap": 1000,
+          "n_strategies": 2,
+          "p_value": 0.37,
+          "single_strategy_warnings": []
+        },
+        "symbol": "ES"
+      }
+    ],
+    "substrate_dataset_checksum": "5f5c0c0218754675c1e1db110f22f9d86e27a44e73c025ad95576d32b8888c79",
+    "substrate_path": "C:\\Users\\skoir\\Documents\\SKIE-Universe\\.claude\\worktrees\\inspiring-franklin-13a1f1\\data\\processed\\vendor_legacy_1min_roll_adjusted",
+    "version": "2.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "frame_sha256": "c90ab9719de57b29e33e4621944fc9ff926bb29ecd53069c4e3cd765892fbad5",
+  "latency_seconds": 0.0025103000225499272,
+  "n_cols": 3,
+  "n_rows": 4000,
+  "name": "ofi_tickrule",
+  "now_ts": "2023-01-03T18:49:00+00:00",
+  "run_id": "3ba9ea2b04e2454fa94c225b37f2a897",
+  "version": "1.0"
+}

@@ -1,0 +1,651 @@
+{
+  "_meta": {
+    "git_head": "221a63566867ea0559b35ff4441a901926794c17",
+    "run_id": "h053_stage3_v2_20260503T144640Z",
+    "scientific_payload_sha256": "0cd96f55ca78916257ee6a7e22a07d96c1a71490fdbf316d6a5ac75433b0bb28",
+    "written_at": "2026-05-03T14:49:07.145239+00:00"
+  },
+  "h053_stage3_v2": {
+    "is_window": [
+      "2015-01-01",
+      "2022-12-31"
+    ],
+    "method": "ADR-0012-compliant disposition framework",
+    "method_reference": "ADR-0012 disposition-philosophy-aspirational-mvp; CPCV per AFML \u00a712; AR(1) lag-1 bench per P1-H053-STAGE1-HKS-BENCHMARK-RECONCILE",
+    "oos_window_es": [
+      "2024-01-01",
+      "2025-12-03"
+    ],
+    "oos_window_nq": [
+      "2024-01-01",
+      "2025-12-19"
+    ],
+    "results": [
+      {
+        "arm_payloads": [
+          {
+            "arm_id": "arm1_elasticnet",
+            "bss_components": {
+              "brier_calibrated": 0.25311873330674034,
+              "brier_climatological": 0.2498731839948056,
+              "bss": -0.01298878599154607,
+              "n_oof": 1332,
+              "p_clim": 0.5112612612612613
+            },
+            "cpcv_path_sharpe": {
+              "downsampled": false,
+              "dsr_value": -1.3620304394946892,
+              "ks_monotonicity_distance": 0.06666666666666676,
+              "ks_monotonicity_passed": false,
+              "mean_sharpe": -0.11818726616677844,
+              "median_sharpe": -0.1123307128603733,
+              "n_folds": 45,
+              "n_groups": 10,
+              "n_test_groups": 2,
+              "per_fold_sharpe": [
+                0.3363181982275217,
+                0.004002340632504466,
+                -0.6671682066067428,
+                0.4969664849588237,
+                -0.19194204085933864,
+                -0.39514252016178,
+                0.20409507476352579,
+                0.20309517699169935,
+                -0.6341469234600299,
+                -0.3206262938558117,
+                -0.29547656906297703,
+                -0.03583651613372347,
+                0.12651585570098448,
+                -0.144032682414429,
+                -0.11203154269970528,
+                -1.3724352936079307,
+                0.05836170876503973,
+                0.3645811534105003,
+                -0.25190706298714544,
+                0.6702029100810133,
+                0.13924797222728555,
+                0.11183203752498067,
+                -1.2763905980820358,
+                0.7537165141118024,
+                0.9360395993560657,
+                -0.18547573428339148,
+                -1.1999444526912169,
+                -0.12183072767310092,
+                -0.9550860299421273,
+                -0.3471718534339518,
+                -0.7675801329018518,
+                -0.1123307128603733,
+                0.3299109401117213,
+                -0.3114173204392751,
+                0.7262402737892244,
+                0.43160717464965453,
+                -0.3694782942323621,
+                -0.8081265369249626,
+                0.619758606682347,
+                0.0763492399913488,
+                -0.3642053053189438,
+                0.5673913511061862,
+                -1.0655934058456786,
+                0.22224950642303115,
+                -0.3915323405314044
+              ],
+              "quantile_05": -1.1730742433221093,
+              "quantile_95": 0.715032801047582,
+              "std_sharpe": 0.5589896527458512,
+              "wallclock_capped": false,
+              "wallclock_s": 1.080132246017456
+            },
+            "disposition": {
+              "arm_id": "arm1_elasticnet",
+              "class_a_applicability": {
+                "bss_applicable": true,
+                "bss_applicable_reason": "H053 \u00a74.5 categorical-table v2 deliverable",
+                "dsr_applicable": false,
+                "pit_canary_applicable": true,
+                "reliability_slope_applicable": true,
+                "repro_log_applicable": true
+              },
+              "class_a_verdicts": {
+                "all_applicable_gates_passed": false,
+                "bss_passed": false,
+                "bss_value": -0.01298878599154607,
+                "dsr_passed": null,
+                "dsr_value": null,
+                "pit_canary_passed": true,
+                "pit_canary_test_count": 14,
+                "pit_canary_test_path": "tests/integration/test_h053_pit_canaries.py",
+                "reliability_slope_passed": true,
+                "reliability_slope_value": 1.0,
+                "repro_log_present": true
+              },
+              "class_b_kpis": {
+                "cost_floor_annotation": "not-evaluated-stage-3",
+                "max_dd_annotation": "adverse",
+                "max_dd_ratio": 1.1464585784004786,
+                "mediation_nde_significant": null,
+                "mediation_nie_significant": null,
+                "notes": [],
+                "partial_r2_annotation": "not-computed-stage-3",
+                "partial_r2_value": null,
+                "power_margin_annotation": "marginal",
+                "power_margin_ratio": 0.5919354838709677,
+                "sharpe_vs_bench": {
+                  "annotation": "positive",
+                  "ci_high": 0.6094434747517525,
+                  "ci_low": 0.4094434747517526,
+                  "excludes_zero": false,
+                  "n_observations": 367,
+                  "point_estimate": 0.5094434747517526
+                },
+                "sharpe_vs_passive": {
+                  "annotation": "negative",
+                  "ci_high": 0.715032801047582,
+                  "ci_low": -1.1730742433221093,
+                  "excludes_zero": false,
+                  "n_observations": 45,
+                  "point_estimate": -0.1123307128603733
+                },
+                "spa_family_annotation": "spa-rejects",
+                "spa_family_p": 0.37
+              },
+              "class_c_documentation": {
+                "audit_trail_link": "docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md",
+                "pit_canary_suite_path": "tests/integration/test_h053_pit_canaries.py",
+                "repro_log_path": null,
+                "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665"
+              },
+              "disposition_class": "calibration-failed",
+              "disposition_string": "calibration-failed; KPI: sharpe-vs-passive-negative, sharpe-vs-bench-positive, spa-rejects, max-dd-adverse, power-margin-marginal, partial-r2-not-computed-stage-3, not-evaluated-stage-3",
+              "hypothesis_id": "H053",
+              "paper_trade_eligible": false,
+              "run_id": "h053_stage3_v2_20260503T144640Z"
+            },
+            "raw_arm_returns_summary": {
+              "mean": -5.511269600139127e-05,
+              "n": 367,
+              "std": 0.003086298134200717
+            }
+          },
+          {
+            "arm_id": "arm2_lightgbm",
+            "bss_components": {
+              "brier_calibrated": 0.2939164249809684,
+              "brier_climatological": 0.2498731839948056,
+              "bss": -0.17626237550596224,
+              "n_oof": 1332,
+              "p_clim": 0.5112612612612613
+            },
+            "cpcv_path_sharpe": {
+              "downsampled": false,
+              "dsr_value": -1.038588761847577,
+              "ks_monotonicity_distance": 0.12222222222222223,
+              "ks_monotonicity_passed": false,
+              "mean_sharpe": 0.47218380298552376,
+              "median_sharpe": 0.4284164553572722,
+              "n_folds": 45,
+              "n_groups": 10,
+              "n_test_groups": 2,
+              "per_fold_sharpe": [
+                0.9459355896658651,
+                0.910350859577871,
+                -0.20943285904119943,
+                0.7390878574974801,
+                1.3617763054547336,
+                -0.5360868118941652,
+                1.2290777487417144,
+                0.4871918158363969,
+                -0.054922203321703396,
+                0.7239819452964755,
+                0.6682994361730907,
+                -0.10647882245416584,
+                1.1245493750986688,
+                0.5276485281336261,
+                0.16815211409078296,
+                0.5234461226466175,
+                -0.06876136631814554,
+                -0.07975720981391848,
+                0.582014228637938,
+                1.1976035367964872,
+                0.31170028170876646,
+                0.9285233110723619,
+                0.4462373983080822,
+                0.3260803922044893,
+                2.025849775776226,
+                1.5819534673744413,
+                0.01602016061878304,
+                1.4081895609548731,
+                0.4284164553572722,
+                -0.037871581864357746,
+                0.10929002408796516,
+                0.7598931598304904,
+                -0.2541323777643773,
+                -0.5337539228925767,
+                2.087697935920613,
+                0.9286013560605498,
+                1.0451492970484149,
+                -0.15630697429341453,
+                0.29347671051595337,
+                -0.5378562441091387,
+                -0.24643556888400903,
+                0.37278537193611705,
+                0.3061582912774006,
+                -0.4109981849757913,
+                -0.08407315172501456
+              ],
+              "quantile_05": -0.5092027753092196,
+              "quantile_95": 1.5472006860905272,
+              "std_sharpe": 0.6561902187097534,
+              "wallclock_capped": false,
+              "wallclock_s": 51.653995513916016
+            },
+            "disposition": {
+              "arm_id": "arm2_lightgbm",
+              "class_a_applicability": {
+                "bss_applicable": true,
+                "bss_applicable_reason": "H053 \u00a74.5 categorical-table v2 deliverable",
+                "dsr_applicable": false,
+                "pit_canary_applicable": true,
+                "reliability_slope_applicable": true,
+                "repro_log_applicable": true
+              },
+              "class_a_verdicts": {
+                "all_applicable_gates_passed": false,
+                "bss_passed": false,
+                "bss_value": -0.17626237550596224,
+                "dsr_passed": null,
+                "dsr_value": null,
+                "pit_canary_passed": true,
+                "pit_canary_test_count": 14,
+                "pit_canary_test_path": "tests/integration/test_h053_pit_canaries.py",
+                "reliability_slope_passed": true,
+                "reliability_slope_value": 1.0,
+                "repro_log_present": true
+              },
+              "class_b_kpis": {
+                "cost_floor_annotation": "not-evaluated-stage-3",
+                "max_dd_annotation": "favorable",
+                "max_dd_ratio": 0.6210348122523619,
+                "mediation_nde_significant": null,
+                "mediation_nie_significant": null,
+                "notes": [],
+                "partial_r2_annotation": "not-computed-stage-3",
+                "partial_r2_value": null,
+                "power_margin_annotation": "marginal",
+                "power_margin_ratio": 0.5919354838709677,
+                "sharpe_vs_bench": {
+                  "annotation": "positive",
+                  "ci_high": 1.468668082156461,
+                  "ci_low": 1.2686680821564609,
+                  "excludes_zero": false,
+                  "n_observations": 367,
+                  "point_estimate": 1.368668082156461
+                },
+                "sharpe_vs_passive": {
+                  "annotation": "marginal",
+                  "ci_high": 1.5472006860905272,
+                  "ci_low": -0.5092027753092196,
+                  "excludes_zero": false,
+                  "n_observations": 45,
+                  "point_estimate": 0.4284164553572722
+                },
+                "spa_family_annotation": "spa-rejects",
+                "spa_family_p": 0.37
+              },
+              "class_c_documentation": {
+                "audit_trail_link": "docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md",
+                "pit_canary_suite_path": "tests/integration/test_h053_pit_canaries.py",
+                "repro_log_path": null,
+                "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665"
+              },
+              "disposition_class": "calibration-failed",
+              "disposition_string": "calibration-failed; KPI: sharpe-vs-passive-marginal, sharpe-vs-bench-positive, spa-rejects, max-dd-favorable, power-margin-marginal, partial-r2-not-computed-stage-3, not-evaluated-stage-3",
+              "hypothesis_id": "H053",
+              "paper_trade_eligible": false,
+              "run_id": "h053_stage3_v2_20260503T144640Z"
+            },
+            "raw_arm_returns_summary": {
+              "mean": 0.0001697087499587562,
+              "n": 367,
+              "std": 0.0030821100126586913
+            }
+          }
+        ],
+        "bench_ar1_summary": {
+          "mean": -0.00020832478197223032,
+          "n": 367,
+          "std": 0.0030732083881545853
+        },
+        "n_features": 42,
+        "n_test": 367,
+        "n_train": 1332,
+        "passive_long_summary": {
+          "mean": -1.019223922277799e-06,
+          "n": 367,
+          "std": 0.0030867913502062414
+        },
+        "spa_kpi": {
+          "annotation": "spa-rejects",
+          "n_bootstrap": 1000,
+          "n_strategies": 2,
+          "p_value": 0.37,
+          "single_strategy_warnings": []
+        },
+        "symbol": "ES"
+      },
+      {
+        "arm_payloads": [
+          {
+            "arm_id": "arm1_elasticnet",
+            "bss_components": {
+              "brier_calibrated": 0.2519126563837646,
+              "brier_climatological": 0.2493965420215285,
+              "bss": -0.010088810140835403,
+              "n_oof": 1323,
+              "p_clim": 0.5245653817082389
+            },
+            "cpcv_path_sharpe": {
+              "downsampled": false,
+              "dsr_value": -1.0673683590610619,
+              "ks_monotonicity_distance": 0.07777777777777778,
+              "ks_monotonicity_passed": false,
+              "mean_sharpe": 0.37964276502505967,
+              "median_sharpe": 0.47207501293016374,
+              "n_folds": 45,
+              "n_groups": 10,
+              "n_test_groups": 2,
+              "per_fold_sharpe": [
+                0.2741117801661194,
+                1.0010263306825697,
+                0.2519384255528445,
+                0.3198989664536206,
+                -0.5347988068201088,
+                0.5948623608980498,
+                -0.7298412215066662,
+                0.5436719954424503,
+                0.12168866601521088,
+                1.7741320145969814,
+                -0.007808395017492611,
+                0.7337892774509251,
+                0.8470766523797663,
+                0.3574373415522374,
+                0.47207501293016374,
+                -0.3539508956515162,
+                0.8673233335906305,
+                1.0306124589315693,
+                -0.8560766488450603,
+                1.1951389252900824,
+                0.1770860914743917,
+                1.043735829577169,
+                0.06099848141520685,
+                1.1937995317776275,
+                0.6280611399468836,
+                0.8639300163712672,
+                0.8103148398646545,
+                0.7565195747005945,
+                -0.7388855434426492,
+                0.4584862725974491,
+                -0.36374984988665776,
+                0.2544413554146997,
+                -1.4635614580585572,
+                -0.5192991782919297,
+                -0.3150033605204088,
+                0.6471239280164022,
+                -0.0672121851221027,
+                0.9537083072708552,
+                0.7011011594667009,
+                1.4902673323344302,
+                -0.5046345410050007,
+                0.9776566439261393,
+                1.0920613330202595,
+                0.08064682756621037,
+                0.9640243036216694
+              ],
+              "quantile_05": -0.7370766790554526,
+              "quantile_95": 1.1948710465875914,
+              "std_sharpe": 0.6885917453537896,
+              "wallclock_capped": false,
+              "wallclock_s": 1.1291828155517578
+            },
+            "disposition": {
+              "arm_id": "arm1_elasticnet",
+              "class_a_applicability": {
+                "bss_applicable": true,
+                "bss_applicable_reason": "H053 \u00a74.5 categorical-table v2 deliverable",
+                "dsr_applicable": false,
+                "pit_canary_applicable": true,
+                "reliability_slope_applicable": true,
+                "repro_log_applicable": true
+              },
+              "class_a_verdicts": {
+                "all_applicable_gates_passed": false,
+                "bss_passed": false,
+                "bss_value": -0.010088810140835403,
+                "dsr_passed": null,
+                "dsr_value": null,
+                "pit_canary_passed": true,
+                "pit_canary_test_count": 14,
+                "pit_canary_test_path": "tests/integration/test_h053_pit_canaries.py",
+                "reliability_slope_passed": true,
+                "reliability_slope_value": 1.0,
+                "repro_log_present": true
+              },
+              "class_b_kpis": {
+                "cost_floor_annotation": "not-evaluated-stage-3",
+                "max_dd_annotation": "favorable",
+                "max_dd_ratio": 0.6535200181761722,
+                "mediation_nde_significant": null,
+                "mediation_nie_significant": null,
+                "notes": [],
+                "partial_r2_annotation": "not-computed-stage-3",
+                "partial_r2_value": null,
+                "power_margin_annotation": "marginal",
+                "power_margin_ratio": 0.6,
+                "sharpe_vs_bench": {
+                  "annotation": "positive",
+                  "ci_high": 0.9578953789190928,
+                  "ci_low": 0.7578953789190929,
+                  "excludes_zero": false,
+                  "n_observations": 372,
+                  "point_estimate": 0.8578953789190928
+                },
+                "sharpe_vs_passive": {
+                  "annotation": "marginal",
+                  "ci_high": 1.1948710465875914,
+                  "ci_low": -0.7370766790554526,
+                  "excludes_zero": false,
+                  "n_observations": 45,
+                  "point_estimate": 0.47207501293016374
+                },
+                "spa_family_annotation": "spa-rejects",
+                "spa_family_p": 0.309
+              },
+              "class_c_documentation": {
+                "audit_trail_link": "docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md",
+                "pit_canary_suite_path": "tests/integration/test_h053_pit_canaries.py",
+                "repro_log_path": null,
+                "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665"
+              },
+              "disposition_class": "calibration-failed",
+              "disposition_string": "calibration-failed; KPI: sharpe-vs-passive-marginal, sharpe-vs-bench-positive, spa-rejects, max-dd-favorable, power-margin-marginal, partial-r2-not-computed-stage-3, not-evaluated-stage-3",
+              "hypothesis_id": "H053",
+              "paper_trade_eligible": false,
+              "run_id": "h053_stage3_v2_20260503T144640Z"
+            },
+            "raw_arm_returns_summary": {
+              "mean": 9.440113931782124e-05,
+              "n": 372,
+              "std": 0.004284058498158359
+            }
+          },
+          {
+            "arm_id": "arm2_lightgbm",
+            "bss_components": {
+              "brier_calibrated": 0.30106576365059246,
+              "brier_climatological": 0.2493965420215285,
+              "bss": -0.20717697691495562,
+              "n_oof": 1323,
+              "p_clim": 0.5245653817082389
+            },
+            "cpcv_path_sharpe": {
+              "downsampled": false,
+              "dsr_value": -1.3884039737565912,
+              "ks_monotonicity_distance": 0.15555555555555556,
+              "ks_monotonicity_passed": false,
+              "mean_sharpe": 0.42103628730238163,
+              "median_sharpe": 0.42155713353990126,
+              "n_folds": 45,
+              "n_groups": 10,
+              "n_test_groups": 2,
+              "per_fold_sharpe": [
+                1.157493994985853,
+                -0.3509667190605378,
+                0.14793265902501113,
+                0.9281617563335224,
+                0.5076337352045024,
+                0.3804948624145008,
+                -1.1781594887673998,
+                0.4347872697529303,
+                1.4076548276780816,
+                0.7863826903602573,
+                0.8216070292174322,
+                1.5829932183446815,
+                0.0971479472111741,
+                1.0636276159450304,
+                -1.4905057609057835,
+                1.1796595596180888,
+                1.8043545775336622,
+                0.6655406339278465,
+                0.42155713353990126,
+                0.056751790806578176,
+                1.444889629165746,
+                0.22638403270804264,
+                0.8426308975685578,
+                0.45785491358871416,
+                2.137495931782632,
+                0.4551455760593206,
+                1.5948882100795443,
+                -0.4463446265582456,
+                0.151602865042916,
+                0.7736364089537019,
+                1.1126673788576236,
+                -0.41094693576463415,
+                0.40558870938924085,
+                0.6489261524180077,
+                -0.0576182049133412,
+                1.2834529876863126,
+                -1.0555728334554222,
+                0.35783224790813273,
+                0.05022656956486696,
+                0.38737719942715565,
+                -1.1059703503592362,
+                -0.21255610357399946,
+                -0.27292780735368466,
+                -0.6059659457418181,
+                0.35978669296170773
+              ],
+              "quantile_05": -1.0958908469784734,
+              "quantile_95": 1.5925092117325717,
+              "std_sharpe": 0.8095941043181635,
+              "wallclock_capped": false,
+              "wallclock_s": 54.0750515460968
+            },
+            "disposition": {
+              "arm_id": "arm2_lightgbm",
+              "class_a_applicability": {
+                "bss_applicable": true,
+                "bss_applicable_reason": "H053 \u00a74.5 categorical-table v2 deliverable",
+                "dsr_applicable": false,
+                "pit_canary_applicable": true,
+                "reliability_slope_applicable": true,
+                "repro_log_applicable": true
+              },
+              "class_a_verdicts": {
+                "all_applicable_gates_passed": false,
+                "bss_passed": false,
+                "bss_value": -0.20717697691495562,
+                "dsr_passed": null,
+                "dsr_value": null,
+                "pit_canary_passed": true,
+                "pit_canary_test_count": 14,
+                "pit_canary_test_path": "tests/integration/test_h053_pit_canaries.py",
+                "reliability_slope_passed": true,
+                "reliability_slope_value": 1.0,
+                "repro_log_present": true
+              },
+              "class_b_kpis": {
+                "cost_floor_annotation": "not-evaluated-stage-3",
+                "max_dd_annotation": "favorable",
+                "max_dd_ratio": 0.36784105447113064,
+                "mediation_nde_significant": null,
+                "mediation_nie_significant": null,
+                "notes": [],
+                "partial_r2_annotation": "not-computed-stage-3",
+                "partial_r2_value": null,
+                "power_margin_annotation": "marginal",
+                "power_margin_ratio": 0.6,
+                "sharpe_vs_bench": {
+                  "annotation": "positive",
+                  "ci_high": 1.4075681168617629,
+                  "ci_low": 1.2075681168617627,
+                  "excludes_zero": false,
+                  "n_observations": 372,
+                  "point_estimate": 1.3075681168617628
+                },
+                "sharpe_vs_passive": {
+                  "annotation": "marginal",
+                  "ci_high": 1.5925092117325717,
+                  "ci_low": -1.0958908469784734,
+                  "excludes_zero": false,
+                  "n_observations": 45,
+                  "point_estimate": 0.42155713353990126
+                },
+                "spa_family_annotation": "spa-rejects",
+                "spa_family_p": 0.309
+              },
+              "class_c_documentation": {
+                "audit_trail_link": "docs/audits/audit_trail_2026-05-01_disposition-philosophy-shift.md",
+                "pit_canary_suite_path": "tests/integration/test_h053_pit_canaries.py",
+                "repro_log_path": null,
+                "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665"
+              },
+              "disposition_class": "calibration-failed",
+              "disposition_string": "calibration-failed; KPI: sharpe-vs-passive-marginal, sharpe-vs-bench-positive, spa-rejects, max-dd-favorable, power-margin-marginal, partial-r2-not-computed-stage-3, not-evaluated-stage-3",
+              "hypothesis_id": "H053",
+              "paper_trade_eligible": false,
+              "run_id": "h053_stage3_v2_20260503T144640Z"
+            },
+            "raw_arm_returns_summary": {
+              "mean": 0.00027515288282369547,
+              "n": 372,
+              "std": 0.004276234282000951
+            }
+          }
+        ],
+        "bench_ar1_summary": {
+          "mean": -0.0002343784072065717,
+          "n": 372,
+          "std": 0.004277125927787279
+        },
+        "n_features": 42,
+        "n_test": 372,
+        "n_train": 1323,
+        "passive_long_summary": {
+          "mean": 3.450590634452835e-05,
+          "n": 372,
+          "std": 0.004284961953655267
+        },
+        "spa_kpi": {
+          "annotation": "spa-rejects",
+          "n_bootstrap": 1000,
+          "n_strategies": 2,
+          "p_value": 0.309,
+          "single_strategy_warnings": []
+        },
+        "symbol": "NQ"
+      }
+    ],
+    "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665",
+    "substrate_path": "C:\\Users\\skoir\\Documents\\SKIE-Universe\\.claude\\worktrees\\inspiring-franklin-13a1f1\\data\\processed\\vendor_legacy_1min_roll_adjusted",
+    "version": "2.0"
+  }
+}

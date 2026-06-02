@@ -1,0 +1,149 @@
+{
+  "feature_keys": [
+    "rv_parkinson@1.0",
+    "rv_realized@1.0",
+    "realized_skew@1.0",
+    "ofi_tickrule@1.0"
+  ],
+  "feature_provenance": [
+    {
+      "frame_sha256": "de788316db71f6eabf8ee01058fd81bcd18638879a79618c6671c950b9937cff",
+      "latency_seconds": 0.032562200009124354,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "rv_parkinson",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "d2f45c7f8a824c1fb4f737a406f166b8",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "c808779460b39fbc24e919eb632e61dbd7724914868945571975468a80de7c2e",
+      "latency_seconds": 0.004001699999207631,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "rv_realized",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "d2f45c7f8a824c1fb4f737a406f166b8",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "87a5d8bfd60d4ce2536059e1b78d095ca99227b99fa43a84b120db230c1fd9b1",
+      "latency_seconds": 0.005761699998402037,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "realized_skew",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "d2f45c7f8a824c1fb4f737a406f166b8",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "c90ab9719de57b29e33e4621944fc9ff926bb29ecd53069c4e3cd765892fbad5",
+      "latency_seconds": 0.005904799996642396,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "ofi_tickrule",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "d2f45c7f8a824c1fb4f737a406f166b8",
+      "version": "1.0"
+    }
+  ],
+  "hansen_spa": {
+    "block_length": 61.20143404462665,
+    "p_value": 1.0,
+    "p_value_lower": 1.0,
+    "p_value_upper": 1.0,
+    "statistic": 0.0
+  },
+  "initial_train_size": 646,
+  "inner_n_folds": 2,
+  "label_cv_inner_sharpes": [
+    {
+      "inner_cv_logloss_mean": 0.6843627027237135,
+      "inner_cv_sharpe_mean": 0.044613291923941846,
+      "n_folds": 6,
+      "pt_sl": 1.5,
+      "vertical_barrier_seconds": 3600.0,
+      "volatility_lookback": 60
+    }
+  ],
+  "label_grid_size_evaluated": 1,
+  "ledoit_wolf_2008_differential_ci": {
+    "alpha": 0.05,
+    "bandwidth": 17,
+    "bandwidth_selection": {
+      "bandwidth": 17,
+      "kernel": "bartlett",
+      "m_initial": 6,
+      "method": "nw1994_automatic",
+      "notes": "NW 1994 automatic; c=4.0; m=6; gamma_hat=1.66216.",
+      "rho_hat": null
+    },
+    "bandwidth_strategy": "per_replicate",
+    "block_length": 61.20143404462665,
+    "block_length_selection": {
+      "M": 44,
+      "block_length": 61.20143404462665,
+      "bootstrap_type": "stationary",
+      "m_hat": 22,
+      "method": "politis_white_2004",
+      "notes": "K_N=5; threshold=0.1026; g_hat(0)=2.103e-05; G_hat=0.0002952; D=8.849e-10."
+    },
+    "lower": -0.5661616395685221,
+    "method": "ledoit_wolf_2008_studentised_stationary_bootstrap",
+    "n_bootstrap": 2000,
+    "n_degenerate_resamples": 0,
+    "n_obs": 1164,
+    "point_estimate": -0.37566619245695854,
+    "q_lower": -4.516936364143929,
+    "q_upper": 4.369280135505044,
+    "se_hac": 1.48748022308917,
+    "upper": -0.17873310838437637
+  },
+  "lgb_n_draws_effective": 5,
+  "n_features": 4,
+  "n_folds": 6,
+  "selected_hp_per_fold": [
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 50,
+      "num_leaves": 15
+    },
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 20,
+      "num_leaves": 63
+    },
+    {
+      "learning_rate": 0.05,
+      "min_data_in_leaf": 50,
+      "num_leaves": 31
+    },
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 50,
+      "num_leaves": 15
+    },
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 20,
+      "num_leaves": 63
+    },
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 20,
+      "num_leaves": 63
+    }
+  ],
+  "selected_label_cfg": {
+    "pt_sl": 1.5,
+    "vertical_barrier_seconds": 3600.0,
+    "volatility_lookback": 60
+  },
+  "sharpe_differential": -0.37566619245695854,
+  "sharpe_gated": -0.6397919582573812,
+  "sharpe_unconditional": -0.26428716911290273,
+  "split_size_source": "row_fraction",
+  "step_size": 194,
+  "symbol": "ES",
+  "test_size": 194
+}

@@ -1,0 +1,241 @@
+{
+  "_meta": {
+    "git_head": "ec11f3a068ca16028e66c49e50b8d7ab42e7b947",
+    "run_id": "h053_stage1_20260501T111348Z",
+    "scientific_payload_sha256": "316266d848dadcbffa67cd276aa86718d456831da396b77212379e9ee2c0b7fb",
+    "written_at": "2026-05-01T11:13:50.573368+00:00"
+  },
+  "h053_stage1_mediator_only": {
+    "is_window": [
+      "2015-01-01",
+      "2022-12-31"
+    ],
+    "method": "H053 Stage-1 mediator-only walk-forward: OLS on M_{i,t} \u2192 y_{i,t} = log(C(10:30 ET) / C(09:45 ET)); train 2015-2022 IS, test 2024-2025 OOS (per-instrument); paired Sharpe-differential vs passive-long + HKS benchmarks; categorical-table v1",
+    "method_reference": "design.md \u00a71, \u00a73.4, \u00a74.5.3, \u00a76, \u00a78; Gao-Han-Li-Zhou 2018 doi:10.1016/j.jfineco.2018.05.009; Lo 2002 doi:10.2469/faj.v58.n4.2453; Ledoit-Wolf 2008 doi:10.1016/j.jempfin.2008.03.002; Heston-Korajczyk-Sadka 2010 doi:10.1111/j.1540-6261.2010.01573.x",
+    "oos_window": [
+      "2024-01-01",
+      "per-instrument: ES=2025-12-03, NQ=2025-12-19"
+    ],
+    "results": [
+      {
+        "archetype_rule_K": 5,
+        "archetype_train_panel_checksum": "abfc101c5e64429c0716c3cc2946d75457bd607d625a4ab01caa3c6ac0bfc36b",
+        "brier_score_clim": 0.24988381337500887,
+        "brier_score_model": 0.4723926380368098,
+        "bss": -0.8904491317645877,
+        "categorical_table": [
+          {
+            "archetype_id": 0,
+            "mean_y_in_archetype": -0.0002823152991328667,
+            "n_test_sessions": 70,
+            "p_d_plus_1_ci_hi": 0.6349206349206349,
+            "p_d_plus_1_ci_lo": 0.4067664194915255,
+            "p_d_plus_1_hat": 0.5142857142857142
+          },
+          {
+            "archetype_id": 1,
+            "mean_y_in_archetype": 5.873057995444221e-05,
+            "n_test_sessions": 91,
+            "p_d_plus_1_ci_hi": 0.632183908045977,
+            "p_d_plus_1_ci_lo": 0.4494267369869296,
+            "p_d_plus_1_hat": 0.5384615384615384
+          },
+          {
+            "archetype_id": 2,
+            "mean_y_in_archetype": 0.0002598323739796779,
+            "n_test_sessions": 104,
+            "p_d_plus_1_ci_hi": 0.6,
+            "p_d_plus_1_ci_lo": 0.41221958584987056,
+            "p_d_plus_1_hat": 0.5
+          },
+          {
+            "archetype_id": 3,
+            "mean_y_in_archetype": 8.90648131029886e-05,
+            "n_test_sessions": 158,
+            "p_d_plus_1_ci_hi": 0.5614035087719298,
+            "p_d_plus_1_ci_lo": 0.41275664451827243,
+            "p_d_plus_1_hat": 0.4873417721518987
+          },
+          {
+            "archetype_id": 4,
+            "mean_y_in_archetype": 2.9513756937998856e-05,
+            "n_test_sessions": 66,
+            "p_d_plus_1_ci_hi": 0.6714397321428571,
+            "p_d_plus_1_ci_lo": 0.41379310344827586,
+            "p_d_plus_1_hat": 0.5454545454545454
+          }
+        ],
+        "hks_benchmark_sharpe": {
+          "mean_return": 5.853809234891656e-05,
+          "method": "opdyke2007_mertens_hac_approx",
+          "n": 489,
+          "sharpe": 0.018220582032315056,
+          "sharpe_ci_hi": 0.10274358005007872,
+          "sharpe_ci_lo": -0.06630241598544862,
+          "std_return": 0.0032160355308003953
+        },
+        "n_test": 489,
+        "n_train": 1971,
+        "ols_coefs": {
+          "m_log_range": 29.60400694946292,
+          "m_ofi_tickrule": 1.353853239142533e-08,
+          "m_return": -0.25441772443890787,
+          "m_volume": -2.5714425588851952e-09
+        },
+        "ols_intercept": 9.739744782049575e-05,
+        "paired_diff_vs_hks": {
+          "ci_hi": 0.1520307146636369,
+          "ci_lo": -0.06251602467695111,
+          "excludes_zero": false,
+          "method": "ledoit_wolf_2008_studentised_stationary_bootstrap",
+          "n": 489,
+          "sharpe_a": 0.06125361949834135,
+          "sharpe_b": 0.018220582032315056,
+          "sharpe_diff": 0.0430330374660263
+        },
+        "paired_diff_vs_passive_long": {
+          "ci_hi": 0.1520307146636369,
+          "ci_lo": -0.06251602467695111,
+          "excludes_zero": false,
+          "method": "ledoit_wolf_2008_studentised_stationary_bootstrap",
+          "n": 489,
+          "sharpe_a": 0.06125361949834135,
+          "sharpe_b": 0.018220582032315056,
+          "sharpe_diff": 0.0430330374660263
+        },
+        "passive_long_sharpe": {
+          "mean_return": 5.853809234891656e-05,
+          "method": "opdyke2007_mertens_hac_approx",
+          "n": 489,
+          "sharpe": 0.018220582032315056,
+          "sharpe_ci_hi": 0.10274358005007872,
+          "sharpe_ci_lo": -0.06630241598544862,
+          "std_return": 0.0032160355308003953
+        },
+        "strategy_sharpe": {
+          "mean_return": 0.00019645674385499232,
+          "method": "opdyke2007_mertens_hac_approx",
+          "n": 489,
+          "sharpe": 0.06125361949834135,
+          "sharpe_ci_hi": 0.14506219192144088,
+          "sharpe_ci_lo": -0.022554952924758176,
+          "std_return": 0.003210551965742324
+        },
+        "symbol": "ES"
+      },
+      {
+        "archetype_rule_K": 5,
+        "archetype_train_panel_checksum": "63d64e880843030e1b5629aea254b7c15df360865f9f2f68187e2bbfe5b88402",
+        "brier_score_clim": 0.24864051945050988,
+        "brier_score_model": 0.5040322580645161,
+        "bss": -1.0271525299996012,
+        "categorical_table": [
+          {
+            "archetype_id": 0,
+            "mean_y_in_archetype": -0.0002610986482398285,
+            "n_test_sessions": 117,
+            "p_d_plus_1_ci_hi": 0.6,
+            "p_d_plus_1_ci_lo": 0.4081591836734694,
+            "p_d_plus_1_hat": 0.5042735042735043
+          },
+          {
+            "archetype_id": 1,
+            "mean_y_in_archetype": 0.0005305622965924557,
+            "n_test_sessions": 112,
+            "p_d_plus_1_ci_hi": 0.6704192546583849,
+            "p_d_plus_1_ci_lo": 0.4856926406926407,
+            "p_d_plus_1_hat": 0.5714285714285714
+          },
+          {
+            "archetype_id": 2,
+            "mean_y_in_archetype": -0.0008784943059370038,
+            "n_test_sessions": 66,
+            "p_d_plus_1_ci_hi": 0.5657956802383316,
+            "p_d_plus_1_ci_lo": 0.3333333333333333,
+            "p_d_plus_1_hat": 0.45454545454545453
+          },
+          {
+            "archetype_id": 3,
+            "mean_y_in_archetype": 0.0005066222435317454,
+            "n_test_sessions": 125,
+            "p_d_plus_1_ci_hi": 0.6832044935262758,
+            "p_d_plus_1_ci_lo": 0.4954187141687142,
+            "p_d_plus_1_hat": 0.592
+          },
+          {
+            "archetype_id": 4,
+            "mean_y_in_archetype": 0.00025961397560261016,
+            "n_test_sessions": 76,
+            "p_d_plus_1_ci_hi": 0.6562821061643835,
+            "p_d_plus_1_ci_lo": 0.3818122009569378,
+            "p_d_plus_1_hat": 0.5263157894736842
+          }
+        ],
+        "hks_benchmark_sharpe": {
+          "mean_return": 0.00010877470518088592,
+          "method": "opdyke2007_mertens_hac_approx",
+          "n": 496,
+          "sharpe": 0.024625076095381036,
+          "sharpe_ci_hi": 0.11071335530005336,
+          "sharpe_ci_lo": -0.06146320310929129,
+          "std_return": 0.0044216928614986715
+        },
+        "n_test": 496,
+        "n_train": 1970,
+        "ols_coefs": {
+          "m_log_range": 32.48452497573063,
+          "m_ofi_tickrule": 6.740445020257495e-08,
+          "m_return": -0.16059926343636874,
+          "m_volume": -1.624321788185057e-08
+        },
+        "ols_intercept": 0.0001240695221635261,
+        "paired_diff_vs_hks": {
+          "ci_hi": 0.13468063197397714,
+          "ci_lo": -0.07279532259137327,
+          "excludes_zero": false,
+          "method": "ledoit_wolf_2008_studentised_stationary_bootstrap",
+          "n": 496,
+          "sharpe_a": 0.054963548353697544,
+          "sharpe_b": 0.024625076095381036,
+          "sharpe_diff": 0.03033847225831651
+        },
+        "paired_diff_vs_passive_long": {
+          "ci_hi": 0.13468063197397714,
+          "ci_lo": -0.07279532259137327,
+          "excludes_zero": false,
+          "method": "ledoit_wolf_2008_studentised_stationary_bootstrap",
+          "n": 496,
+          "sharpe_a": 0.054963548353697544,
+          "sharpe_b": 0.024625076095381036,
+          "sharpe_diff": 0.03033847225831651
+        },
+        "passive_long_sharpe": {
+          "mean_return": 0.00010877470518088592,
+          "method": "opdyke2007_mertens_hac_approx",
+          "n": 496,
+          "sharpe": 0.024625076095381036,
+          "sharpe_ci_hi": 0.11071335530005336,
+          "sharpe_ci_lo": -0.06146320310929129,
+          "std_return": 0.0044216928614986715
+        },
+        "strategy_sharpe": {
+          "mean_return": 0.00024249440448314666,
+          "method": "opdyke2007_mertens_hac_approx",
+          "n": 496,
+          "sharpe": 0.054963548353697544,
+          "sharpe_ci_hi": 0.13358130168119187,
+          "sharpe_ci_lo": -0.023654204973796777,
+          "std_return": 0.004416367429187614
+        },
+        "symbol": "NQ"
+      }
+    ],
+    "stage1_archetype_K": 5,
+    "stage1_bootstrap_block_len": 10,
+    "stage1_bootstrap_n_rep": 1000,
+    "stage1_rng_seed": 42,
+    "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665",
+    "substrate_path": "C:\\Users\\skoir\\Documents\\SKIE-Universe\\.claude\\worktrees\\inspiring-franklin-13a1f1\\data\\processed\\vendor_legacy_1min_roll_adjusted",
+    "version": "1.0"
+  }
+}

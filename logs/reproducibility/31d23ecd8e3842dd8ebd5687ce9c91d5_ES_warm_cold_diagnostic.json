@@ -1,0 +1,24 @@
+{
+  "folds": [
+    {
+      "fold_id": 0,
+      "hellinger_at_first_test_bar": 0.25447672226954804,
+      "hellinger_max": 0.25447672226954804,
+      "hellinger_mean": 1.5335053453632634e-06,
+      "le_cam_envelope_holds": true,
+      "n_propagation_steps": 121,
+      "n_states": 2,
+      "n_test_bars": 337837,
+      "test_first_position": 3023809,
+      "total_variation_at_first_test_bar": 0.12532315494003815,
+      "total_variation_max": 0.12532315494003815,
+      "total_variation_mean": 7.737581724771154e-07,
+      "train_terminal_position": 3023688
+    }
+  ],
+  "metric_primary": "hellinger",
+  "metric_reference": "Tsybakov 2009 Section 2.4 (doi:10.1007/b13794); Le Cam 1986 (doi:10.1007/978-1-4612-4946-7) general reference",
+  "metric_secondary": "total_variation",
+  "n_folds": 1,
+  "schema_version": "warm_cold_diagnostic_v1"
+}

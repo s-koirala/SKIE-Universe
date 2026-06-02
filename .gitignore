@@ -36,6 +36,9 @@ data/processed/**
 !data/external/h055_pilot_ledger/
 !data/external/h055_pilot_ledger/**
 
+# Test scratch (pytest temp output; not §4.1-protected)
+.pytest_features_tmp/
+
 # notebooks stripped
 *-checkpoint.ipynb
 

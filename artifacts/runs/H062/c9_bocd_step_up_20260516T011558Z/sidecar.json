@@ -1,0 +1,344 @@
+{
+  "basket": {
+    "end_equity_total": 479.98485680723843,
+    "roi_pct": -95.20015143192762,
+    "starting_equity_total": 10000.0
+  },
+  "config": {
+    "bocd_hazard_rate": 0.01,
+    "bocd_threshold": 0.5,
+    "bocd_window": 60,
+    "km_grid": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5
+    ],
+    "km_start": 1.5,
+    "risk_budget_pct": 0.01,
+    "rolling_mppm_window": 60,
+    "step_check_interval_sessions": 60
+  },
+  "experiment": "c9_bocd_step_up",
+  "feature_cell": {
+    "atr_n": 14,
+    "channel_n": 120,
+    "h_dwell": 5,
+    "k_atr": 2.0,
+    "trend_id": "a_ts_mom",
+    "trend_id_lookback_l": 60,
+    "trend_id_threshold": 1.0
+  },
+  "per_symbol": [
+    {
+      "km_step_history": [
+        {
+          "action": "step_up",
+          "decay_detected": false,
+          "km_new": 2.0,
+          "km_prev": 1.5,
+          "max_posterior": 0.0,
+          "mppm_window": -0.2426209209903941,
+          "session_date": "2020-07-30",
+          "session_idx": 180
+        },
+        {
+          "action": "step_up",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.0,
+          "max_posterior": 0.0,
+          "mppm_window": -0.27191488472457803,
+          "session_date": "2020-10-08",
+          "session_idx": 240
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.3167445186786826,
+          "session_date": "2020-12-17",
+          "session_idx": 300
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -0.7087282054207804,
+          "session_date": "2021-02-28",
+          "session_idx": 360
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.7136575386677231,
+          "session_date": "2021-05-10",
+          "session_idx": 420
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -0.859566446972707,
+          "session_date": "2021-07-19",
+          "session_idx": 480
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -0.4173154507661385,
+          "session_date": "2021-09-27",
+          "session_idx": 540
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -2.0165322171839577,
+          "session_date": "2021-12-06",
+          "session_idx": 600
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -1.3181877065305092,
+          "session_date": "2022-02-15",
+          "session_idx": 660
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -0.5596252026165628,
+          "session_date": "2022-04-27",
+          "session_idx": 720
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.42296070990312984,
+          "session_date": "2022-07-06",
+          "session_idx": 780
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -2.116741035323917,
+          "session_date": "2022-09-14",
+          "session_idx": 840
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.48258465499560654,
+          "session_date": "2022-11-23",
+          "session_idx": 900
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -2.2903947181595243,
+          "session_date": "2023-02-03",
+          "session_idx": 960
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -1.5669344094249522,
+          "session_date": "2023-04-16",
+          "session_idx": 1020
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -2.9700554337215856,
+          "session_date": "2023-06-25",
+          "session_idx": 1080
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -6.1900578515086595,
+          "session_date": "2023-09-03",
+          "session_idx": 1140
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.5780051079883315,
+          "session_date": "2023-11-12",
+          "session_idx": 1200
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -3.607732166360364,
+          "session_date": "2024-01-23",
+          "session_idx": 1260
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -1.497822415857831,
+          "session_date": "2024-04-03",
+          "session_idx": 1320
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.0,
+          "session_date": "2024-06-12",
+          "session_idx": 1380
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -0.10102294797924402,
+          "session_date": "2024-08-21",
+          "session_idx": 1440
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": -0.10478037829978895,
+          "session_date": "2024-10-30",
+          "session_idx": 1500
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.0,
+          "session_date": "2025-01-08",
+          "session_idx": 1560
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.0,
+          "session_date": "2025-03-19",
+          "session_idx": 1620
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.0,
+          "session_date": "2025-05-29",
+          "session_idx": 1680
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.0,
+          "session_date": "2025-08-07",
+          "session_idx": 1740
+        },
+        {
+          "action": "hold_max",
+          "decay_detected": false,
+          "km_new": 2.5,
+          "km_prev": 2.5,
+          "max_posterior": 0.0,
+          "mppm_window": 0.0,
+          "session_date": "2025-10-16",
+          "session_idx": 1800
+        },
+        {
+          "action": "halve",
+          "decay_detected": true,
+          "km_new": 1.25,
+          "km_prev": 2.5,
+          "max_posterior": 0.9974706372279099,
+          "mppm_window": 0.0,
+          "session_date": "2025-12-25",
+          "session_idx": 1860
+        }
+      ],
+      "km_terminal": 1.25,
+      "losses": 2813,
+      "n_km_halves": 1,
+      "n_km_holds_max": 26,
+      "n_km_step_ups": 2,
+      "n_trades": 3593,
+      "r_multiple_mean": -0.010629015517927387,
+      "realized_end_equity": 479.98485680723843,
+      "realized_max_dd_pct": 98.46908641383287,
+      "realized_roi_pct": -95.20015143192762,
+      "rolling_mppm_n": 31,
+      "symbol": "MGC",
+      "wins": 770,
+      "zeros": 10
+    }
+  ],
+  "written_at_utc": "2026-05-16T01:16:12.742851+00:00"
+}

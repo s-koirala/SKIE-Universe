@@ -1,0 +1,39 @@
+{
+  "folds": [
+    {
+      "fold_id": 0,
+      "hellinger_at_first_test_bar": 0.2647900568688948,
+      "hellinger_max": 0.2647900568688948,
+      "hellinger_mean": 1.1637993307918785e-06,
+      "le_cam_envelope_holds": true,
+      "n_propagation_steps": 121,
+      "n_states": 2,
+      "n_test_bars": 336637,
+      "test_first_position": 2978388,
+      "total_variation_at_first_test_bar": 0.13531160841834633,
+      "total_variation_max": 0.13531160841834633,
+      "total_variation_mean": 5.325357829152807e-07,
+      "train_terminal_position": 2978267
+    },
+    {
+      "fold_id": 1,
+      "hellinger_at_first_test_bar": 0.6939001645557116,
+      "hellinger_max": 0.6939001645557116,
+      "hellinger_mean": 5.284656798698205e-06,
+      "le_cam_envelope_holds": true,
+      "n_propagation_steps": 121,
+      "n_states": 2,
+      "n_test_bars": 336637,
+      "test_first_position": 3315025,
+      "total_variation_at_first_test_bar": 0.7311550935620059,
+      "total_variation_max": 0.7311550935620059,
+      "total_variation_mean": 6.307790953799155e-06,
+      "train_terminal_position": 3314904
+    }
+  ],
+  "metric_primary": "hellinger",
+  "metric_reference": "Tsybakov 2009 Section 2.4 (doi:10.1007/b13794); Le Cam 1986 (doi:10.1007/978-1-4612-4946-7) general reference",
+  "metric_secondary": "total_variation",
+  "n_folds": 2,
+  "schema_version": "warm_cold_diagnostic_v1"
+}

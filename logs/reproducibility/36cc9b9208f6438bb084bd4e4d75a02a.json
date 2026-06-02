@@ -1,0 +1,29 @@
+{
+  "config_resolved_sha256": null,
+  "dataset_checksums": {
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_1min_databento.csv": "6b8f37d1a14c99b64f4a3de7ed94b4bd289cc9eb681484a5e0433bb9d37b52a7",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2020_1min_databento.csv": "acd772e8701a25d7bf045d1a39f6ec6ad7cbdc949d9c7b60952d5e2c68aa9b60",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2021_1min_databento.csv": "b4749e434a10b7e2aeb6c4f211368eca980c76ab4a4b1c0dccd14282df63b467",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2022_1min_databento.csv": "bc149f09a4da617d5677fb82da5e26f282c0503abbacfc55c20fe7ab03f28072",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/ES_2025_1min_databento.csv": "58c12094be735c81c0de852b7dd52a47ab9f8d3ac626aa8223cafbd5cee4f0bc",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_1min_databento.csv": "ad42b8641d7bf13211dda82bb400b5814461b95ac40227d0a25b7f0781e57d12",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_2020_1min_databento.csv": "9da42fa2da4274ba8c7bcab39e3c7ac3342830be021b704ca3e9a8e26c2f8bc4",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_2021_1min_databento.csv": "a13570aa9fc0935fa7b078a535c1defff4a71c8916ff39c2c9a888775ce21a81",
+    "C:/Users/skoir/datasets/vendor_skie_ninja_legacy/raw_1min/NQ_2022_1min_databento.csv": "5037d912fc0b6b8b31c067ad1867b4222bafdacaf19d48794860ebe500e5aeda"
+  },
+  "env_id": "cc5959faeaea7816cf85367f3e1f3476469e43472f225d10b3ce3cd165afba96",
+  "git_head": "3c5c70b176e29bdabb09ad0cf2f04737a566e9d1",
+  "host": {
+    "cpu": "AMD64",
+    "os": "Windows 10",
+    "python": "3.11.15"
+  },
+  "hypothesis_id": "ingest_vendor_legacy_1min",
+  "model_hash": null,
+  "phase": "ingest",
+  "pip_freeze_path": "logs/reproducibility/env/0683d2f5aca06aa00773bdfff283b0bd164eab8b7314d9ddf4ace7e9c445f146.txt",
+  "pip_freeze_sha256": "0683d2f5aca06aa00773bdfff283b0bd164eab8b7314d9ddf4ace7e9c445f146",
+  "rng_seed": 42,
+  "run_id": "36cc9b9208f6438bb084bd4e4d75a02a",
+  "timestamp_utc": "2026-04-26T00:43:35.225453+00:00"
+}

@@ -1,0 +1,10 @@
+{
+  "frame_sha256": "c808779460b39fbc24e919eb632e61dbd7724914868945571975468a80de7c2e",
+  "latency_seconds": 0.0053029999835416675,
+  "n_cols": 3,
+  "n_rows": 4000,
+  "name": "rv_realized",
+  "now_ts": "2023-01-03T18:49:00+00:00",
+  "run_id": "829c109022284cc6b4895a2af25fd1fc",
+  "version": "1.0"
+}

@@ -1,0 +1,118 @@
+{
+  "_meta": {
+    "git_head": "76599bdb8d1664015d6ee1dd31d577d87e370b8a",
+    "run_id": "h053_stage2_20260501T112517Z",
+    "scientific_payload_sha256": "a27a46de2bc18948f65948a104a778d3d3d5bf0cd3e2b821665033ef32bfe422",
+    "written_at": "2026-05-01T11:25:22.667711+00:00"
+  },
+  "h053_stage2_multitf_mediation": {
+    "is_window": [
+      "2015-01-01",
+      "2022-12-31"
+    ],
+    "method": "H053 Stage-2 multi-timeframe + descriptive mediation: partial-R\u00b2 of (Blocks A+B+C+D) over (Block D) on OOS test fold via paired-pairs stationary-bootstrap; PC1 mediator collapse; E-value sensitivity; descriptive Baron-Kenny NIE/NDE",
+    "method_reference": "design.md \u00a71 (descriptive interpretive note), \u00a73, \u00a74, \u00a75.4, \u00a76, \u00a710.2; VanderWeele 2015 (OUP, ISBN 978-0199325870) \u00a71.4 + Ch. 2; VanderWeele-Ding 2017 doi:10.7326/M16-2607; Imai-Keele-Tingley 2010 doi:10.1037/a0020761; MacKinnon-Lockwood-Williams 2004 doi:10.1207/s15327906mbr3901_4; Politis-Romano 1994 (paired-pairs bootstrap)",
+    "oos_window": [
+      "2024-01-01",
+      "per-instrument: ES=2025-12-03, NQ=2025-12-19"
+    ],
+    "results": [
+      {
+        "e_value": {
+          "e_value_ci_bound": 4.1453866586449575,
+          "e_value_point": 3.924147584508787,
+          "estimate": 0.16542868405392774,
+          "estimate_in_rr_scale": 2.2485792281081265,
+          "method": "vanderweele_ding_2017_chinn_2000_rr_conversion"
+        },
+        "mediation": {
+          "method": "baron_kenny_1986_paired_pairs_bootstrap",
+          "nde": -92.76707929810621,
+          "nde_ci_hi": 71.74740132562675,
+          "nde_ci_lo": -239.57108077449112,
+          "nie": 10.419724217883678,
+          "nie_ci_hi": 50.94576800761165,
+          "nie_ci_lo": -8.334196677506274,
+          "nie_excludes_zero": false,
+          "total_effect": -82.34735508022253
+        },
+        "n_baseline_features": 4,
+        "n_full_features": 42,
+        "n_test": 367,
+        "n_train": 178,
+        "partial_r2": {
+          "block_length": 10,
+          "ci_hi": 0.35564321812010874,
+          "ci_lo": 0.18161924884136435,
+          "excludes_zero": true,
+          "method": "paired_pairs_stationary_bootstrap_percentile",
+          "n_replicates": 1000,
+          "point_estimate": 0.16542868405392774
+        },
+        "pc1": {
+          "loadings": [
+            -0.6245973300324588,
+            0.32813680910472365,
+            0.2796822218961257,
+            -0.6511392052258409
+          ],
+          "n_features": 4,
+          "n_samples": 178,
+          "variance_explained": 0.47879946903916604
+        },
+        "symbol": "ES"
+      },
+      {
+        "e_value": {
+          "e_value_ci_bound": 3.661596866596372,
+          "e_value_point": 3.41467985385162,
+          "estimate": 0.1267093634724521,
+          "estimate_in_rr_scale": 2.0002262836674665,
+          "method": "vanderweele_ding_2017_chinn_2000_rr_conversion"
+        },
+        "mediation": {
+          "method": "baron_kenny_1986_paired_pairs_bootstrap",
+          "nde": -43.1909427448031,
+          "nde_ci_hi": 215.33458939538718,
+          "nde_ci_lo": -219.83099802432127,
+          "nie": 10.941455520402076,
+          "nie_ci_hi": 49.28650971101612,
+          "nie_ci_lo": -19.089043401605768,
+          "nie_excludes_zero": false,
+          "total_effect": -32.24948722440102
+        },
+        "n_baseline_features": 4,
+        "n_full_features": 42,
+        "n_test": 372,
+        "n_train": 169,
+        "partial_r2": {
+          "block_length": 10,
+          "ci_hi": 0.3094944049497038,
+          "ci_lo": 0.1456862177839808,
+          "excludes_zero": true,
+          "method": "paired_pairs_stationary_bootstrap_percentile",
+          "n_replicates": 1000,
+          "point_estimate": 0.1267093634724521
+        },
+        "pc1": {
+          "loadings": [
+            0.6994712014916775,
+            -0.1132401291759274,
+            -0.0580343436800249,
+            0.7032415846504221
+          ],
+          "n_features": 4,
+          "n_samples": 169,
+          "variance_explained": 0.4611556418361231
+        },
+        "symbol": "NQ"
+      }
+    ],
+    "stage2_bootstrap_block_len": 10,
+    "stage2_bootstrap_n_rep": 1000,
+    "stage2_rng_seed": 42,
+    "substrate_dataset_checksum": "bc06b4e1403b90be4355f4e32f98a52bf2b7f955de946f49f65ea2ca4f1c5665",
+    "substrate_path": "C:\\Users\\skoir\\Documents\\SKIE-Universe\\.claude\\worktrees\\inspiring-franklin-13a1f1\\data\\processed\\vendor_legacy_1min_roll_adjusted",
+    "version": "1.0"
+  }
+}

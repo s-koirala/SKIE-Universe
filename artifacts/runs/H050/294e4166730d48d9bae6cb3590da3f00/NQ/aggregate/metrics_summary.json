@@ -1,0 +1,149 @@
+{
+  "feature_keys": [
+    "rv_parkinson@1.0",
+    "rv_realized@1.0",
+    "realized_skew@1.0",
+    "ofi_tickrule@1.0"
+  ],
+  "feature_provenance": [
+    {
+      "frame_sha256": "de20f87df4faad83331268e640a10a99558704d9087dc1db78fabe18253e67aa",
+      "latency_seconds": 0.002512299979571253,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "rv_parkinson",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "294e4166730d48d9bae6cb3590da3f00",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "077a96da626e1c0f191399c45df52da0cddd3b77dd1c376c9e08c65af67bd698",
+      "latency_seconds": 0.002104200015310198,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "rv_realized",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "294e4166730d48d9bae6cb3590da3f00",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "3b4e649c099af74f31eaa27b30cf11a6a4648c11059bcbd16987eb244488a887",
+      "latency_seconds": 0.0025897000450640917,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "realized_skew",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "294e4166730d48d9bae6cb3590da3f00",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "749a633889d10ee0b94bd9ae9ee43284b0527539510c54ff5a6d52fe08344ab7",
+      "latency_seconds": 0.002882200002204627,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "ofi_tickrule",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "294e4166730d48d9bae6cb3590da3f00",
+      "version": "1.0"
+    }
+  ],
+  "hansen_spa": {
+    "block_length": 18.08652010864878,
+    "p_value": 1.0,
+    "p_value_lower": 1.0,
+    "p_value_upper": 1.0,
+    "statistic": 0.0
+  },
+  "initial_train_size": 646,
+  "inner_n_folds": 2,
+  "label_cv_inner_sharpes": [
+    {
+      "inner_cv_logloss_mean": 0.7120945563031292,
+      "inner_cv_sharpe_mean": -0.019395007966782656,
+      "n_folds": 6,
+      "pt_sl": 1.5,
+      "vertical_barrier_seconds": 3600.0,
+      "volatility_lookback": 60
+    }
+  ],
+  "label_grid_size_evaluated": 1,
+  "ledoit_wolf_2008_differential_ci": {
+    "alpha": 0.05,
+    "bandwidth": 18,
+    "bandwidth_selection": {
+      "bandwidth": 18,
+      "kernel": "bartlett",
+      "m_initial": 6,
+      "method": "nw1994_automatic",
+      "notes": "NW 1994 automatic; c=4.0; m=6; gamma_hat=1.71447.",
+      "rho_hat": null
+    },
+    "bandwidth_strategy": "per_replicate",
+    "block_length": 18.08652010864878,
+    "block_length_selection": {
+      "M": 10,
+      "block_length": 18.08652010864878,
+      "bootstrap_type": "stationary",
+      "m_hat": 5,
+      "method": "politis_white_2004",
+      "notes": "K_N=5; threshold=0.1026; g_hat(0)=8.91e-06; G_hat=2.009e-05; D=1.588e-10."
+    },
+    "lower": -0.4911888272707194,
+    "method": "ledoit_wolf_2008_studentised_stationary_bootstrap",
+    "n_bootstrap": 2000,
+    "n_degenerate_resamples": 0,
+    "n_obs": 1164,
+    "point_estimate": -0.3588590602223679,
+    "q_lower": -2.5423168203273945,
+    "q_upper": 2.7221531885260704,
+    "se_hac": 1.6585229166177116,
+    "upper": -0.23527152884644667
+  },
+  "lgb_n_draws_effective": 5,
+  "n_features": 4,
+  "n_folds": 6,
+  "selected_hp_per_fold": [
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 20,
+      "num_leaves": 31
+    },
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 50,
+      "num_leaves": 15
+    },
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 20,
+      "num_leaves": 15
+    },
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 50,
+      "num_leaves": 63
+    },
+    {
+      "learning_rate": 0.01,
+      "min_data_in_leaf": 20,
+      "num_leaves": 31
+    },
+    {
+      "learning_rate": 0.05,
+      "min_data_in_leaf": 50,
+      "num_leaves": 63
+    }
+  ],
+  "selected_label_cfg": {
+    "pt_sl": 1.5,
+    "vertical_barrier_seconds": 3600.0,
+    "volatility_lookback": 60
+  },
+  "sharpe_differential": -0.3588590602223679,
+  "sharpe_gated": -0.4835394878351659,
+  "sharpe_unconditional": -0.12483460981549913,
+  "split_size_source": "row_fraction",
+  "step_size": 194,
+  "symbol": "NQ",
+  "test_size": 194
+}

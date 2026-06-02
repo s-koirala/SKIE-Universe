@@ -1,0 +1,37 @@
+{
+  "hmm_cache_enabled": true,
+  "hypothesis_id": "H050",
+  "inner_n_folds": 2,
+  "label_grid_size": 1,
+  "lgb_n_draws_effective": 5,
+  "per_symbol_status": {
+    "ES": {
+      "hmm_cache_stats": {
+        "n_hits": 0,
+        "n_misses": 6,
+        "n_unique_keys": 6,
+        "total_cache_lookup_time_s": 9.899988071992993e-06,
+        "total_hmm_fit_time_s": 0.34211659998982213
+      },
+      "n_folds": 6,
+      "status": "ok"
+    },
+    "NQ": {
+      "hmm_cache_stats": {
+        "n_hits": 0,
+        "n_misses": 6,
+        "n_unique_keys": 6,
+        "total_cache_lookup_time_s": 5.800000508315861e-06,
+        "total_hmm_fit_time_s": 0.44395559997064993
+      },
+      "n_folds": 6,
+      "status": "ok"
+    }
+  },
+  "run_id": "fdaa598c3a8c4def8122d1ca19b346a6",
+  "smoke": true,
+  "universe": [
+    "ES",
+    "NQ"
+  ]
+}

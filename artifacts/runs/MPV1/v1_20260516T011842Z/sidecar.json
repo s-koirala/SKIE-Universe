@@ -1,0 +1,124 @@
+{
+  "arm_ids": [
+    "H060",
+    "H062-ES",
+    "H062-NQ",
+    "H062-MGC",
+    "H062-SIL"
+  ],
+  "arms": [
+    {
+      "arm_id": "H060",
+      "description": "H060 cross-futures TSMOM daily-cadence basket",
+      "filter_symbol": null,
+      "n_rewards": 21,
+      "reward_mean": 0.10623447419283792,
+      "reward_std": 0.36582828832071584,
+      "source_sidecar": "artifacts/runs/H060/71b00710a17148868b6a5ab610c07ef6/sidecar.json"
+    },
+    {
+      "arm_id": "H062-ES",
+      "description": "H062 intraday Donchian ES leg",
+      "filter_symbol": "ES",
+      "n_rewards": 20,
+      "reward_mean": -1.5857809139905308,
+      "reward_std": 2.236148445850697,
+      "source_sidecar": "artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json"
+    },
+    {
+      "arm_id": "H062-NQ",
+      "description": "H062 intraday Donchian NQ leg",
+      "filter_symbol": "NQ",
+      "n_rewards": 5,
+      "reward_mean": 2.45385669572681,
+      "reward_std": 5.498488414716466,
+      "source_sidecar": "artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json"
+    },
+    {
+      "arm_id": "H062-MGC",
+      "description": "H062 intraday Donchian MGC leg",
+      "filter_symbol": "MGC",
+      "n_rewards": 26,
+      "reward_mean": 0.06421997458894411,
+      "reward_std": 1.64445460350644,
+      "source_sidecar": "artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json"
+    },
+    {
+      "arm_id": "H062-SIL",
+      "description": "H062 intraday Donchian SIL leg",
+      "filter_symbol": "SIL",
+      "n_rewards": 26,
+      "reward_mean": -0.4417838977856554,
+      "reward_std": 1.594269887226133,
+      "source_sidecar": "artifacts/runs/H062/16cb68d997c148a2834aad21b73bfdb6/sidecar.json"
+    }
+  ],
+  "bandit_results": [],
+  "correlation_matrix_pearson": [
+    [
+      1.0,
+      0.8555171590863999,
+      0.7380523609901328,
+      -0.2572879519145431,
+      -0.3405461917814436
+    ],
+    [
+      0.8555171590864,
+      1.0,
+      0.7709305745919058,
+      -0.4332570562560331,
+      0.14082307264540656
+    ],
+    [
+      0.7380523609901328,
+      0.7709305745919058,
+      1.0,
+      -0.21422650709479776,
+      0.23459616359828495
+    ],
+    [
+      -0.2572879519145431,
+      -0.4332570562560331,
+      -0.21422650709479774,
+      1.0,
+      -0.11366223064492968
+    ],
+    [
+      -0.3405461917814436,
+      0.14082307264540656,
+      0.23459616359828495,
+      -0.11366223064492968,
+      0.9999999999999999
+    ]
+  ],
+  "equal_weight_baseline": {
+    "cumulative_reward": -0.5955751489609247,
+    "mean_reward_per_round": -0.11911502979218494,
+    "name": "1_over_N_equal_weight",
+    "realized_rewards": [
+      2.62764174178965,
+      -1.64560799508929,
+      0.8562390772093578,
+      -0.9916672761609311,
+      -1.4421806967097113
+    ]
+  },
+  "experiment": "v1_meta_portfolio_d_ucb",
+  "hypothesis_id": "MPV1",
+  "n_arms_K": 5,
+  "n_rounds_T": 5,
+  "oracle_baseline": {
+    "best_arm_id": "H062-NQ",
+    "best_arm_idx": 2,
+    "best_arm_mean": 2.45385669572681,
+    "cumulative_reward": 12.26928347863405,
+    "name": "oracle_best_arm"
+  },
+  "primary_inference": {
+    "MPPM_ducb_per_round": null,
+    "MPPM_equal_weight_per_round": null,
+    "T_MPV1": null
+  },
+  "rng_seed": 20260515,
+  "written_at_utc": "2026-05-16T01:18:42.674618+00:00"
+}

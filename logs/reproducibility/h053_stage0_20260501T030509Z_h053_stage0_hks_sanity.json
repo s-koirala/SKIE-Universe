@@ -1,0 +1,123 @@
+{
+  "_meta": {
+    "run_id": "h053_stage0_20260501T030509Z",
+    "written_at": "2026-05-01T03:05:10.207631+00:00"
+  },
+  "h053_stage0_hks_sanity": {
+    "bin_starts_et": [
+      [
+        9,
+        30
+      ],
+      [
+        10,
+        0
+      ],
+      [
+        10,
+        30
+      ],
+      [
+        11,
+        0
+      ],
+      [
+        11,
+        30
+      ],
+      [
+        12,
+        0
+      ],
+      [
+        12,
+        30
+      ],
+      [
+        13,
+        0
+      ],
+      [
+        13,
+        30
+      ],
+      [
+        14,
+        0
+      ],
+      [
+        14,
+        30
+      ],
+      [
+        15,
+        0
+      ],
+      [
+        15,
+        30
+      ]
+    ],
+    "method": "lag-1 ACF on half-hour bin log-returns per symbol",
+    "method_reference": "Heston-Korajczyk-Sadka 2010, J Finance 65(4):1369-1407, doi:10.1111/j.1540-6261.2010.01573.x",
+    "results": [
+      {
+        "bin_acf_values": [
+          -0.05173809318648636,
+          -0.10564723869557702,
+          -0.15698578835862093,
+          -0.1283252840043547,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN
+        ],
+        "mean_acf": -0.11067410106125974,
+        "mean_positive": false,
+        "n_bins": 4,
+        "n_positive_bins": 0,
+        "n_sessions": 89,
+        "sign_floor_passed": false,
+        "symbol": "ES",
+        "verdict": "FAIL"
+      },
+      {
+        "bin_acf_values": [
+          -0.060104482638143296,
+          0.06310514300491187,
+          -0.08867092810828187,
+          -0.08772859256337703,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN,
+          NaN
+        ],
+        "mean_acf": -0.04334971507622258,
+        "mean_positive": false,
+        "n_bins": 4,
+        "n_positive_bins": 1,
+        "n_sessions": 89,
+        "sign_floor_passed": false,
+        "symbol": "NQ",
+        "verdict": "FAIL"
+      }
+    ],
+    "rth_end_et": [
+      16,
+      0
+    ],
+    "sign_floor_frac": 0.5,
+    "substrate_path": "C:\\Users\\skoir\\Documents\\SKIE-Universe\\.claude\\worktrees\\inspiring-franklin-13a1f1\\data\\processed\\vendor_legacy_1min_roll_adjusted",
+    "version": "1.0"
+  }
+}

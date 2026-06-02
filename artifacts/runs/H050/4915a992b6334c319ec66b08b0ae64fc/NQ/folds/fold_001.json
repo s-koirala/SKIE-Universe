@@ -1,0 +1,14 @@
+{
+  "embargo_end": 1035,
+  "embargo_start": 1034,
+  "fold_id": 1,
+  "model_hash": "no-hash",
+  "n_test": 194,
+  "n_train": 586,
+  "purge_end": 840,
+  "purge_start": 780,
+  "test_end": 1034,
+  "test_start": 840,
+  "train_end": 780,
+  "train_start": 194
+}

@@ -1,0 +1,81 @@
+{
+  "feature_keys": [
+    "rv_parkinson@1.0",
+    "rv_realized@1.0",
+    "realized_skew@1.0",
+    "ofi_tickrule@1.0"
+  ],
+  "feature_provenance": [
+    {
+      "frame_sha256": "de788316db71f6eabf8ee01058fd81bcd18638879a79618c6671c950b9937cff",
+      "latency_seconds": 0.002713100053369999,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "rv_parkinson",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "4503a4ba60574ab4b7a5c222896100e8",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "c808779460b39fbc24e919eb632e61dbd7724914868945571975468a80de7c2e",
+      "latency_seconds": 0.001495000091381371,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "rv_realized",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "4503a4ba60574ab4b7a5c222896100e8",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "87a5d8bfd60d4ce2536059e1b78d095ca99227b99fa43a84b120db230c1fd9b1",
+      "latency_seconds": 0.0019309999188408256,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "realized_skew",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "4503a4ba60574ab4b7a5c222896100e8",
+      "version": "1.0"
+    },
+    {
+      "frame_sha256": "21d72f4842bcda1133a4d72a4e60354b8c56666c6ebdb37d7264988d7e1842bb",
+      "latency_seconds": 0.0019072000868618488,
+      "n_cols": 3,
+      "n_rows": 4000,
+      "name": "ofi_tickrule",
+      "now_ts": "2023-01-03T18:49:00+00:00",
+      "run_id": "4503a4ba60574ab4b7a5c222896100e8",
+      "version": "1.0"
+    }
+  ],
+  "hansen_spa": {
+    "block_length": 63.45153777687939,
+    "p_value": 1.0,
+    "p_value_lower": 1.0,
+    "p_value_upper": 1.0,
+    "statistic": 0.0
+  },
+  "n_features": 4,
+  "n_folds": 6,
+  "opdyke_ci": {
+    "bandwidth_selection": {
+      "bandwidth": 19,
+      "kernel": "bartlett",
+      "m_initial": 6,
+      "method": "nw1994_automatic",
+      "notes": "NW 1994 automatic; c=4.0; m=6; gamma_hat=1.78621.",
+      "rho_hat": null
+    },
+    "confidence_level": 0.95,
+    "excess_kurtosis": 0.4539625724036185,
+    "lower": -0.7752694204398651,
+    "method": "opdyke2007_mertens_hac_approx",
+    "n_obs": 1164,
+    "sharpe": -0.7001865850980372,
+    "skewness": -1.1043062439035534,
+    "upper": -0.6251037497562093,
+    "variance": 0.0014675237783622532
+  },
+  "sharpe_differential": -0.3666459680780852,
+  "sharpe_gated": -0.6998857530389963,
+  "sharpe_unconditional": -0.33323978496091106
+}

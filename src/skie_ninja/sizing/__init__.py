@@ -56,11 +56,24 @@ import numpy as np
 import numpy.typing as npt
 from scipy.optimize import minimize_scalar
 
+from skie_ninja.sizing.ergodicity import (
+    CPPIConfig,
+    CPPIResult,
+    JointKellyResult,
+    cppi_risk_overlay,
+    joint_kelly_fractions,
+)
+
 __all__ = [
+    "CPPIConfig",
+    "CPPIResult",
+    "JointKellyResult",
     "KELLY_MULTIPLIER_GRID_DEFAULT",
     "KELLY_MULTIPLIER_SUPER_KELLY_THRESHOLD",
     "compute_position_size",
+    "cppi_risk_overlay",
     "drawdown_constrained_kelly",
+    "joint_kelly_fractions",
     "kelly_fraction_from_r_multiples",
     "kelly_multiplier_annotation",
     "select_kelly_multiplier_by_grid",

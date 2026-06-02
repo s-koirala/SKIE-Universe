@@ -1,0 +1,10 @@
+{
+  "frame_sha256": "de20f87df4faad83331268e640a10a99558704d9087dc1db78fabe18253e67aa",
+  "latency_seconds": 0.0025203999830409884,
+  "n_cols": 3,
+  "n_rows": 4000,
+  "name": "rv_parkinson",
+  "now_ts": "2023-01-03T18:49:00+00:00",
+  "run_id": "6fdc27b584394825b85d883a05e03070",
+  "version": "1.0"
+}

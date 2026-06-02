@@ -1,0 +1,10 @@
+{
+  "frame_sha256": "3b4e649c099af74f31eaa27b30cf11a6a4648c11059bcbd16987eb244488a887",
+  "latency_seconds": 0.0020821000216528773,
+  "n_cols": 3,
+  "n_rows": 4000,
+  "name": "realized_skew",
+  "now_ts": "2023-01-03T18:49:00+00:00",
+  "run_id": "a5f6a617c12d415c8624b2d1674115b0",
+  "version": "1.0"
+}
