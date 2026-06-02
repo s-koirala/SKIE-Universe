@@ -1114,6 +1114,14 @@ def main(argv: list[str] | None = None) -> int:
         oos_r_multiples_all: list[float] = []
         per_symbol_oos_logret: dict[str, list[float]] = {s: [] for s in universe}
         per_symbol_n_trades: dict[str, int] = {s: 0 for s in universe}
+        # P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE: accumulate per-(session-date)
+        # symbol daily log-returns so the sidecar can emit a per-session-DAY
+        # equal-weight basket stream (one return per calendar day, collapsed
+        # across the symbols active that day) for the MPV2 closed-loop reward
+        # matrix. The existing per_session_logret_aggregate is SYMBOL-CONCATENATED
+        # (ES sessions, then NQ, ...) and is NOT a single per-day arm stream;
+        # this collector is the calendar-indexed alternative MPV2 requires.
+        basket_logret_by_date: dict[Any, list[float]] = {}
 
         # Per-symbol walk-forward.
         per_fold_records: list[dict[str, Any]] = []
@@ -1317,6 +1325,11 @@ def main(argv: list[str] | None = None) -> int:
                 arm_per_sess = np.array(
                     [sess_logret_map[sd] for sd in sess_dates_oos], dtype=float
                 )
+                # P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE: register each symbol's
+                # daily log-return under its calendar date for the cross-symbol
+                # per-day basket collapse emitted at the payload site below.
+                for _sd, _lr in zip(sess_dates_oos, arm_per_sess.tolist()):
+                    basket_logret_by_date.setdefault(_sd, []).append(float(_lr))
 
                 # Passive benchmark on same OOS test session set.
                 passive_logret, passive_dates = _passive_buy_and_hold_returns(df_5m_te)
@@ -1383,6 +1396,21 @@ def main(argv: list[str] | None = None) -> int:
         oos_bench = np.array(oos_basket_passive_logret_per_session, dtype=float)
         oos_r = np.array(oos_r_multiples_all, dtype=float)
         n_oos = oos_arm.size
+
+        # P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE: collapse the per-(symbol,date)
+        # daily log-returns to a single per-session-DAY equal-weight basket stream
+        # for the MPV2 reward matrix. Equal-weight basket arithmetic return =
+        # mean over symbols active that day of expm1(daily_logret); convert back
+        # to log via log1p. Arithmetic-space averaging (NOT direct log averaging)
+        # is the correct equal-weight-basket convention and matches the MPPM
+        # expm1/clip convention used at the per-fold OOS site above.
+        mpv2_basket_dates = sorted(basket_logret_by_date.keys())
+        mpv2_basket_logret: list[float] = []
+        for _d in mpv2_basket_dates:
+            _arith = np.expm1(
+                np.clip(np.array(basket_logret_by_date[_d]), a_min=-6.9, a_max=None)
+            )
+            mpv2_basket_logret.append(float(np.log1p(float(np.mean(_arith)))))
         _log.info(
             "Aggregate OOS sessions: %d, OOS trades: %d", n_oos, oos_r.size
         )
@@ -1945,6 +1973,16 @@ def main(argv: list[str] | None = None) -> int:
             # at basket-level (concatenated across folds × symbols) matches
             # the calibration's aggregation pattern.
             "per_session_logret_aggregate": oos_basket_logret_per_session,
+            # P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE: canonical per-arm MPV2
+            # reward stream — one equal-weight-basket log-return per calendar
+            # session-day, with aligned ISO dates. Distinct from the symbol-
+            # concatenated per_session_logret_aggregate above. Read by
+            # scripts/run_mpv2_closed_loop.py build_reward_matrix_from_sidecars.
+            "mpv2_arm_stream": {
+                "dates": [str(_d) for _d in mpv2_basket_dates],
+                "logret": mpv2_basket_logret,
+                "collapse": "equal_weight_basket_arithmetic_space",
+            },
             "primary_inference": {
                 "mppm_rho1_with_ci": mppm_ci_result,
                 "calmar_differential_ci": calmar_result,

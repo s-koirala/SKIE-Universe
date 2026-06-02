@@ -56,7 +56,7 @@ from skie_ninja.meta.switching_bandit import (
     SWUCBBandit,
     select_bandit_by_regret,
 )
-from skie_ninja.sizing.ergodicity import CPPIConfig, cppi_risk_overlay
+from skie_ninja.sizing.ergodicity import CPPIConfig, cppi_risk_overlay, joint_kelly_fractions
 
 _log = logging.getLogger(__name__)
 
@@ -64,6 +64,9 @@ _DEFAULT_CALIBRATION_FRACTION = 0.30  # justify: pre-OOS head for §5 bandit sel
 _DEFAULT_STARTING_EQUITY = 10_000.0  # ADR-0013 §3.1 $10K baseline
 _DEFAULT_N_BOOTSTRAP = 1000  # project-standard bootstrap replicate count
 _MIN_ARMS = 2  # switching-bandit requires n_arms >= 2
+_MIN_DAILY_CLOSES = 2  # need >= 2 closes to form one daily close-to-close return
+_LOGRET_CLIP_MIN = -6.9  # clip log-returns before expm1 (matches orchestrator convention)
+_LOG1P_FLOOR = -0.999  # clamp arithmetic returns above -1 before log1p (ruin guard)
 
 
 def synthetic_regime_matrix(
@@ -183,6 +186,158 @@ def extract_arm_per_session(spec: dict[str, Any], repo_root: Path) -> np.ndarray
         streams = [pl.read_parquet(f)[column].to_numpy().astype(float) for f in files]
         return np.concatenate(streams)
     raise ValueError(f"unknown spec kind {kind!r}; expected 'sidecar' or 'parquet'.")
+
+
+def _normalize_date_key(d: Any) -> str:
+    """Collapse a session-date token to a YYYY-MM-DD join key.
+
+    Arms emit dates in heterogeneous string forms (`2020-12-23 00:00:00+00:00`
+    from H060's tz-aware Timestamps; `2024-01-05` from H062's `str(date)`); the
+    first 10 chars are the calendar date in every ISO-8601 form, which is the
+    correct cross-arm join granularity for a per-session-day reward matrix.
+    """
+    return str(d)[:10]
+
+
+def extract_arm_dated_stream(spec: dict[str, Any], repo_root: Path) -> dict[str, float]:
+    """Extract one arm's {date_key -> per-session-day log-return} map (P-1, dated).
+
+    Prefers the canonical `mpv2_arm_stream` block (the per-session-DAY equal-weight
+    basket stream emitted by orchestrators patched under
+    `P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE`); falls back to H060's
+    `per_session_dates` + `per_session_logret_aggregate` (already a per-day basket).
+
+    A per-session-day basket has unique dates by construction, so a duplicate key
+    is a defect (raised, not last-wins-silently).
+
+    Raises:
+        FileNotFoundError: if the sidecar is absent.
+        ValueError: if no dated stream is present (the arm orchestrator predates the
+            collapse emission — re-run it), on a date/return length mismatch, or on a
+            duplicate date key.
+    """
+    path = repo_root / spec["path"]
+    if not path.exists():
+        raise FileNotFoundError(f"sidecar not found: {path}")
+    payload = json.loads(path.read_text())
+    stream = payload.get("mpv2_arm_stream")
+    if stream and stream.get("dates") and stream.get("logret"):
+        dates, logret = stream["dates"], stream["logret"]
+    else:
+        dates = payload.get("per_session_dates")
+        logret = payload.get("per_session_logret_aggregate")
+        if not dates or not logret:
+            raise ValueError(
+                f"sidecar {path} has no dated stream (`mpv2_arm_stream` nor "
+                "`per_session_dates`+`per_session_logret_aggregate`) — re-run the arm "
+                "orchestrator with the P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE emission."
+            )
+    if len(dates) != len(logret):
+        raise ValueError(
+            f"sidecar {path} date/return length mismatch: {len(dates)} vs {len(logret)}."
+        )
+    out: dict[str, float] = {}
+    for d, r in zip(dates, logret, strict=True):
+        key = _normalize_date_key(d)
+        if key in out:
+            raise ValueError(
+                f"sidecar {path} duplicate date key {key!r} — not a per-session-day "
+                "basket stream (symbol-concatenated arrays are not calendar-joinable)."
+            )
+        out[key] = float(r)
+    return out
+
+
+def build_calendar_aligned_reward_matrix(
+    arm_specs: dict[str, dict[str, Any]], repo_root: Path
+) -> tuple[np.ndarray, list[str], list[str]]:
+    """Date-keyed inner-join reward matrix across arms (P1-MPV1-CALENDAR-ALIGNMENT).
+
+    Each arm contributes a {date_key -> per-session-day log-return} map; the matrix
+    is built on the SORTED INTERSECTION of all arms' dates — the statistically
+    correct alignment (positional truncation pairs unrelated calendar sessions and
+    is the v1 shortcut this function replaces). Each matrix row is one shared
+    session-day; column j is arm j's realized log-return that day.
+
+    Args:
+        arm_specs: {arm_id: {"path": <sidecar-rel-path>}} (one entry per arm).
+        repo_root: repo root the spec paths are relative to.
+
+    Returns:
+        (matrix (T_common, M), arm_ids sorted, aligned_date_keys length-T_common).
+
+    Raises:
+        ValueError: on < 2 arms, an empty date intersection, or per-arm extraction
+            failure (propagated from `extract_arm_dated_stream`).
+    """
+    arm_ids = sorted(arm_specs)
+    if len(arm_ids) < _MIN_ARMS:
+        raise ValueError(f"need >= {_MIN_ARMS} arms, got {len(arm_ids)}.")
+    maps = {a: extract_arm_dated_stream(arm_specs[a], repo_root) for a in arm_ids}
+    common = set.intersection(*(set(m.keys()) for m in maps.values()))
+    if not common:
+        raise ValueError(
+            "empty calendar-date intersection across arms — the arms cover "
+            "disjoint OOS windows; widen the common window or check substrate vintage."
+        )
+    dates = sorted(common)
+    matrix = np.column_stack([[maps[a][d] for d in dates] for a in arm_ids])
+    return matrix, arm_ids, dates
+
+
+def build_passive_long_from_substrate(
+    symbols: list[str], repo_root: Path, dates: list[str]
+) -> np.ndarray:
+    """Equal-weight daily buy-and-hold of `symbols`, aligned to `dates` (P1-MPV2-BH-SERIES-WIRE).
+
+    The §1(b) passive benchmark the closed loop must beat: equal-weight buy-and-hold
+    of the arm-universe assets. Per symbol, the last roll-adjusted close per calendar
+    date gives a daily close-to-close log-return; per date the basket return is the
+    equal-weight average in ARITHMETIC space (mean over symbols of expm1(logret),
+    back to log via log1p) — the same convention the arm streams use. Returned (T,)
+    is aligned 1:1 with `dates` for `run_pipeline(passive_long=...)`.
+
+    Args:
+        symbols: arm-universe tickers (e.g. ["ES", "NQ", "MGC", "SIL"]).
+        repo_root: repo root holding data/processed/vendor_legacy_1min_roll_adjusted.
+        dates: the common calendar-date keys (YYYY-MM-DD) from the calendar-join.
+
+    Raises:
+        FileNotFoundError: if the roll-adjusted substrate directory is absent.
+        ValueError: if a symbol has no partitions, or a common date has no substrate
+            basket return (the common dates derive from arm streams built on the same
+            substrate, so a miss signals a vintage/alignment defect).
+    """
+    base = repo_root / "data" / "processed" / "vendor_legacy_1min_roll_adjusted"
+    if not base.exists():
+        raise FileNotFoundError(f"roll-adjusted substrate not found: {base}")
+    sym_daily: dict[str, dict[str, float]] = {}
+    for sym in symbols:
+        files = sorted(base.glob(f"symbol={sym}/year=*/*.parquet"))
+        if not files:
+            raise ValueError(f"no roll-adjusted partitions for symbol {sym!r} under {base}.")
+        frame = pl.concat([pl.read_parquet(f, columns=["ts_event", "close"]) for f in files])
+        daily = (
+            frame.with_columns(pl.col("ts_event").dt.date().alias("d"))
+            .sort("ts_event")
+            .group_by("d")
+            .agg(pl.col("close").last())
+            .sort("d")
+        )
+        day_keys = [str(x)[:10] for x in daily["d"].to_list()]
+        closes = daily["close"].to_numpy().astype(float)
+        if closes.size < _MIN_DAILY_CLOSES:
+            raise ValueError(f"symbol {sym!r} has < 2 daily closes; cannot form returns.")
+        logret = np.diff(np.log(closes))
+        sym_daily[sym] = {day_keys[i]: float(logret[i - 1]) for i in range(1, len(day_keys))}
+    out: list[float] = []
+    for dk in dates:
+        rets = [sym_daily[s][dk] for s in symbols if dk in sym_daily.get(s, {})]
+        if not rets:
+            raise ValueError(f"buy-and-hold has no substrate return for common date {dk!r}.")
+        arith = np.expm1(np.clip(np.array(rets), a_min=-6.9, a_max=None))
+        out.append(float(np.log1p(float(np.mean(arith)))))
+    return np.asarray(out, dtype=float)
 
 
 def cross_arm_correlation(matrix: np.ndarray) -> dict[str, Any]:
@@ -523,6 +678,106 @@ def _disposition(vs_1n: dict[str, Any], vs_bh: dict[str, Any] | None) -> str:
     if vs_1n["excludes_zero_positive"] or vs_bh["excludes_zero_positive"]:
         return "beat-one"
     return "null"
+
+
+def evaluate_simultaneous_pooling(
+    matrix: np.ndarray,
+    *,
+    calibration_fraction: float = _DEFAULT_CALIBRATION_FRACTION,
+    passive_long: np.ndarray | None = None,
+    rng_seed: int = 20260602,
+) -> dict[str, Any]:
+    """OOS simultaneous joint-Kelly pooling verdict (ADR-0020; P1-MPV2-JOINT-BOOTSTRAP-CONJUNCTIVE).
+
+    The complement to the switching closed loop: instead of allocating to ONE arm per
+    session, HOLD ALL arms concurrently at joint-log-growth-optimal Kelly fractions
+    (Kelly 1956; the ergodicity pooling lift of ADR-0029 §D-3.4). Causal by
+    construction — the fractions are fit on the calibration HEAD and FROZEN before
+    they touch the eval tail (mirrors the bandit's calib/eval split; no look-ahead).
+
+    The pooled portfolio per-session log-return is compared to BOTH the §1
+    benchmarks (1/N equal-weight pool, buy-and-hold) via paired stationary-bootstrap
+    CIs. Unlike `run_pipeline`'s switching block, NO additional CPPI/early-warning
+    overlay is applied — the joint-Kelly fractions ARE the sizing; the comparison is
+    the raw deployable pooled portfolio vs the raw passive alternatives.
+
+    Args:
+        matrix: (T, M) per-session LOG-return reward matrix.
+        calibration_fraction: head fraction in (0, 1) for the joint-Kelly fit.
+        passive_long: optional full-length (T,) buy-and-hold LOG-return series; the
+            eval tail is the §1(b) benchmark. None → vs-B&H undetermined.
+        rng_seed: deterministic bootstrap seed.
+
+    Returns:
+        dict of the frozen joint-Kelly fractions + convergence/ruin flags, the pooled
+        and benchmark eval MPPM(ρ=1) time-averages, the pooled-vs-1/N and pooled-vs-B&H
+        paired-bootstrap CIs, the tri-state conjunctive verdict, and the disposition.
+
+    Raises:
+        ValueError: on < 2 arms, calibration_fraction outside (0, 1), too-few
+            sessions, or a passive_long length mismatch.
+    """
+    if matrix.shape[1] < _MIN_ARMS:
+        raise ValueError(f"need >= {_MIN_ARMS} arms, got {matrix.shape[1]}.")
+    if not 0.0 < calibration_fraction < 1.0:
+        raise ValueError(f"calibration_fraction must be in (0, 1), got {calibration_fraction}.")
+    t_total = matrix.shape[0]
+    if passive_long is not None and np.asarray(passive_long).shape[0] != t_total:
+        raise ValueError(
+            f"passive_long length {np.asarray(passive_long).shape[0]} != n_sessions {t_total}."
+        )
+    t_cal = int(t_total * calibration_fraction)
+    if t_cal < _MIN_ARMS or (t_total - t_cal) < _MIN_ARMS:
+        raise ValueError(
+            f"too few sessions ({t_total}) for calibration_fraction={calibration_fraction}."
+        )
+    calib, eval_m = matrix[:t_cal], matrix[t_cal:]
+    # Fit joint-Kelly on the calibration head (arithmetic returns); freeze fractions.
+    calib_arith = np.expm1(np.clip(calib, a_min=_LOGRET_CLIP_MIN, a_max=None))
+    eval_arith = np.expm1(np.clip(eval_m, a_min=_LOGRET_CLIP_MIN, a_max=None))
+    jk = joint_kelly_fractions(calib_arith)
+    # Apply the FROZEN fractions to the eval tail → pooled portfolio arith return/session.
+    pooled_arith = eval_arith @ jk.fractions
+    pooled_log = np.log1p(np.clip(pooled_arith, a_min=_LOG1P_FLOOR, a_max=None))
+    one_over_n_log = np.log1p(np.clip(eval_arith.mean(axis=1), a_min=_LOG1P_FLOOR, a_max=None))
+
+    vs_1n = paired_bootstrap_ci(pooled_log - one_over_n_log, rng_seed=rng_seed)
+    if passive_long is not None:
+        bh_eval_log = np.asarray(passive_long, dtype=float)[t_cal:]
+        vs_bh = paired_bootstrap_ci(pooled_log - bh_eval_log, rng_seed=rng_seed)
+        # 1/N-vs-B&H is the decisive "does naive pooling beat passive" test — 1/N is
+        # the empirically strongest allocator (DeMiguel-Garlappi-Uppal 2009), so its
+        # margin over buy-and-hold is the load-bearing promotable-claim gate, NOT the
+        # overfit joint-Kelly's.
+        one_over_n_vs_bh = paired_bootstrap_ci(one_over_n_log - bh_eval_log, rng_seed=rng_seed)
+        bh_arith = np.expm1(np.clip(bh_eval_log, a_min=_LOGRET_CLIP_MIN, a_max=None))
+        bh_mppm = float(mppm_rho_1(bh_arith))
+    else:
+        vs_bh = None
+        one_over_n_vs_bh = None
+        bh_mppm = None
+    beat_both: bool | None = (
+        None
+        if vs_bh is None
+        else bool(vs_1n["excludes_zero_positive"] and vs_bh["excludes_zero_positive"])
+    )
+    return {
+        "paradigm": "simultaneous_joint_kelly_pooling",
+        "n_sessions_calibration": t_cal,
+        "n_sessions_evaluation": int(eval_m.shape[0]),
+        "joint_kelly_fractions": jk.fractions.tolist(),
+        "joint_kelly_total_exposure": float(jk.total_fraction),
+        "joint_kelly_converged": bool(jk.converged),
+        "joint_kelly_bankrupts_on_path": bool(jk.bankrupts_on_path),
+        "pooled_mppm_rho_1_time_average": float(mppm_rho_1(pooled_arith)),
+        "one_over_n_mppm_rho_1_time_average": float(mppm_rho_1(eval_arith.mean(axis=1))),
+        "buy_and_hold_mppm_rho_1_time_average": bh_mppm,
+        "pooled_vs_1_over_N": vs_1n,
+        "pooled_vs_buy_and_hold": vs_bh,
+        "one_over_n_vs_buy_and_hold": one_over_n_vs_bh,
+        "beat_both_conjunctive": beat_both,
+        "disposition": _disposition(vs_1n, vs_bh),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

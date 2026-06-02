@@ -712,6 +712,14 @@ def main(argv: list[str] | None = None) -> int:
         oos_bench = np.array(all_oos_passive_log_ret)
         oos_r = np.array(all_oos_r_multiples)
         n_oos = oos_arm.size
+        # Calendar-alignment invariant: the per-session date list must be 1:1
+        # with the aggregate log-return array (both built with the same per-fold
+        # n_min truncation). Guards the MPV2 calendar-align step downstream.
+        if len(all_oos_per_session_dates) != n_oos:
+            raise ValueError(
+                f"per-session date/return length mismatch: "
+                f"{len(all_oos_per_session_dates)} dates vs {n_oos} returns"
+            )
         _log.info("Aggregate OOS sessions: %d", n_oos)
 
         # === Primary metric: MPPM(rho=1) with CI ===
@@ -998,6 +1006,14 @@ def main(argv: list[str] | None = None) -> int:
             "n_folds_realized": len(per_fold_records),
             "per_fold": per_fold_records,
             "n_oos_sessions_aggregate": int(n_oos),
+            # P1-H060-PER-SESSION-LOGRET-EMIT closure: persist the basket-aggregate
+            # per-session log-return array (concatenated across folds) for the MPV2
+            # closed-loop reward matrix per scripts/run_mpv2_closed_loop.py
+            # `extract_arm_per_session`. The aligned session-date list (1:1 with the
+            # logret array, same per-fold n_min truncation) enables the MPV2
+            # calendar-alignment step (P1-MPV1-CALENDAR-ALIGNMENT) without a back-fill.
+            "per_session_logret_aggregate": oos_arm.tolist(),
+            "per_session_dates": [str(d) for d in all_oos_per_session_dates],
             "primary_inference": {
                 "mppm_rho1_with_ci": mppm_ci_result,
                 "calmar_differential_ci": calmar_result,

@@ -1176,6 +1176,10 @@ def _run_simulation(
         "equity_curve": eq_arr.tolist(),
         "per_session_pnl": {str(k): v for k, v in per_session_pnl.items()},
         "per_session_log_returns": per_session_log_returns,
+        # P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE: dates 1:1 with
+        # per_session_log_returns (= sorted per_session_pnl keys) so the sweep
+        # can emit a calendar-indexed per-session-day basket MPV2 arm stream.
+        "per_session_dates": [str(sd) for sd in sessions_seen],
         "bocd_step_history": (sm.step_history if sm is not None else []),
         "km_terminal": (sm.km if sm is not None else cfg.kelly_multiplier),
         "n_km_step_ups": (
@@ -1368,6 +1372,57 @@ def _aggregate_h055_abandonment_blocks(
         },
         "adr_0025_version": "v1",
         "p1_sidecar_capture": "closed (Phase O.13)",
+    }
+
+
+def _build_h055_mpv2_arm_stream(
+    full_results: list[dict[str, Any]],
+    cfg_name: str,
+) -> dict[str, Any]:
+    """Collapse one config's per-(symbol, date) returns to a per-session-DAY basket
+    MPV2 arm stream (P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE).
+
+    The H055 sweep emits per-(cfg, symbol) per-session log-returns; the MPV2 reward
+    matrix needs ONE per-session-day stream per arm. For the chosen config this
+    averages across the symbols active each calendar day in ARITHMETIC space
+    (basket_arith = mean over symbols of expm1(daily_logret); back to log via log1p),
+    matching the equal-weight-basket convention emitted by H060/H062. A per-session-
+    day basket has unique dates by construction, so the per-symbol date sets union
+    cleanly (each date carries one log-return per active symbol).
+
+    Args:
+        full_results: the sweep's per-(cfg, symbol) result list.
+        cfg_name: the config whose arm stream to extract (e.g. "C9_bocd_stepup").
+
+    Returns:
+        {dates, logret, collapse, config, n_symbols} — empty lists if the config
+        produced no dated sessions.
+    """
+    basket_by_date: dict[str, list[float]] = {}
+    symbols_seen: set[str] = set()
+    for r in full_results:
+        if r.get("cfg_name") != cfg_name:
+            continue
+        dates = r.get("per_session_dates") or []
+        logret = r.get("per_session_log_returns") or []
+        if len(dates) != len(logret):
+            continue
+        symbols_seen.add(str(r.get("symbol")))
+        for d, lr in zip(dates, logret, strict=True):
+            if lr is None:
+                continue
+            basket_by_date.setdefault(str(d)[:10], []).append(float(lr))
+    sorted_dates = sorted(basket_by_date)
+    basket_logret: list[float] = []
+    for d in sorted_dates:
+        arith = np.expm1(np.clip(np.array(basket_by_date[d]), a_min=-6.9, a_max=None))
+        basket_logret.append(float(np.log1p(float(np.mean(arith)))))
+    return {
+        "dates": sorted_dates,
+        "logret": basket_logret,
+        "collapse": "equal_weight_basket_arithmetic_space",
+        "config": cfg_name,
+        "n_symbols": len(symbols_seen),
     }
 
 
@@ -1916,6 +1971,16 @@ def main(argv: list[str] | None = None) -> int:
             for v in res.get("per_session_log_returns", [])
             if v is not None
         ],
+        # P1-MPV2-PER-SESSION-DAY-BASKET-COLLAPSE: canonical per-arm MPV2 reward
+        # stream for the regime-switching closed loop. The H055 mean-reversion arm
+        # is represented by the C9 BOCD-step-up config (the project's
+        # operationally-correct production variant per Phase O.7: km_floor=0.5
+        # regime-conditional circuit-breaker). One equal-weight-basket log-return
+        # per calendar session-day, collapsed across the 4 symbols active that day.
+        # justify: C9 chosen as the MR representative (NOT v1/C2/C3/C5) because it
+        # is the only config carrying the project-endorsed survival overlay; the
+        # frozen MPV2 §1-§7 names the hypothesis (H055), not the config.
+        "mpv2_arm_stream": _build_h055_mpv2_arm_stream(full_results, "C9_bocd_stepup"),
         "rho_star_at_run": float(args.rho_star),
         "smoke_mode": bool(args.smoke),
         # ADR-0025 Phase O.13 abandonment-trigger infrastructure block.
@@ -1946,6 +2011,9 @@ def main(argv: list[str] | None = None) -> int:
         r.pop("equity_curve", None)
         r.pop("per_session_pnl", None)
         r.pop("per_session_log_returns", None)
+        # Per-session dates extracted to the top-level mpv2_arm_stream above;
+        # strip the per-cell copy to keep the sidecar lean.
+        r.pop("per_session_dates", None)
         # Keep bocd_step_history limited
         if len(r.get("bocd_step_history", [])) > 50:
             r["bocd_step_history_n"] = len(r["bocd_step_history"])
