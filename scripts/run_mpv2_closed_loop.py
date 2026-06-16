@@ -31,32 +31,46 @@ ReproLog wiring deferred to `P1-MPV2-REPROLOG-WIRE`.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import polars as pl
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_SRC_DIR = _REPO_ROOT / "src"
+for _p in (str(_REPO_ROOT), str(_SRC_DIR)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
-from skie_ninja.inference.bootstrap import (
+import numpy as np  # noqa: E402
+import polars as pl  # noqa: E402
+
+from skie_ninja.inference.bootstrap import (  # noqa: E402
     politis_white_block_length,
     stationary_bootstrap_indices,
 )
-from skie_ninja.inference.early_warning import (
+from skie_ninja.inference.early_warning import (  # noqa: E402
     EarlyWarningConfig,
     early_warning_update,
     evaluate_early_warning,
     init_early_warning,
 )
-from skie_ninja.inference.mppm import mppm_rho_1
-from skie_ninja.meta.switching_bandit import (
+from skie_ninja.inference.mppm import mppm_rho_1  # noqa: E402
+from skie_ninja.meta.switching_bandit import (  # noqa: E402
     DUCBBandit,
     EXP3SBandit,
     SWUCBBandit,
     select_bandit_by_regret,
 )
-from skie_ninja.sizing.ergodicity import CPPIConfig, cppi_risk_overlay, joint_kelly_fractions
+from skie_ninja.sizing.ergodicity import (  # noqa: E402
+    CPPIConfig,
+    cppi_risk_overlay,
+    joint_kelly_fractions,
+)
+from skie_ninja.utils.paths import ProjectPaths  # noqa: E402
+from skie_ninja.utils.runcontext import RunContext  # noqa: E402
 
 _log = logging.getLogger(__name__)
 
@@ -780,6 +794,136 @@ def evaluate_simultaneous_pooling(
     }
 
 
+# --- Canonical MPV2 v1 real-data arm sidecars (Phase-P drive; P1-MPV2-REPROLOG-WIRE) ---
+# Verdict arm reward streams (per-session-DAY equal-weight basket, `mpv2_arm_stream`),
+# generated on the 286829dc 2015-2025 vintage. The 2024-2025 (3-arm) and 2020-2025
+# (2-arm) common windows are vintage-invariant on 317429e4 — the 2026 partitions never
+# touch a pre-2026 common date — so the verdict reproduces on the regenerated substrate.
+# H055=v2_sweep_20260602T200706Z is the C9 cost-ZERO verdict arm (NOT the 205808Z
+# cost-applied milestone-5 stream).
+_REAL_ARM_SPECS: dict[str, dict[str, str]] = {
+    "H055": {"path": "artifacts/runs/H055/v2_sweep_20260602T200706Z/sweep_sidecar.json"},
+    "H060": {"path": "artifacts/runs/H060/c31a8a60270b4160ba4f95b7e88f1b47/sidecar.json"},
+    "H062": {"path": "artifacts/runs/H062/5554a2f8a23049388ab11522de8fd527/sidecar.json"},
+}
+_REAL_BH_SYMBOLS = ["ES", "NQ", "MGC", "SIL"]  # buy-and-hold universe (Phase-P §P-5)
+# 3-arm = the v1-scoped pre-registered window (H055-bounded 2024-2025); 2-arm = the
+# wider-history {H060,H062} subset diagnostic (pre-2024 H055 absent).
+_REAL_WINDOWS: dict[str, list[str]] = {
+    "3-arm": ["H055", "H060", "H062"],
+    "2-arm": ["H060", "H062"],
+}
+
+
+def _load_substrate_checksum(repo_root: Path) -> dict[str, str]:
+    """Newest roll-adjusted substrate output_frame_sha256 (mirrors run_h060)."""
+    prov_dir = repo_root / "data" / "processed" / "_provenance"
+    prov = sorted(prov_dir.glob("vendor_legacy_1min_roll_adjusted_*.json"))
+    if prov:
+        try:
+            sha = json.loads(prov[-1].read_text()).get("output_frame_sha256", "")
+            if sha:
+                return {"vendor_legacy_1min_roll_adjusted": sha}
+        except (OSError, json.JSONDecodeError) as exc:
+            _log.warning("substrate provenance unreadable: %s", exc)
+    return {}
+
+
+def _run_real_window(
+    arm_ids: list[str],
+    repo_root: Path,
+    *,
+    calibration_fraction: float,
+    starting_equity: float,
+    rng_seed: int,
+) -> dict[str, Any]:
+    """One MPV2 window: calendar-join -> B&H -> switching (run_pipeline) + pooling."""
+    specs = {a: _REAL_ARM_SPECS[a] for a in arm_ids}
+    matrix, sorted_ids, dates = build_calendar_aligned_reward_matrix(specs, repo_root)
+    passive = build_passive_long_from_substrate(_REAL_BH_SYMBOLS, repo_root, dates)
+    switching = run_pipeline(
+        matrix,
+        sorted_ids,
+        calibration_fraction=calibration_fraction,
+        starting_equity=starting_equity,
+        rng_seed=rng_seed,
+        passive_long=passive,
+    )
+    pooling = evaluate_simultaneous_pooling(
+        matrix,
+        calibration_fraction=calibration_fraction,
+        passive_long=passive,
+        rng_seed=rng_seed,
+    )
+    return {
+        "arm_ids": sorted_ids,
+        "bh_symbols": _REAL_BH_SYMBOLS,
+        "n_common_sessions": len(dates),
+        "common_window": [dates[0], dates[-1]],
+        "switching": switching,
+        "simultaneous_pooling": pooling,
+    }
+
+
+def _run_real(args: argparse.Namespace) -> int:
+    """Committed real-data MPV2 verdict on the Phase-P arm streams (P1-MPV2-REPROLOG-WIRE).
+
+    Emits ONE coherent number set (switching + pooling, both windows) + a ReproLog,
+    superseding the ad-hoc milestone-1..5 drive's two-pass value sets.
+    """
+    repo_root = ProjectPaths.discover().root
+    dataset_checksums = _load_substrate_checksum(repo_root)
+    with RunContext(
+        phase="mpv2_closed_loop_real",
+        hypothesis_id="MPV2",
+        rng_seed=args.rng_seed,
+        dataset_checksums=dataset_checksums,
+    ) as ctx:
+        run_id = ctx.log.run_id  # type: ignore[union-attr]
+        windows = {
+            label: _run_real_window(
+                arms,
+                repo_root,
+                calibration_fraction=args.calibration_fraction,
+                starting_equity=args.starting_equity,
+                rng_seed=args.rng_seed,
+            )
+            for label, arms in _REAL_WINDOWS.items()
+        }
+        payload: dict[str, Any] = {
+            "schema": "mpv2_closed_loop_real_v1",
+            "run_id": run_id,
+            "git_head": ctx.log.git_head,  # type: ignore[union-attr]
+            "dataset_checksums": dict(ctx.log.dataset_checksums),  # type: ignore[union-attr]
+            "rng_seed": args.rng_seed,
+            "calibration_fraction": args.calibration_fraction,
+            "starting_equity": args.starting_equity,
+            "windows": windows,
+        }
+        sci_sha = hashlib.sha256(json.dumps(windows, sort_keys=True).encode()).hexdigest()
+        payload["scientific_payload_sha256"] = sci_sha
+        out_dir = ProjectPaths.discover().artifacts_runs / "MPV2" / run_id
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / "sidecar.json").write_text(json.dumps(payload, indent=2))
+        (out_dir / "scientific_payload_sha256.txt").write_text(sci_sha)
+        for label, w in windows.items():
+            p = w["simultaneous_pooling"]
+            _log.info(
+                "[%s] n=%d switching_MPPM=%.4f | 1/N=%.4f B&H=%.4f JK=%.4f"
+                " | switch_disp=%s pool_disp=%s",
+                label,
+                w["n_common_sessions"],
+                w["switching"]["closed_loop_mppm_rho_1_time_average"],
+                p["one_over_n_mppm_rho_1_time_average"],
+                p["buy_and_hold_mppm_rho_1_time_average"],
+                p["pooled_mppm_rho_1_time_average"],
+                w["switching"]["disposition"],
+                p["disposition"],
+            )
+        _log.info("MPV2 real run_id=%s sci_sha=%s out=%s/sidecar.json", run_id, sci_sha, out_dir)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="MPV2 regime-switching closed loop")
     parser.add_argument(
@@ -788,20 +932,28 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rng-seed", type=int, default=20260602)
     parser.add_argument("--calibration-fraction", type=float, default=_DEFAULT_CALIBRATION_FRACTION)
     parser.add_argument("--starting-equity", type=float, default=_DEFAULT_STARTING_EQUITY)
-    parser.add_argument("--out", type=str, default=None, help="sidecar output path")
+    parser.add_argument(
+        "--real",
+        action="store_true",
+        help="run the committed real-data arm streams + emit a ReproLog (P1-MPV2-REPROLOG-WIRE)",
+    )
+    parser.add_argument(
+        "--out", type=str, default=None, help="sidecar output path (synthetic mode)"
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-    if args.synthetic:
-        matrix = synthetic_regime_matrix(rng_seed=args.rng_seed)
-        arm_ids = [f"synthetic_arm_{i}" for i in range(matrix.shape[1])]
-    else:
+    if args.real:
+        return _run_real(args)
+
+    if not args.synthetic:
         raise SystemExit(
-            "real-data mode requires the per-session arm arrays (P-1); pass --synthetic to "
-            "validate the pipeline, or wire build_reward_matrix_from_sidecars once "
-            "P1-MPV2-PER-SESSION-RETURNS-INTEGRATION has re-emitted the arm sidecars."
+            "pass --real for the committed MPV2 real-data verdict (P1-MPV2-REPROLOG-WIRE), "
+            "or --synthetic to validate the pipeline on a regime-structured fixture."
         )
 
+    matrix = synthetic_regime_matrix(rng_seed=args.rng_seed)
+    arm_ids = [f"synthetic_arm_{i}" for i in range(matrix.shape[1])]
     result = run_pipeline(
         matrix,
         arm_ids,

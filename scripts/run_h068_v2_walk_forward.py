@@ -1190,6 +1190,12 @@ def _format_kpi_table(
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Windows cp1252 stdout cannot encode the >= / arrow glyphs in the KPI summary;
+    # force utf-8 so the run completes + writes its sidecar (P1-H068-V2-UNICODE-PRINT-FIX).
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):  # pragma: no cover - non-reconfigurable stream
+        pass
     parser = argparse.ArgumentParser(
         description="H068 v2 walk-forward orchestrator — 3-symbol basket {ES, MGC, SIL}",
     )
